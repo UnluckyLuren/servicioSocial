@@ -1,0 +1,483 @@
+
+
+<style>
+  /* ══════════════════════════════════════════════════════════════
+     SISTEMA DE TICKETS - Estilos Personalizados
+     Compatible con Tailwind CSS CDN
+     ══════════════════════════════════════════════════════════════ */
+
+  /* Fuente base */
+  * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+
+  /* ─────────────────────────────────────────────
+     COMPONENTES DE FORMULARIO
+     ───────────────────────────────────────────── */
+
+  .form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.375rem;
+  }
+
+  .form-input {
+    width: 100%;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.625rem;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    color: #1e293b;
+    background: #ffffff;
+    transition: all 0.2s ease;
+    outline: none;
+  }
+
+  .form-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    background: #fafcff;
+  }
+
+  .form-input.error {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+
+  .form-input:disabled {
+    background: #f8fafc;
+    color: #94a3b8;
+    cursor: not-allowed;
+  }
+
+  textarea.form-input { resize: vertical; min-height: 80px; }
+
+  select.form-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+  }
+
+  .form-error {
+    display: block;
+    font-size: 0.75rem;
+    color: #dc2626;
+    margin-top: 0.25rem;
+  }
+
+  /* ─────────────────────────────────────────────
+     LOADING SPINNER
+     ───────────────────────────────────────────── */
+
+  .loading-spinner {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 3px solid #e2e8f0;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .loading-spinner.sm {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-width: 2px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ─────────────────────────────────────────────
+     BADGES DE ESTADO Y PRIORIDAD
+     ───────────────────────────────────────────── */
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* Estados */
+  .badge-nuevo      { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+  .badge-proceso    { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+  .badge-resuelto   { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  .badge-cerrado    { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+  /* Prioridades */
+  .badge-critico    { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .badge-medio      { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .badge-bajo       { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  .badge-sin-asig   { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+
+  /* Roles */
+  .badge-alumno     { background: #eff6ff; color: #1d4ed8; }
+  .badge-profesor   { background: #f0fdf4; color: #15803d; }
+  .badge-asistente  { background: #fffbeb; color: #b45309; }
+  .badge-coordinador{ background: #faf5ff; color: #7e22ce; }
+
+  /* ─────────────────────────────────────────────
+     TARJETAS DE TICKET
+     ───────────────────────────────────────────── */
+
+  .ticket-card {
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: 1.25rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ticket-card:hover {
+    border-color: #93c5fd;
+    box-shadow: 0 4px 20px -4px rgba(59, 130, 246, 0.15);
+    transform: translateY(-1px);
+  }
+
+  /* Barra lateral de prioridad */
+  .ticket-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    border-radius: 1rem 0 0 1rem;
+  }
+
+  .ticket-card.prioridad-Critico::before  { background: #ef4444; }
+  .ticket-card.prioridad-Medio::before    { background: #f59e0b; }
+  .ticket-card.prioridad-Bajo::before     { background: #10b981; }
+  .ticket-card.prioridad-Sin.Asignar::before { background: #cbd5e1; }
+
+  /* Ticket urgente: borde especial */
+  .ticket-card.urgente {
+    border-color: #fbbf24;
+    background: linear-gradient(135deg, #fffbeb 0%, #ffffff 50%);
+  }
+
+  /* ─────────────────────────────────────────────
+     TABLA DE TICKETS (Vista historial)
+     ───────────────────────────────────────────── */
+
+  .tabla-wrapper {
+    background: white;
+    border-radius: 1rem;
+    border: 1.5px solid #e2e8f0;
+    overflow: hidden;
+  }
+
+  .tabla-wrapper table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .tabla-wrapper th {
+    background: #f8fafc;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 0.875rem 1rem;
+    text-align: left;
+    border-bottom: 1.5px solid #e2e8f0;
+  }
+
+  .tabla-wrapper td {
+    padding: 0.875rem 1rem;
+    font-size: 0.8125rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+  }
+
+  .tabla-wrapper tr:last-child td { border-bottom: none; }
+  .tabla-wrapper tr:hover td { background: #f8fafc; }
+
+  /* ─────────────────────────────────────────────
+     TOAST NOTIFICATIONS
+     ───────────────────────────────────────────── */
+
+  .toast {
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem 1.125rem;
+    border-radius: 0.875rem;
+    box-shadow: 0 10px 40px -8px rgba(0,0,0,0.2);
+    animation: toastIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border: 1px solid transparent;
+    max-width: 100%;
+    pointer-events: auto;
+  }
+
+  .toast-success { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+  .toast-error   { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+  .toast-warning { background: #fffbeb; border-color: #fde68a; color: #b45309; }
+  .toast-info    { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(1.5rem) scale(0.95); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+  }
+
+  @keyframes toastOut {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to   { opacity: 0; transform: translateX(1.5rem) scale(0.9); }
+  }
+
+  .toast.closing { animation: toastOut 0.25s ease forwards; }
+
+  /* ─────────────────────────────────────────────
+     BOTONES DE FILTRO
+     ───────────────────────────────────────────── */
+
+  .filter-btn {
+    background: white;
+    border-color: #e2e8f0;
+    color: #64748b;
+  }
+
+  .filter-btn:hover {
+    border-color: #94a3b8;
+    color: #334155;
+  }
+
+  .filter-btn.active {
+    background: #1e40af;
+    border-color: #1e40af;
+    color: white;
+  }
+
+  /* ─────────────────────────────────────────────
+     ANIMACIONES DE TRANSICIÓN DE VISTAS
+     ───────────────────────────────────────────── */
+
+  section[id^="vista-"] {
+    animation: fadeInUp 0.3s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─────────────────────────────────────────────
+     MODAL
+     ───────────────────────────────────────────── */
+
+  #modal-ticket {
+    animation: modalIn 0.2s ease-out;
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  #modal-ticket > div {
+    animation: modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes modalSlideIn {
+    from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* ─────────────────────────────────────────────
+     ESTADO VACÍO
+     ───────────────────────────────────────────── */
+
+  .estado-vacio {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #94a3b8;
+  }
+
+  .estado-vacio svg {
+    width: 4rem;
+    height: 4rem;
+    margin: 0 auto 1rem;
+    opacity: 0.4;
+  }
+
+  .estado-vacio h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+  }
+
+  .estado-vacio p {
+    font-size: 0.875rem;
+  }
+
+  /* ─────────────────────────────────────────────
+     RESPONSIVE: Ocultar columnas en mobile
+     ───────────────────────────────────────────── */
+
+  @media (max-width: 640px) {
+    .tabla-wrapper th.hide-mobile,
+    .tabla-wrapper td.hide-mobile {
+      display: none;
+    }
+
+    .ticket-card { padding: 1rem; }
+
+    #modal-ticket > div { max-height: 95vh; }
+  }
+
+  /* ─────────────────────────────────────────────
+     SCROLLBAR PERSONALIZADO
+     ───────────────────────────────────────────── */
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+
+user avatar
+
+continua
+model avatar
+5. CSS.html - Continuación y JS.html - Lógica Cliente Completa
+
+/* Continuación de CSS.html */
+  ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  /* ─────────────────────────────────────────────
+     HIGHLIGHT DE BÚSQUEDA
+     ───────────────────────────────────────────── */
+
+  .highlight {
+    background: #fef08a;
+    border-radius: 2px;
+    padding: 0 2px;
+    font-weight: 600;
+  }
+
+  /* ─────────────────────────────────────────────
+     DETALLE DEL TICKET EN MODAL
+     ───────────────────────────────────────────── */
+
+  .detalle-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .detalle-campo .etiqueta {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .detalle-campo .valor {
+    font-size: 0.875rem;
+    color: #1e293b;
+    line-height: 1.5;
+  }
+
+  .detalle-separador {
+    height: 1px;
+    background: #f1f5f9;
+    margin: 0.25rem 0;
+  }
+
+  /* ─────────────────────────────────────────────
+     RESPUESTA DEL COORDINADOR (Vista alumno)
+     ───────────────────────────────────────────── */
+
+  .respuesta-box {
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border: 1.5px solid #86efac;
+    border-radius: 0.875rem;
+    padding: 1rem 1.25rem;
+  }
+
+  .respuesta-box .respuesta-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #15803d;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .respuesta-box .respuesta-texto {
+    font-size: 0.875rem;
+    color: #166534;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  /* ─────────────────────────────────────────────
+     INDICADOR DE TICKET URGENTE
+     ───────────────────────────────────────────── */
+
+  .urgente-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+    border-radius: 9999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    animation: pulseUrgente 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseUrgente {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+    50%       { box-shadow: 0 0 0 4px rgba(251, 191, 36, 0); }
+  }
+
+  /* ─────────────────────────────────────────────
+     BOTÓN CON ESTADO DE CARGA
+     ───────────────────────────────────────────── */
+
+  .btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.75;
+  }
+
+  .btn-loading::after {
+    content: '';
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  #triage-busqueda {
+    width: 215%;
+  }
+
+</style>

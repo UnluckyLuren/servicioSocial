@@ -1,0 +1,633 @@
+<script>
+/**
+ * ============================================================
+ * SISTEMA DE TICKETS - Lógica del Cliente
+ * JS.html - Apps Script Web App
+ * ============================================================
+ */
+
+'use strict';
+
+const UTILS = (() => {
+  function sanitizar(str) {
+    if (typeof str !== 'string') return '';
+    const div = document.createElement('div'); div.appendChild(document.createTextNode(str)); return div.innerHTML;
+  }
+  function escaparHTML(str) {
+    if (!str) return ''; return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+  }
+  function validarCorreo(correo) { return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(correo.trim()); }
+  function esCorreoAlumno(correo) { if (!correo) return false; return correo.toLowerCase().trim().endsWith('@alumnos.udg.mx'); }
+
+  function esCorreoProfesor(correo) {
+    // if (!correo) return false; const email = correo.toLowerCase().trim(); return email.endsWith('@academicos.udg.mx') || email.endsWith('@cucei.udg.mx');
+    return true;
+  }
+
+  function validarTelefono(tel) { return /^\d{10}$/.test(tel.replace(/[\s\-\+]/g, '')); }
+
+  function mostrarError(campoId, mensaje) {
+    const campo = document.getElementById(campoId), errorEl = document.getElementById('err-' + campoId);
+    if (campo) { campo.classList.add('error'); campo.addEventListener('input', () => limpiarError(campoId), { once: true }); }
+    if (errorEl) { errorEl.textContent = mensaje; errorEl.classList.remove('hidden'); }
+  }
+  function limpiarError(campoId) { const campo = document.getElementById(campoId), errorEl = document.getElementById('err-' + campoId); if (campo) campo.classList.remove('error'); if (errorEl) errorEl.classList.add('hidden'); }
+  function limpiarErroresForm(formId) {
+    const form = document.getElementById(formId); if (!form) return;
+    form.querySelectorAll('.error').forEach(el => el.classList.remove('error')); form.querySelectorAll('.form-error').forEach(el => el.classList.add('hidden'));
+  }
+  function campo(id) { const el = document.getElementById(id); if (!el) return ''; return el.type === 'checkbox' ? el.checked : (el.value || '').trim(); }
+  function setBtnCargando(btnId, cargando, textoOriginal) {
+    const btn = document.getElementById(btnId); if (!btn) return;
+    if (cargando) { btn.classList.add('btn-loading'); btn.disabled = true; } else { btn.classList.remove('btn-loading'); btn.disabled = false; if (textoOriginal) btn.querySelector('span:last-child').textContent = textoOriginal; }
+  }
+  function badgeEstado(estado) {
+    const mapa = { 'Nuevo': 'badge-nuevo', 'En Proceso': 'badge-proceso', 'Resuelto': 'badge-resuelto', 'Cerrado': 'badge-cerrado' }; return `<span class="badge ${mapa[estado] || 'badge-cerrado'}">${escaparHTML(estado)}</span>`;
+  }
+  function badgePrioridad(prioridad) {
+    const mapa = { 'Critico': { clase: 'badge-critico', emoji: '🔴' }, 'Medio': { clase: 'badge-medio', emoji: '🟡' }, 'Bajo': { clase: 'badge-bajo', emoji: '🟢' }, 'Sin Asignar': { clase: 'badge-sin-asig', emoji: '⬜' } };
+    const config = mapa[prioridad] || { clase: 'badge-sin-asig', emoji: '⬜' }; return `<span class="badge ${config.clase}">${config.emoji} ${escaparHTML(prioridad)}</span>`;
+  }
+  function badgeRol(rol) {
+    const mapa = { 'Alumno': 'badge-alumno', 'Profesor': 'badge-profesor', 'Asistente': 'badge-asistente', 'Coordinador': 'badge-coordinador' }; return `<span class="badge ${mapa[rol] || 'badge-alumno'}">${escaparHTML(rol)}</span>`;
+  }
+  function formatearFecha(fecha) { return (!fecha || fecha === '') ? '—' : String(fecha); }
+  function resetearForm(formId) {
+    const form = document.getElementById(formId); if (!form) return; form.reset(); limpiarErroresForm(formId); form.querySelectorAll('[id^="counter-"]').forEach(el => { el.textContent = '0/' + (el.dataset.max || '1000'); });
+  }
+  function resaltarBusqueda(texto, termino) {
+    if (!termino || !texto) return texto; const regex = new RegExp(`(${termino.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})`, 'gi'); return texto.replace(regex, '<mark class="highlight">$1</mark>');
+  }
+
+  return { sanitizar, escaparHTML, validarCorreo, esCorreoAlumno, esCorreoProfesor, validarTelefono, mostrarError, limpiarError, limpiarErroresForm, campo, setBtnCargando, badgeEstado, badgePrioridad, badgeRol, formatearFecha, resetearForm, resaltarBusqueda };
+})();
+
+const TOAST = (() => {
+  let contadorToast = 0;
+  function mostrar(mensaje, tipo = 'info', duracion = 4500) {
+    const container = document.getElementById('toast-container'); if (!container) return; const id = 'toast-' + (++contadorToast);
+    const iconos = {
+      success: `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
+      error:   `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
+      warning: `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`,
+      info:    `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+    };
+    const toastEl = document.createElement('div'); toastEl.id = id; toastEl.className = `toast toast-${tipo}`;
+    toastEl.innerHTML = `<div class="flex items-start space-x-3 w-full">${iconos[tipo] || iconos.info}<p class="text-sm font-medium flex-1 leading-5">${UTILS.escaparHTML(mensaje)}</p><button type="button" onclick="TOAST.cerrar('${id}')" class="flex-shrink-0 ml-2 opacity-60 hover:opacity-100 transition-opacity"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div>`;
+    container.appendChild(toastEl); if (duracion > 0) setTimeout(() => cerrar(id), duracion);
+  }
+  function cerrar(id) { const el = document.getElementById(id); if (!el) return; el.classList.add('closing'); setTimeout(() => el.remove(), 280); }
+  return { mostrar, cerrar, exito: (msg, dur) => mostrar(msg, 'success', dur), error: (msg, dur) => mostrar(msg, 'error', dur || 6000), aviso: (msg, dur) => mostrar(msg, 'warning', dur), info:  (msg, dur) => mostrar(msg, 'info', dur) };
+})();
+
+const API = (() => {
+  function llamar(funcion, ...args) {
+    return new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(err => reject(new Error(err.message || 'Error')))[funcion](...args);
+    });
+  }
+  async function enviar(action, payload = {}) {
+    try {
+      const token = APP.obtenerToken(); if (token && !payload.sessionToken) payload = { ...payload, sessionToken: token };
+      const resultado = await llamar('procesarAccion', action, payload);
+      return (typeof resultado === 'string') ? JSON.parse(resultado) : resultado;
+    } catch (error) { return { success: false, data: null, error: 'Error de conexión.' }; }
+  }
+  return { llamar, enviar };
+})();
+
+const APP = (() => {
+  const estado = { vistaActual: 'vista-inicio', rolSeleccionado: null, sesion: null, ticketsCache: [], ticketActivo: null, correoActivo: null, ticketsPersonalesCache: [], paginaActualPersonal: 1, rolPersonalActivo: null };
+
+  async function mostrarVista(vistaId, param = null) {
+    if (['vista-alumno', 'vista-profesor', 'vista-login-staff'].includes(vistaId)) {
+      APP.mostrarCargando('Validando cuenta de Google...');
+      let correo = ''; try { correo = await API.llamar('obtenerCorreoUsuario'); if (correo) correo = correo.toLowerCase().trim(); } catch (err) {}
+      APP.ocultarCargando();
+
+      if (!correo) { TOAST.error('No se detectó una sesión de Google.'); return; }
+      estado.correoActivo = correo;
+
+      if (vistaId === 'vista-alumno') {
+        if (!UTILS.esCorreoAlumno(correo)) { TOAST.error('Acceso denegado: Debes iniciar con una cuenta @alumnos.udg.mx'); return; }
+        setTimeout(() => { const input = document.getElementById('alumno-correo'); if (input) { input.value = correo; input.readOnly = true; input.classList.add('bg-slate-100'); } }, 100);
+      } else if (vistaId === 'vista-profesor') {
+        if (!UTILS.esCorreoProfesor(correo)) { TOAST.error('Acceso denegado: Usa una cuenta @academicos.udg.mx o @cucei.udg.mx'); return; }
+        setTimeout(() => { const input = document.getElementById('prof-correo'); if (input) { input.value = correo; input.readOnly = true; input.classList.add('bg-slate-100'); } }, 100);
+      } else if (vistaId === 'vista-login-staff' && param === 'Coordinador') {
+        if (!UTILS.esCorreoProfesor(correo)) { TOAST.error('Acceso denegado: Tu cuenta no está autorizada para Coordinación'); return; }
+      }
+    }
+
+    const vistaAnterior = document.getElementById(estado.vistaActual); if (vistaAnterior) vistaAnterior.classList.add('hidden');
+
+    switch (vistaId) {
+      case 'vista-login-staff': estado.rolSeleccionado = param || 'Asistente'; _configurarLoginStaff(estado.rolSeleccionado); _ocultarNavbar(); break;
+      case 'vista-asistente': _mostrarNavbar('Asistente'); DASHBOARD.cargarTicketsStaff(); break;
+      case 'vista-coordinador': _mostrarNavbar('Coordinador'); DASHBOARD.cargarTicketsStaff(); break;
+      case 'vista-inicio': _ocultarNavbar(); UTILS.resetearForm('form-alumno'); UTILS.resetearForm('form-profesor'); UTILS.resetearForm('form-login'); break;
+      case 'vista-alumno':
+      case 'vista-profesor':
+        estado.ticketsPersonalesCache = []; estado.paginaActualPersonal = 1; estado.rolPersonalActivo = vistaId === 'vista-alumno' ? 'Alumno' : 'Profesor'; _ocultarNavbar(); break;
+    }
+
+    const nuevaVista = document.getElementById(vistaId);
+    if (nuevaVista) { nuevaVista.classList.remove('hidden'); estado.vistaActual = vistaId; window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  }
+
+  function _configurarLoginStaff(rol) {
+    const header = document.getElementById('login-header'), titulo = document.getElementById('login-titulo'), btnLogin = document.getElementById('btn-login');
+    if (rol === 'Coordinador') {
+      if (header) header.className = 'bg-purple-800 p-8 text-center text-white'; if (titulo) titulo.textContent = 'Acceso Coordinador';
+      if (btnLogin) btnLogin.className = btnLogin.className.replace(/bg-blue-\d+/g, 'bg-purple-700').replace(/hover:bg-blue-\d+/g, 'hover:bg-purple-800').replace(/bg-amber-\d+/g, 'bg-purple-700').replace(/hover:bg-amber-\d+/g, 'hover:bg-purple-800');
+    } else {
+      if (header) header.className = 'bg-amber-600 p-8 text-center text-white'; if (titulo) titulo.textContent = 'Acceso Asistente';
+      if (btnLogin) btnLogin.className = btnLogin.className.replace(/bg-purple-\d+/g, 'bg-amber-600').replace(/hover:bg-purple-\d+/g, 'hover:bg-amber-700').replace(/bg-blue-\d+/g, 'bg-amber-600').replace(/hover:bg-blue-\d+/g, 'hover:bg-amber-700');
+    }
+    UTILS.resetearForm('form-login'); document.getElementById('login-error').classList.add('hidden');
+    setTimeout(() => { const codInput = document.getElementById('login-codigo'); if (codInput) codInput.focus(); }, 200);
+  }
+
+  function _mostrarNavbar(rol) {
+    const navbar = document.getElementById('navbar'); if (!navbar) return; navbar.classList.remove('hidden'); const sesion = estado.sesion;
+    if (sesion) {
+      const elNombre = document.getElementById('nav-nombre'), elRol = document.getElementById('nav-rol'), elBadge = document.getElementById('nav-badge'), btnLogout = document.getElementById('btn-logout');
+      if (elNombre) elNombre.textContent = UTILS.escaparHTML(sesion.nombre); if (elRol) elRol.textContent = UTILS.escaparHTML(sesion.rol);
+      if (elBadge) { elBadge.classList.remove('hidden'); elBadge.className = `px-3 py-1 rounded-full text-xs font-semibold ${sesion.rol === 'Asistente' ? 'bg-amber-500' : 'bg-purple-500'} text-white`; elBadge.textContent = sesion.rol; }
+      if (btnLogout) btnLogout.classList.remove('hidden');
+    }
+  }
+
+  function _ocultarNavbar() { const navbar = document.getElementById('navbar'), btnLogout = document.getElementById('btn-logout'); if (navbar) navbar.classList.add('hidden'); if (btnLogout) btnLogout.classList.add('hidden'); }
+  function guardarSesion(sesionData) { estado.sesion = sesionData; try { sessionStorage.setItem('udg_sesion', JSON.stringify(sesionData)); } catch(e) {} }
+  function recuperarSesion() { try { const stored = sessionStorage.getItem('udg_sesion'); if (stored) { estado.sesion = JSON.parse(stored); return estado.sesion; } } catch(e) {} return null; }
+  function obtenerToken() { return estado.sesion ? estado.sesion.sessionToken : null; }
+  function obtenerSesion() { return estado.sesion; }
+
+  async function logout() {
+    const token = obtenerToken(); if (token) { try { await API.enviar('logout_staff', { sessionToken: token }); } catch(e) {} }
+    estado.sesion = null; estado.ticketsCache = []; estado.ticketActivo = null; estado.rolSeleccionado = null;
+    try { sessionStorage.removeItem('udg_sesion'); } catch(e) {}
+    TOAST.info('Sesión cerrada correctamente'); mostrarVista('vista-inicio');
+  }
+
+  function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId); if (!input) return;
+    if (input.type === 'password') { input.type = 'text'; btn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21"/></svg>`; }
+    else { input.type = 'password'; btn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>`; }
+  }
+
+  function cambiarTabAlumno(tab) {
+    const panelCrear = document.getElementById('panel-alumno-crear'), panelHistorial = document.getElementById('panel-alumno-historial');
+    const tabCrear = document.getElementById('tab-alumno-crear'), tabHistorial = document.getElementById('tab-alumno-historial');
+    if (tab === 'crear') {
+      panelCrear.classList.remove('hidden'); panelHistorial.classList.add('hidden');
+      tabCrear.classList.add('bg-white', 'text-blue-700', 'shadow-sm'); tabCrear.classList.remove('text-slate-500');
+      tabHistorial.classList.remove('bg-white', 'text-blue-700', 'shadow-sm'); tabHistorial.classList.add('text-slate-500');
+    } else {
+      panelCrear.classList.add('hidden'); panelHistorial.classList.remove('hidden');
+      tabHistorial.classList.add('bg-white', 'text-blue-700', 'shadow-sm'); tabHistorial.classList.remove('text-slate-500');
+      tabCrear.classList.remove('bg-white', 'text-blue-700', 'shadow-sm'); tabCrear.classList.add('text-slate-500');
+      consultarMisTickets('Alumno');
+    }
+  }
+
+  function cambiarTabProfesor(tab) {
+    const panelCrear = document.getElementById('panel-prof-crear'), panelHistorial = document.getElementById('panel-prof-historial');
+    const tabCrear = document.getElementById('tab-prof-crear'), tabHistorial = document.getElementById('tab-prof-historial');
+    if (tab === 'crear') {
+      panelCrear.classList.remove('hidden'); panelHistorial.classList.add('hidden');
+      tabCrear.classList.add('bg-white', 'text-emerald-700', 'shadow-sm'); tabCrear.classList.remove('text-slate-500');
+      tabHistorial.classList.remove('bg-white', 'shadow-sm'); tabHistorial.classList.add('text-slate-500');
+    } else {
+      panelCrear.classList.add('hidden'); panelHistorial.classList.remove('hidden');
+      tabHistorial.classList.add('bg-white', 'text-emerald-700', 'shadow-sm'); tabHistorial.classList.remove('text-slate-500');
+      tabCrear.classList.remove('bg-white', 'shadow-sm'); tabCrear.classList.add('text-slate-500');
+      consultarMisTickets('Profesor');
+    }
+  }
+
+  function actualizarContador(el, counterId) {
+    const counter = document.getElementById(counterId); if (!counter) return; const max = el.maxLength || 1000; const len = el.value.length;
+    counter.textContent = `${len}/${max}`; counter.className = len > max * 0.9 ? 'text-xs text-amber-500 float-right' : 'text-xs text-slate-400 float-right';
+  }
+
+  async function consultarMisTickets(rol) {
+    const tablaId = rol === 'Alumno' ? 'tabla-mis-tickets-alumno' : 'tabla-mis-tickets-prof';
+    const correo  = estado.correoActivo; const tablaEl = document.getElementById(tablaId);
+
+    if (!correo) return TOAST.error('No se pudo determinar tu cuenta de correo activa.');
+    tablaEl.innerHTML = `<div class="bg-white rounded-2xl border border-slate-200 p-8 text-center"><div class="loading-spinner mx-auto mb-3"></div><p class="text-slate-500 text-sm">Cargando tus tickets...</p></div>`;
+
+    try {
+      const res = await API.enviar('obtener_mis_tickets', { correo, rol });
+      if (!res.success) { tablaEl.innerHTML = _renderEstadoVacio('Error al buscar tickets', res.error); return TOAST.error(res.error); }
+
+      estado.ticketsPersonalesCache = res.data.tickets || []; estado.paginaActualPersonal = 1;
+      if (estado.ticketsPersonalesCache.length === 0) { tablaEl.innerHTML = _renderEstadoVacio('No hay tickets registrados', `No encontramos tickets asociados al correo ${UTILS.escaparHTML(correo)}`); return; }
+      _renderPaginaPersonal(rol);
+    } catch (err) { tablaEl.innerHTML = _renderEstadoVacio('Error de conexión', 'Intenta de nuevo en unos momentos'); TOAST.error('Error al comunicarse con el servidor'); }
+  }
+
+  function _renderPaginaPersonal(rol) {
+    const tablaId = rol === 'Alumno' ? 'tabla-mis-tickets-alumno' : 'tabla-mis-tickets-prof'; const tablaEl = document.getElementById(tablaId);
+    const tickets = estado.ticketsPersonalesCache, totalItems = tickets.length, ITEMS_POR_PAGINA = 10, totalPaginas = Math.ceil(totalItems / ITEMS_POR_PAGINA), pagina = estado.paginaActualPersonal;
+
+    const inicio = (pagina - 1) * ITEMS_POR_PAGINA, fin = inicio + ITEMS_POR_PAGINA;
+    const ticketsPagina = tickets.slice(inicio, fin); const mostrandoFin = Math.min(fin, totalItems);
+
+    const filas = ticketsPagina.map(t => {
+      const tieneRespuesta = t.respuesta && t.respuesta.trim() !== '';
+      return `
+        <div class="ticket-card prioridad-${t.prioridad.replace(' ', '.')} ${t.urgente === 'Sí' ? 'urgente' : ''} mb-3 pl-6" onclick="APP.verDetalleTicketPersonal(${JSON.stringify(t).replace(/"/g, '&quot;')})">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center flex-wrap gap-2 mb-1">
+                <span class="font-mono text-xs text-slate-400 font-medium">${UTILS.escaparHTML(t.idTicket)}</span>
+                ${t.urgente === 'Sí' ? '<span class="urgente-indicator">🚨 URGENTE</span>' : ''}
+              </div>
+              <h4 class="font-semibold text-slate-800 text-sm mb-1 truncate">${UTILS.escaparHTML(t.asunto)}</h4>
+              <p class="text-slate-500 text-xs line-clamp-2 mb-2">${UTILS.escaparHTML(t.descripcion || '—')}</p>
+              ${tieneRespuesta ? `
+                <div class="respuesta-box mt-2"><div class="respuesta-header"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Respuesta del Coordinador</div>
+                  <p class="respuesta-texto">${UTILS.escaparHTML(t.respuesta)}</p><p class="text-xs text-emerald-600 mt-1">Respondido por: ${UTILS.escaparHTML(t.respondidoPor)} · ${UTILS.formatearFecha(t.fechaRespuesta)}</p>
+                </div>` : ''}
+            </div>
+            <div class="flex sm:flex-col items-center sm:items-end gap-2 flex-shrink-0">
+              ${UTILS.badgeEstado(t.estado)} ${UTILS.badgePrioridad(t.prioridad)}
+              <span class="text-xs text-slate-400">${UTILS.formatearFecha(t.fecha)}</span>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    const contenedorHTML = `<div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm"><div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between"><h3 class="font-semibold text-slate-800">Mis ${rol === 'Alumno' ? 'Tickets' : 'Solicitudes'}</h3><span class="text-slate-400 font-normal text-xs sm:text-sm">Mostrando ${inicio + 1} - ${mostrandoFin} de ${totalItems}</span></div><div class="p-4 space-y-1">${filas}</div></div>`;
+    const disablePrev = pagina === 1 ? 'disabled class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium bg-slate-50 text-slate-400 cursor-not-allowed"' : 'class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium bg-white text-slate-700 hover:bg-slate-50 transition-colors" onclick="APP.cambiarPaginaPersonal(-1)"';
+    const disableNext = (pagina === totalPaginas || totalPaginas === 0) ? 'disabled class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium bg-slate-50 text-slate-400 cursor-not-allowed"' : 'class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium bg-white text-slate-700 hover:bg-slate-50 transition-colors" onclick="APP.cambiarPaginaPersonal(1)"';
+    const controlesHTML = `<div class="flex items-center justify-between mt-4 px-2"><span class="text-sm font-medium text-slate-500">Página ${pagina} de ${totalPaginas}</span><div class="flex gap-2"><button type="button" ${disablePrev}>← Anteriores</button><button type="button" ${disableNext}>Siguientes →</button></div></div>`;
+    tablaEl.innerHTML = contenedorHTML + (totalPaginas > 1 ? controlesHTML : '');
+  }
+
+  function cambiarPaginaPersonal(delta) { estado.paginaActualPersonal += delta; _renderPaginaPersonal(estado.rolPersonalActivo); document.getElementById(estado.rolPersonalActivo === 'Alumno' ? 'panel-alumno-historial' : 'panel-prof-historial').scrollIntoView({behavior: 'smooth'}); }
+  function _renderEstadoVacio(titulo, descripcion) { return `<div class="bg-white rounded-2xl border border-slate-200"><div class="estado-vacio"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg><h3>${UTILS.escaparHTML(titulo)}</h3><p>${UTILS.escaparHTML(descripcion)}</p></div></div>`; }
+
+  function verDetalleTicketPersonal(ticket) {
+    const tieneRespuesta = ticket.respuesta && ticket.respuesta.trim() !== '';
+    const modalBody = document.getElementById('modal-body'), modalId = document.getElementById('modal-id'), modalTitulo = document.getElementById('modal-titulo'), modalAcciones = document.getElementById('modal-acciones');
+    modalId.textContent = ticket.idTicket; modalTitulo.textContent = 'Detalle de tu Ticket'; modalAcciones.innerHTML = '';
+
+    modalBody.innerHTML = `
+      <div class="grid grid-cols-2 gap-4">
+        <div class="detalle-campo"><span class="etiqueta">Estado</span><span class="valor">${UTILS.badgeEstado(ticket.estado)}</span></div>
+        <div class="detalle-campo"><span class="etiqueta">Prioridad</span><span class="valor">${UTILS.badgePrioridad(ticket.prioridad)}</span></div>
+        <div class="detalle-campo"><span class="etiqueta">Fecha de Creación</span><span class="valor">${UTILS.formatearFecha(ticket.fecha)}</span></div>
+        <div class="detalle-campo"><span class="etiqueta">Urgente</span><span class="valor">${ticket.urgente === 'Sí' ? '<span class="urgente-indicator">🚨 SÍ</span>' : 'No'}</span></div>
+      </div>
+      <div class="detalle-separador"></div>
+      <div class="detalle-campo"><span class="etiqueta">Asunto</span><span class="valor font-medium">${UTILS.escaparHTML(ticket.asunto)}</span></div>
+      <div class="detalle-campo mt-4"><span class="etiqueta">Descripción</span><span class="valor whitespace-pre-wrap">${UTILS.escaparHTML(ticket.descripcion || '—')}</span></div>
+      ${tieneRespuesta ? `
+        <div class="detalle-separador"></div>
+        <div class="respuesta-box">
+          <div class="respuesta-header"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Respuesta del Coordinador</div>
+          <p class="respuesta-texto">${UTILS.escaparHTML(ticket.respuesta)}</p>
+          <p class="text-xs text-emerald-600 mt-2">Respondido por: <strong>${UTILS.escaparHTML(ticket.respondidoPor)}</strong> el ${UTILS.formatearFecha(ticket.fechaRespuesta)}</p>
+        </div>` : `
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center mt-4"><p class="text-amber-700 text-sm">⏳ Tu ticket está siendo revisado por el equipo de soporte.</p></div>`}`;
+    abrirModal();
+  }
+
+  function abrirModal() { document.getElementById('modal-ticket').classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+  function cerrarModal() { document.getElementById('modal-ticket').classList.add('hidden'); document.body.style.overflow = ''; estado.ticketActivo = null; const campoResp = document.getElementById('campo-respuesta'); if (campoResp) campoResp.value = ''; }
+  function mostrarCargando(mensaje = 'Procesando...') { const overlay = document.getElementById('loading-overlay'), msg = document.getElementById('loading-mensaje'); if (overlay) overlay.classList.remove('hidden'); if (msg) msg.textContent = mensaje; }
+  function ocultarCargando() { const overlay = document.getElementById('loading-overlay'); if (overlay) overlay.classList.add('hidden'); }
+
+  document.getElementById('modal-ticket')?.addEventListener('click', function(e) { if (e.target === this) cerrarModal(); });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') cerrarModal(); });
+
+  return { mostrarVista, guardarSesion, recuperarSesion, obtenerToken, obtenerSesion, logout, togglePassword, cambiarTabAlumno, cambiarTabProfesor, actualizarContador, consultarMisTickets, verDetalleTicketPersonal, abrirModal, cerrarModal, mostrarCargando, ocultarCargando, estado, cambiarPaginaPersonal };
+})();
+
+const AUTH = (() => {
+  async function iniciarSesion() {
+    const rolSeleccionado = APP.estado.rolSeleccionado, codigo = UTILS.campo('login-codigo'), password = UTILS.campo('login-password');
+    const loginError = document.getElementById('login-error'), loginErrorMsg = document.getElementById('login-error-msg');
+    loginError.classList.add('hidden'); let hayErrores = false;
+
+    if (!codigo || codigo.length < 2) { TOAST.aviso('Ingresa tu código de usuario'); document.getElementById('login-codigo').focus(); hayErrores = true; }
+    if (!password || password.length < 4) { TOAST.aviso('Ingresa tu contraseña'); if (!hayErrores) document.getElementById('login-password').focus(); hayErrores = true; }
+    if (hayErrores) return;
+
+    UTILS.setBtnCargando('btn-login', true); APP.mostrarCargando('Verificando credenciales...');
+    try {
+      const res = await API.enviar('login_staff', { codigo, password });
+      if (!res.success) {
+        loginError.classList.remove('hidden'); loginErrorMsg.textContent = res.error || 'Credenciales incorrectas';
+        const pwdInput = document.getElementById('login-password'); if (pwdInput) { pwdInput.value = ''; pwdInput.focus(); }
+        TOAST.error(res.error || 'Credenciales incorrectas'); return;
+      }
+      const sesion = res.data;
+      if (sesion.rol !== rolSeleccionado) { TOAST.error(`Credenciales válidas, pero este código no pertenece al grupo de ${rolSeleccionado}.`); return; }
+
+      APP.guardarSesion(sesion); TOAST.exito(`Bienvenido, ${sesion.nombre}`, 3000);
+      if (sesion.rol === 'Coordinador') { APP.mostrarVista('vista-coordinador'); } else if (sesion.rol === 'Asistente') { APP.mostrarVista('vista-asistente'); }
+    } catch (err) { TOAST.error('Error de conexión. Intenta de nuevo.'); } finally { UTILS.setBtnCargando('btn-login', false); APP.ocultarCargando(); }
+  }
+  ['login-codigo', 'login-password'].forEach(id => { document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') iniciarSesion(); }); });
+  return { iniciarSesion };
+})();
+
+const FORM = (() => {
+  async function enviarTicketAlumno() {
+    const nombre = UTILS.campo('alumno-nombre'), codigo = UTILS.campo('alumno-codigo'), correo = UTILS.campo('alumno-correo').toLowerCase();
+    const telefono = UTILS.campo('alumno-telefono'), asunto = UTILS.campo('alumno-asunto'), notas = UTILS.campo('alumno-notas');
+    const urgente = false;
+
+    UTILS.limpiarErroresForm('form-alumno'); let hayErrores = false;
+
+    if (!nombre || nombre.length < 3) { UTILS.mostrarError('alumno-nombre', 'El nombre debe tener al menos 3 caracteres'); hayErrores = true; }
+    if (!codigo) { UTILS.mostrarError('alumno-codigo', 'El código de estudiante es requerido'); hayErrores = true; } else if (!/^\d{9}$/.test(codigo)) { UTILS.mostrarError('alumno-codigo', 'El código debe tener exactamente 9 dígitos'); hayErrores = true; }
+    if (!correo) { UTILS.mostrarError('alumno-correo', 'El correo es requerido'); hayErrores = true; } else if (!UTILS.validarCorreo(correo)) { UTILS.mostrarError('alumno-correo', 'Formato de correo inválido'); hayErrores = true; }
+    if (!telefono) { UTILS.mostrarError('alumno-telefono', 'El teléfono es requerido'); hayErrores = true; } else if (!UTILS.validarTelefono(telefono)) { UTILS.mostrarError('alumno-telefono', 'El teléfono debe tener exactamente 10 dígitos'); hayErrores = true; }
+    if (!asunto) { UTILS.mostrarError('alumno-asunto', 'Selecciona un asunto de la lista'); hayErrores = true; }
+    if (!notas || notas.length < 10) { UTILS.mostrarError('alumno-notas', 'La descripción debe tener al menos 10 caracteres'); hayErrores = true; }
+
+    if (hayErrores) { TOAST.aviso('Corrige los errores marcados'); return; }
+
+    UTILS.setBtnCargando('btn-enviar-alumno', true); APP.mostrarCargando('Enviando tu ticket...');
+    try {
+      // Como el asunto es en base al select y ya no existe 'categoria', enviamos 'asunto' en 'asunto' y 'categoria' vacío si Code.gs la requiere en otro campo
+      const res = await API.enviar('crear_ticket_alumno', { nombre, correo, codigo, telefono, asunto, notas, urgente, categoria: '' });
+      if (!res.success) { TOAST.error(res.error || 'No se pudo crear el ticket'); return; }
+      _mostrarExitoEnvio(res.data.idTicket, res.data.mensaje, 'form-alumno', 'alumno');
+    } catch (err) { TOAST.error('Error de conexión. Intenta nuevamente.'); } finally { UTILS.setBtnCargando('btn-enviar-alumno', false); APP.ocultarCargando(); }
+  }
+
+  async function enviarTicketProfesor() {
+    const nombre = UTILS.campo('prof-nombre'), correo = UTILS.campo('prof-correo').toLowerCase();
+    const oficina = UTILS.campo('prof-oficina'), telefono = UTILS.campo('prof-telefono'), asunto = UTILS.campo('prof-asunto');
+    const notas = UTILS.campo('prof-notas'), urgente = UTILS.campo('prof-urgente');
+
+    UTILS.limpiarErroresForm('form-profesor'); let hayErrores = false;
+    if (!nombre || nombre.length < 3) { UTILS.mostrarError('prof-nombre', 'El nombre debe tener al menos 3 caracteres'); hayErrores = true; }
+    if (!correo) { UTILS.mostrarError('prof-correo', 'El correo institucional es requerido'); hayErrores = true; } else if (!UTILS.validarCorreo(correo)) { UTILS.mostrarError('prof-correo', 'Formato de correo inválido'); hayErrores = true; }
+    if (telefono && !UTILS.validarTelefono(telefono)) { UTILS.mostrarError('prof-telefono', 'El teléfono debe tener exactamente 10 dígitos'); hayErrores = true; }
+    if (!asunto || asunto.length < 5) { UTILS.mostrarError('prof-asunto', 'El asunto debe tener al menos 5 caracteres'); hayErrores = true; }
+
+    if (hayErrores) { TOAST.aviso('Corrige los errores en el formulario'); return; }
+
+    UTILS.setBtnCargando('btn-enviar-prof', true); APP.mostrarCargando('Enviando tu solicitud...');
+    try {
+      const res = await API.enviar('crear_ticket_profesor', { nombre, correo, oficina, telefono, asunto, notas, urgente });
+      if (!res.success) { TOAST.error(res.error || 'No se pudo crear la solicitud'); return; }
+      _mostrarExitoEnvio(res.data.idTicket, res.data.mensaje, 'form-profesor', 'profesor');
+    } catch (err) { TOAST.error('Error de conexión. Intenta nuevamente.'); } finally { UTILS.setBtnCargando('btn-enviar-prof', false); APP.ocultarCargando(); }
+  }
+
+  function _mostrarExitoEnvio(idTicket, mensaje, formId, tipo) {
+    const form = document.getElementById(formId); if (!form) return;
+    const colorExito = tipo === 'alumno' ? 'blue' : 'emerald';
+    form.style.display = 'none';
+
+    let exitoDiv = document.getElementById(formId + '-exito');
+    if (!exitoDiv) { exitoDiv = document.createElement('div'); exitoDiv.id = formId + '-exito'; form.parentNode.insertBefore(exitoDiv, form.nextSibling); }
+    exitoDiv.style.display = 'block';
+
+    exitoDiv.innerHTML = `
+      <div class="text-center py-8 space-y-5">
+        <div class="w-20 h-20 bg-${colorExito}-100 rounded-full flex items-center justify-center mx-auto"><svg class="w-10 h-10 text-${colorExito}-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        <div>
+          <h3 class="text-xl font-bold text-slate-800 mb-2">¡Ticket enviado exitosamente!</h3><p class="text-slate-500 mb-1">${UTILS.escaparHTML(mensaje)}</p>
+          <div class="inline-flex items-center space-x-2 bg-slate-100 rounded-lg px-4 py-2 mt-2"><span class="text-slate-500 text-sm">ID:</span><span class="font-mono font-bold text-slate-800">${UTILS.escaparHTML(idTicket)}</span></div>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center mt-2">
+          <button type="button" onclick="FORM.nuevoTicket('${tipo}')" class="px-6 py-2.5 bg-${colorExito}-600 hover:bg-${colorExito}-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">Enviar otro ticket</button>
+          <button type="button" onclick="FORM.irAMisTickets('${tipo}')" class="px-6 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-medium transition-colors shadow-sm">Ver mis tickets</button>
+        </div>
+      </div>`;
+  }
+
+  function nuevoTicket(tipo) {
+    const formId = tipo === 'alumno' ? 'form-alumno' : 'form-profesor', form = document.getElementById(formId), exitoDiv = document.getElementById(formId + '-exito');
+    if (form) {
+        form.reset(); UTILS.limpiarErroresForm(formId); form.style.display = 'block';
+        const correoInput = document.getElementById(tipo === 'alumno' ? 'alumno-correo' : 'prof-correo');
+        if (correoInput && APP.estado.correoActivo) correoInput.value = APP.estado.correoActivo;
+    }
+    if (exitoDiv) exitoDiv.style.display = 'none';
+  }
+
+  function irAMisTickets(tipo) { nuevoTicket(tipo); if(tipo === 'alumno') APP.cambiarTabAlumno('historial'); else APP.cambiarTabProfesor('historial'); }
+
+  return { enviarTicketAlumno, enviarTicketProfesor, nuevoTicket, irAMisTickets };
+})();
+
+const DASHBOARD = (() => {
+  let _ticketsCache = [], _terminoBusqueda = '', _filtroEstado = '', _filtroPrioridad = '', _filtroActivo = 'todos';
+  let _filtroRol = 'todos', _filtroCategoria = 'todas';
+
+  async function cargarTicketsStaff() {
+    const sesion = APP.obtenerSesion(); if (!sesion) { TOAST.error('Sesión expirada.'); APP.mostrarVista('vista-inicio'); return; }
+    const esCoordinador = sesion.rol === 'Coordinador', tablaId = esCoordinador ? 'tabla-coordinador' : 'tabla-triage', tablaEl = document.getElementById(tablaId);
+    if (!tablaEl) return;
+    tablaEl.innerHTML = `<div class="bg-white rounded-2xl border border-slate-200 p-12 text-center"><div class="loading-spinner mx-auto mb-4"></div><p class="text-slate-500">Cargando tickets...</p></div>`;
+
+    try {
+      const res = await API.enviar('obtener_todos_tickets', { sessionToken: sesion.sessionToken });
+      if (res.requiresLogin) { TOAST.error('Tu sesión expiró.'); APP.logout(); return; }
+      if (!res.success) { tablaEl.innerHTML = _renderError(res.error); TOAST.error(res.error); return; }
+
+      _ticketsCache = res.data.tickets || []; _actualizarEstadisticas(_ticketsCache, sesion.rol);
+      if (esCoordinador) _renderTablaCoordinador(_ticketsCache); else _renderTablaAsistente(_ticketsCache);
+    } catch (err) { tablaEl.innerHTML = _renderError('Error de conexión.'); TOAST.error('Error al cargar los tickets'); }
+  }
+
+  function _actualizarEstadisticas(tickets, rol) {
+    if (rol === 'Asistente') {
+      _setStat('stat-total', tickets.length); _setStat('stat-critico', tickets.filter(t => t.prioridad === 'Critico').length);
+      _setStat('stat-medio', tickets.filter(t => t.prioridad === 'Medio').length); _setStat('stat-bajo', tickets.filter(t => t.prioridad === 'Bajo').length);
+    } else if (rol === 'Coordinador') {
+      _setStat('coord-stat-total', tickets.length); _setStat('coord-stat-nuevo', tickets.filter(t => t.estado === 'Nuevo').length);
+      _setStat('coord-stat-proceso', tickets.filter(t => t.estado === 'En Proceso').length); _setStat('coord-stat-resuelto', tickets.filter(t => t.estado === 'Resuelto').length);
+    }
+  }
+
+  function _setStat(id, valor) { const el = document.getElementById(id); if (el) el.textContent = valor; }
+
+  function _renderTablaAsistente(tickets) {
+    const tablaEl = document.getElementById('tabla-triage'); if (!tablaEl) return;
+    let filtrados = _aplicarFiltroLocal(tickets);
+    if (filtrados.length === 0) {
+      tablaEl.innerHTML = `<div class="bg-white rounded-2xl border border-slate-200"><div class="estado-vacio"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg><h3>No hay tickets en esta categoría</h3><p>Prueba con otro filtro</p></div></div>`; return;
+    }
+    tablaEl.innerHTML = `<div class="space-y-3"><p class="text-sm text-slate-400 px-1">Mostrando ${filtrados.length} de ${_ticketsCache.length} tickets</p>${filtrados.map(t => _renderTarjetaTicket(t, 'Asistente')).join('')}</div>`;
+  }
+
+  function _renderTablaCoordinador(tickets) {
+    const tablaEl = document.getElementById('tabla-coordinador'); if (!tablaEl) return;
+    let filtrados = _aplicarFiltroLocal(tickets);
+    if (filtrados.length === 0) {
+      tablaEl.innerHTML = `<div class="bg-white rounded-2xl border border-slate-200"><div class="estado-vacio"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><h3>Sin resultados</h3><p>Intenta con otros filtros</p></div></div>`; return;
+    }
+    tablaEl.innerHTML = `<div class="space-y-3"><p class="text-sm text-slate-400 px-1">Mostrando ${filtrados.length} de ${_ticketsCache.length} tickets</p>${filtrados.map(t => _renderTarjetaTicket(t, 'Coordinador')).join('')}</div>`;
+  }
+
+  function _renderTarjetaTicket(t, rol) {
+    const esUrgente = t.urgente === 'Sí', prioridadClass = `prioridad-${t.prioridad.replace(' ', '.')}`, busqueda = _terminoBusqueda;
+    const asuntoHTML = busqueda ? UTILS.resaltarBusqueda(UTILS.escaparHTML(t.asunto), busqueda) : UTILS.escaparHTML(t.asunto);
+    const nombreHTML = busqueda ? UTILS.resaltarBusqueda(UTILS.escaparHTML(t.nombre), busqueda) : UTILS.escaparHTML(t.nombre);
+    const correoHTML = busqueda ? UTILS.resaltarBusqueda(UTILS.escaparHTML(t.correo), busqueda) : UTILS.escaparHTML(t.correo);
+    const idHTML = busqueda ? UTILS.resaltarBusqueda(UTILS.escaparHTML(t.idTicket), busqueda) : UTILS.escaparHTML(t.idTicket);
+
+    return `
+      <div class="ticket-card ${prioridadClass} ${esUrgente ? 'urgente' : ''} pl-6" onclick="DASHBOARD.abrirTicket(${JSON.stringify(t).replace(/"/g, '&quot;')})">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center flex-wrap gap-2 mb-2">
+              <span class="font-mono text-xs text-slate-400 font-semibold">${idHTML}</span>
+              ${UTILS.badgeRol(t.rol)}
+              ${UTILS.badgePrioridad(t.prioridad)} ${UTILS.badgeEstado(t.estado)}
+              ${esUrgente ? '<span class="urgente-indicator">🚨 URGENTE</span>' : ''}
+            </div>
+            <h4 class="font-semibold text-slate-800 mb-1">${asuntoHTML}</h4>
+            <div class="flex items-center flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 mb-2">
+              <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>${nombreHTML}</span>
+              <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>${correoHTML}</span>
+            </div>
+            <p class="text-slate-400 text-xs line-clamp-2">${UTILS.escaparHTML(t.descripcion || '—')}</p>
+          </div>
+          <div class="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 flex-shrink-0">
+            <span class="text-xs text-slate-400 whitespace-nowrap">${UTILS.formatearFecha(t.fecha)}</span>
+            <span class="text-xs text-blue-500 hover:text-blue-700 transition-colors cursor-pointer">Ver detalles →</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function _aplicarFiltroLocal(tickets) {
+    return tickets.filter(t => {
+      if (_terminoBusqueda) {
+        const busq = _terminoBusqueda.toLowerCase();
+        if (![t.idTicket, t.nombre, t.correo, t.asunto, t.descripcion, t.codigoEstudiante].map(c => String(c || '').toLowerCase()).some(c => c.includes(busq))) return false;
+      }
+      if (_filtroEstado && t.estado !== _filtroEstado) return false;
+      if (_filtroPrioridad && _filtroPrioridad !== 'todos' && t.prioridad !== _filtroPrioridad) return false;
+      if (_filtroActivo && _filtroActivo !== 'todos' && t.prioridad !== _filtroActivo) return false;
+      if (_filtroRol && _filtroRol !== 'todos' && t.rol !== _filtroRol) return false;
+      if (_filtroCategoria && _filtroCategoria !== 'todas') {
+        if (t.rol === 'Alumno' && t.asunto !== _filtroCategoria) return false;
+      }
+      return true;
+    });
+  }
+
+  function _ajustarCategoriaSiProfesor(type) {
+    const rolSelect = document.getElementById(type + '-filtro-rol'), catSelect = document.getElementById(type + '-filtro-categoria');
+    if (rolSelect && catSelect) {
+      if (rolSelect.value === 'Profesor') { catSelect.value = 'todas'; catSelect.disabled = true; }
+      else { catSelect.disabled = false; }
+    }
+  }
+
+  function filtrarTickets(prioridad) { _filtroActivo = prioridad; document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === prioridad)); _renderTablaAsistente(_ticketsCache); }
+
+  function aplicarFiltrosAsistente() {
+    _ajustarCategoriaSiProfesor('triage');
+    _filtroRol = UTILS.campo('triage-filtro-rol'); _filtroCategoria = UTILS.campo('triage-filtro-categoria');
+    _renderTablaAsistente(_ticketsCache);
+  }
+
+  function aplicarFiltros() {
+    _ajustarCategoriaSiProfesor('coord');
+    _filtroEstado = UTILS.campo('coord-filtro-estado'); _filtroPrioridad = UTILS.campo('coord-filtro-prioridad');
+    _filtroRol = UTILS.campo('coord-filtro-rol'); _filtroCategoria = UTILS.campo('coord-filtro-categoria');
+    _renderTablaCoordinador(_ticketsCache);
+  }
+
+  function buscarTickets(termino, vista) {
+    _terminoBusqueda = termino.toLowerCase().trim();
+    if (vista === 'triage') _renderTablaAsistente(_ticketsCache);
+    else _renderTablaCoordinador(_ticketsCache);
+  }
+
+  function abrirTicket(ticket) {
+    APP.estado.ticketActivo = ticket; const sesion = APP.obtenerSesion(); if (!sesion) return;
+    const modalBody = document.getElementById('modal-body'), modalId = document.getElementById('modal-id'), modalTitulo = document.getElementById('modal-titulo'), areaRespuesta = document.getElementById('area-respuesta'), areaTriage = document.getElementById('area-triage');
+    modalId.textContent = ticket.idTicket; modalTitulo.textContent = 'Gestionar Ticket';
+
+    if (areaRespuesta) areaRespuesta.classList.toggle('hidden', !(sesion.rol === 'Coordinador' && ticket.estado !== 'Cerrado'));
+    if (areaTriage) areaTriage.classList.toggle('hidden', (ticket.estado === 'Resuelto' || ticket.estado === 'Cerrado'));
+
+    modalBody.innerHTML = `
+      <div class="bg-slate-50 rounded-xl p-4 space-y-3">
+        <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Información del Solicitante</h4>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="detalle-campo"><span class="etiqueta">Nombre</span><span class="valor font-medium">${UTILS.escaparHTML(ticket.nombre)}</span></div>
+          <div class="detalle-campo"><span class="etiqueta">Rol</span><span class="valor">${UTILS.badgeRol(ticket.rol)}</span></div>
+          <div class="detalle-campo"><span class="etiqueta">Correo</span><span class="valor text-blue-600">${UTILS.escaparHTML(ticket.correo)}</span></div>
+          ${ticket.telefono ? `<div class="detalle-campo"><span class="etiqueta">Teléfono</span><span class="valor">${UTILS.escaparHTML(ticket.telefono)}</span></div>` : ''}
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="detalle-campo bg-white rounded-xl border border-slate-100 p-3 text-center"><span class="etiqueta block mb-1">Estado</span>${UTILS.badgeEstado(ticket.estado)}</div>
+        <div class="detalle-campo bg-white rounded-xl border border-slate-100 p-3 text-center"><span class="etiqueta block mb-1">Prioridad</span>${UTILS.badgePrioridad(ticket.prioridad)}</div>
+        <div class="detalle-campo bg-white rounded-xl border border-slate-100 p-3 text-center"><span class="etiqueta block mb-1">Urgente</span><span class="valor text-sm">${ticket.urgente === 'Sí' ? '<span class="urgente-indicator text-xs">🚨 SÍ</span>' : '—'}</span></div>
+      </div>
+      <div class="detalle-separador"></div>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="detalle-campo"><span class="etiqueta">Asunto</span><span class="valor font-medium">${UTILS.escaparHTML(ticket.asunto)}</span></div>
+      </div>
+      <div class="detalle-campo mt-4"><span class="etiqueta">Descripción</span><div class="valor bg-white border border-slate-100 rounded-xl p-3 text-sm whitespace-pre-wrap leading-relaxed">${UTILS.escaparHTML(ticket.descripcion || '(Sin descripción)')}</div></div>
+      ${ticket.respuesta ? `
+        <div class="respuesta-box mt-4"><div class="respuesta-header"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Respuesta del Coordinador</div>
+        <p class="respuesta-texto">${UTILS.escaparHTML(ticket.respuesta)}</p></div>` : ''}`;
+    APP.abrirModal();
+  }
+
+  async function enviarRespuesta() {
+    const ticket = APP.estado.ticketActivo, sesion = APP.obtenerSesion(), respuesta = UTILS.campo('campo-respuesta');
+    if (!ticket) return TOAST.error('No hay ticket seleccionado');
+    if (!respuesta || respuesta.length < 10) { TOAST.aviso('La respuesta debe tener al menos 10 caracteres'); return; }
+    APP.mostrarCargando('Enviando respuesta...');
+    try {
+      const res = await API.enviar('responder_ticket', { idTicket: ticket.idTicket, respuesta: respuesta, sessionToken: sesion.sessionToken });
+      if (res.requiresLogin) return APP.logout();
+      if (!res.success) return TOAST.error(res.error || 'Error al enviar la respuesta');
+      TOAST.exito(`Ticket ${ticket.idTicket} marcado como Resuelto ✅`, 5000);
+      APP.cerrarModal(); await cargarTicketsStaff();
+    } catch (err) { TOAST.error('Error de conexión.'); } finally { APP.ocultarCargando(); }
+  }
+
+  async function cambiarPrioridad(prioridad) {
+    const ticket = APP.estado.ticketActivo, sesion = APP.obtenerSesion();
+    if (!ticket || !sesion) return;
+    if (ticket.prioridad === prioridad) return TOAST.info(`El ticket ya tiene prioridad "${prioridad}"`);
+    document.querySelectorAll('.prioridad-btn').forEach(btn => btn.classList.remove('ring-2', 'ring-offset-2'));
+    APP.mostrarCargando('Actualizando prioridad...');
+    try {
+      const res = await API.enviar('actualizar_prioridad', { idTicket: ticket.idTicket, prioridad: prioridad, sessionToken: sesion.sessionToken });
+      if (res.requiresLogin) return APP.logout();
+      if (!res.success) return TOAST.error(res.error || 'No se pudo actualizar la prioridad');
+      TOAST.exito(`Prioridad actualizada a ${prioridad}`, 4000);
+      APP.cerrarModal(); await cargarTicketsStaff();
+    } catch (err) { TOAST.error('Error al actualizar la prioridad'); } finally { APP.ocultarCargando(); }
+  }
+
+  function _renderError(mensaje) { return `<div class="bg-red-50 border border-red-200 rounded-2xl p-8 text-center"><h3 class="font-semibold text-red-700 mb-1">Error</h3><p class="text-red-500 text-sm">${UTILS.escaparHTML(mensaje)}</p><button onclick="DASHBOARD.cargarTicketsStaff()" class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg text-sm">Reintentar</button></div>`; }
+
+  return { cargarTicketsStaff, filtrarTickets, aplicarFiltros, aplicarFiltrosAsistente, buscarTickets, abrirTicket, enviarRespuesta, cambiarPrioridad };
+})();
+
+(function inicializarApp() {
+  function verificarSesionGuardada() {
+    const sesion = APP.recuperarSesion();
+    if (sesion && sesion.sessionToken) {
+      if (sesion.rol === 'Coordinador') return APP.mostrarVista('vista-coordinador');
+      else if (sesion.rol === 'Asistente') return APP.mostrarVista('vista-asistente');
+    }
+    APP.mostrarVista('vista-inicio');
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', verificarSesionGuardada);
+  else verificarSesionGuardada();
+})();
+</script>

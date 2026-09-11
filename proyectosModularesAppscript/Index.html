@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma de Proyectos Modulares - CUCEI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tech: {
+                            950: '#070a12', 900: '#0f172a', 800: '#1e293b', 700: '#334155',
+                            accent: '#06b6d4', glow: '#38bdf8', purple: '#a855f7', emerald: '#10b981'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', "Liberation Mono", "Courier New", 'monospace'],
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #070a12; color: #e2e8f0; }
+        .tech-border { border: 1px solid #334155; }
+        .tech-focus:focus { outline: none; border-color: #06b6d4; box-shadow: 0 0 10px rgba(6, 182, 212, 0.3); }
+        .glow-button { transition: all 0.3s ease; }
+        .glow-button:hover { box-shadow: 0 0 18px rgba(56, 189, 248, 0.5); transform: translateY(-1px); }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(51, 65, 85, 0.8); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #070a12; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
+        .tech-chip { transition: all 0.2s ease; cursor: pointer; }
+        .tech-chip.active { background-color: #06b6d4; color: #070a12; font-weight: bold; border-color: #38bdf8; }
+        .hidden { display: none !important; }
+
+        /* Tema Claro */
+        [data-theme="light"] { color-scheme: light; }
+        [data-theme="light"] body { background-color: #f1f5f9; color: #0f172a; }
+        [data-theme="light"] .glass-panel { background: rgba(255, 255, 255, 0.88); border-color: rgba(203, 213, 225, 0.9); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
+        [data-theme="light"] .text-white, [data-theme="light"] .text-gray-200 { color: #0f172a !important; }
+        [data-theme="light"] .text-gray-300, [data-theme="light"] .text-gray-400 { color: #475569 !important; }
+        [data-theme="light"] .bg-tech-950 { background-color: #ffffff !important; }
+        [data-theme="light"] .bg-tech-900, [data-theme="light"] .bg-tech-900\/80, [data-theme="light"] .bg-tech-900\/90, [data-theme="light"] .bg-tech-900\/60, [data-theme="light"] .bg-tech-800 { background-color: #f8fafc !important; }
+        [data-theme="light"] .tech-border, [data-theme="light"] .border-tech-700, [data-theme="light"] .border-tech-800 { border-color: #cbd5e1 !important; }
+        [data-theme="light"] input, [data-theme="light"] select, [data-theme="light"] textarea { background-color: #ffffff !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
+        [data-theme="light"] input::placeholder, [data-theme="light"] textarea::placeholder { color: #94a3b8 !important; }
+        [data-theme="light"] .tech-chip { background-color: #ffffff !important; border-color: #cbd5e1 !important; color: #334155 !important; }
+        [data-theme="light"] .tech-chip.active { background-color: #06b6d4 !important; color: #070a12 !important; border-color: #0891b2 !important; }
+        [data-theme="light"] table thead { background-color: #e2e8f0 !important; color: #334155 !important; }
+
+        /* Spinner Animation Custom */
+        .loader-ring { border: 4px solid rgba(6, 182, 212, 0.1); border-left-color: #06b6d4; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="font-sans min-h-screen flex flex-col selection:bg-tech-accent selection:text-slate-950">
+
+    <!-- GLOBAL LOADER (Overlay de Pantalla Completa) -->
+    <div id="global-loader" class="hidden fixed inset-0 z-[100] flex flex-col items-center justify-center bg-tech-950/80 backdrop-blur-md transition-opacity">
+        <div class="loader-ring mb-4"></div>
+        <p id="global-loader-msg" class="text-white font-mono font-bold tracking-widest animate-pulse">PROCESANDO...</p>
+    </div>
+
+    <!-- NAVBAR -->
+    <nav class="glass-panel border-b border-t-0 border-r-0 border-l-0 px-6 py-4 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-tech-accent/10 rounded-lg border border-tech-accent/30 text-tech-accent">
+                    <i class="fas fa-microchip text-xl"></i>
+                </div>
+                <div>
+                    <span class="text-xl font-mono font-bold tracking-tight text-white">MODU<span class="text-tech-accent">LARES</span> <span class="text-xs font-normal px-2 py-0.5 rounded bg-tech-accent/20 text-tech-glow border border-tech-accent/30">CUCEI v2.5</span></span>
+                    <p class="text-[10px] text-gray-400 font-mono hidden sm:block">Plataforma de Gestión y Registro de Proyectos Modulares</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-1 bg-tech-900/80 p-1 rounded-xl border border-tech-700 font-mono text-xs">
+                    <button type="button" onclick="setTheme('dark')" id="theme-btn-dark" class="px-2.5 py-1 rounded-lg transition flex items-center space-x-1" title="Modo Oscuro">
+                        <i class="fas fa-moon"></i><span class="hidden md:inline">Oscuro</span>
+                    </button>
+                    <button type="button" onclick="setTheme('light')" id="theme-btn-light" class="px-2.5 py-1 rounded-lg transition flex items-center space-x-1" title="Modo Blanco">
+                        <i class="fas fa-sun"></i><span class="hidden md:inline">Blanco</span>
+                    </button>
+                </div>
+
+                <div id="nav-user-info" class="hidden flex items-center space-x-4">
+                    <div class="text-right hidden sm:block">
+                        <div id="nav-username" class="font-mono text-sm font-bold text-gray-200"></div>
+                        <div id="nav-email" class="text-xs text-gray-400"></div>
+                    </div>
+                    <span id="nav-role-badge" class="px-3 py-1 text-xs font-mono font-bold rounded-full border hidden sm:block"></span>
+                    <button onclick="logout()" class="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded-lg border border-red-500/30 transition">
+                        <i class="fas fa-power-off"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow flex items-center justify-center p-4 md:p-6">
+
+        <!-- VISTA 1: LOGIN -->
+        <div id="view-login" class="w-full max-w-md">
+            <div class="glass-panel rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-32 h-32 bg-tech-accent/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="text-center mb-8">
+                    <div class="inline-flex p-3 bg-tech-900/80 rounded-2xl border border-tech-700 mb-3 text-tech-accent">
+                        <i class="fas fa-user-shield text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-mono font-bold text-white tracking-wide">ACCESO AL SISTEMA</h2>
+                    <p class="text-gray-400 text-xs mt-1">Ingresa tu correo institucional</p>
+                </div>
+
+                <form id="login-form" onsubmit="handleLogin(event)" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider mb-2">Correo Institucional</label>
+                        <input type="email" id="login-email" required class="w-full bg-tech-900/90 tech-border rounded-xl px-4 py-3 text-white text-sm tech-focus" placeholder="usuario@alumnos.udg.mx">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider mb-2">Contraseña</label>
+                        <input type="password" id="login-pass" required class="w-full bg-tech-900/90 tech-border rounded-xl px-4 py-3 text-white text-sm tech-focus" placeholder="••••••••">
+                    </div>
+                    <div id="login-error" class="hidden text-red-400 text-xs text-center bg-red-950/40 p-3 rounded-xl border border-red-800"></div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-tech-accent to-blue-600 hover:from-tech-glow hover:to-blue-500 text-slate-950 font-mono font-bold py-3 px-4 rounded-xl glow-button tracking-wide text-sm">
+                        INGRESAR A LA PLATAFORMA
+                    </button>
+                    <div class="text-center mt-4">
+                        <span class="text-tech-accent text-xs cursor-pointer hover:underline font-mono" onclick="showView('view-registro')">¿No tienes cuenta? Regístrate aquí</span>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- VISTA 1.5: REGISTRO DE CUENTA Y VERIFICACIÓN -->
+        <div id="view-registro" class="hidden w-full max-w-md">
+            <div class="glass-panel rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-32 h-32 bg-tech-emerald/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="text-center mb-8">
+                    <div class="inline-flex p-3 bg-tech-900/80 rounded-2xl border border-tech-700 mb-3 text-tech-emerald">
+                        <i class="fas fa-user-plus text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-mono font-bold text-white tracking-wide">CREAR CUENTA</h2>
+                    <p class="text-gray-400 text-xs mt-1">Seguridad por verificación de correo</p>
+                </div>
+
+                <!-- PASO 1: Formulario de Datos -->
+                <form id="reg-step-1" onsubmit="handleRegistrationRequest(event)" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider mb-2">Correo Institucional</label>
+                        <input type="email" id="reg-email" required class="w-full bg-tech-900/90 tech-border rounded-xl px-4 py-3 text-white text-sm tech-focus" placeholder="usuario@alumnos.udg.mx">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider mb-2">Contraseña</label>
+                        <input type="password" id="reg-pass" required minlength="8" class="w-full bg-tech-900/90 tech-border rounded-xl px-4 py-3 text-white text-sm tech-focus" placeholder="Mínimo 8 caracteres">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider mb-2">Confirmar Contraseña</label>
+                        <input type="password" id="reg-confirm" required class="w-full bg-tech-900/90 tech-border rounded-xl px-4 py-3 text-white text-sm tech-focus" placeholder="Repite tu contraseña">
+                    </div>
+
+                    <button type="submit" class="w-full bg-gradient-to-r from-tech-emerald to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-mono font-bold py-3 px-4 rounded-xl glow-button tracking-wide text-sm flex items-center justify-center space-x-2">
+                        <span>SOLICITAR CÓDIGO</span>
+                        <i class="fas fa-paper-plane text-xs"></i>
+                    </button>
+                    <div class="text-center mt-4">
+                        <span class="text-tech-accent text-xs cursor-pointer hover:underline font-mono" onclick="cancelRegistration()">Ya tengo cuenta, iniciar sesión</span>
+                    </div>
+                </form>
+
+                <!-- PASO 2: Verificación de Código OTP -->
+                <form id="reg-step-2" onsubmit="handleRegistrationVerify(event)" class="space-y-5 hidden">
+                    <div class="bg-tech-900/60 p-4 rounded-xl border border-tech-700 text-center mb-4">
+                        <p class="text-xs text-gray-300">Hemos enviado un código de 6 dígitos a:</p>
+                        <p id="reg-display-email" class="text-tech-glow font-bold font-mono mt-1"></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider mb-2 text-center">Código de Verificación</label>
+                        <input type="text" id="reg-code" required maxlength="6" class="w-full bg-tech-900/90 tech-border rounded-xl px-4 py-3 text-white text-2xl text-center tracking-[0.5em] tech-focus font-mono" placeholder="------">
+                    </div>
+
+                    <button type="submit" class="w-full bg-gradient-to-r from-tech-emerald to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-mono font-bold py-3 px-4 rounded-xl glow-button tracking-wide text-sm flex items-center justify-center space-x-2">
+                        <span>VERIFICAR Y CREAR</span>
+                        <i class="fas fa-check-circle text-xs"></i>
+                    </button>
+                    <div class="text-center mt-4">
+                        <span class="text-gray-400 text-xs cursor-pointer hover:text-white font-mono" onclick="cancelRegistration()">Cancelar y volver</span>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+
+        <!-- VISTA 2: ALUMNO / ESTUDIANTE DASHBOARD -->
+        <div id="view-alumno" class="hidden w-full max-w-6xl space-y-6">
+            <div id="student-status-header" class="glass-panel rounded-2xl p-6 border-l-4 border-l-tech-accent flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-mono font-bold text-white flex items-center gap-2">Portal de Registro de Proyecto</h2>
+                    <p class="text-sm text-gray-400 mt-1">Completa los datos técnicos, documentales y audiovisuales.</p>
+                </div>
+                <div id="student-folio-badge" class="hidden bg-tech-900 border border-tech-accent/40 rounded-xl px-4 py-2 font-mono text-right">
+                    <span class="text-[10px] text-gray-400 block uppercase">Folio Asignado</span>
+                    <span id="lbl-student-folio" class="text-xl font-bold text-tech-glow tracking-wider"></span>
+                </div>
+            </div>
+
+            <!-- Banner de Proyecto Existente -->
+            <div id="already-registered-box" class="hidden glass-panel rounded-2xl p-6 border border-tech-accent/30 space-y-4">
+                <div class="flex items-start space-x-4">
+                    <div class="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 border border-emerald-500/30">
+                        <i class="fas fa-check-circle text-2xl"></i>
+                    </div>
+                    <div class="flex-grow">
+                        <span class="px-2.5 py-0.5 rounded text-xs font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">REGISTRO COMPLETADO</span>
+                        <h3 id="existing-proj-title" class="text-xl font-bold text-white mt-1"></h3>
+                        <p id="existing-proj-category" class="text-xs text-tech-accent font-mono mt-0.5"></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                    <div class="bg-tech-900/80 p-3 rounded-xl border border-tech-700">
+                        <span class="text-xs text-gray-400 block">Líder Registrado</span>
+                        <span id="existing-proj-leader" class="text-sm font-semibold text-gray-200 line-clamp-1"></span>
+                    </div>
+                    <div class="bg-tech-900/80 p-3 rounded-xl border border-tech-700">
+                        <span class="text-xs text-gray-400 block">Integrantes Adicionales</span>
+                        <span id="existing-proj-members-count" class="text-sm font-semibold text-gray-200"></span>
+                    </div>
+                    <div class="bg-tech-900/80 p-3 rounded-xl border border-tech-700">
+                        <span class="text-xs text-gray-400 block">Estado del Dictamen</span>
+                        <span id="existing-proj-status" class="text-sm font-bold"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feedback Asesor -->
+            <div id="student-feedback-section" class="hidden glass-panel rounded-2xl p-6">
+                <h3 class="text-lg font-mono font-bold text-white mb-4 border-b border-tech-700 pb-2 flex items-center justify-between">
+                    <span><i class="fas fa-comments text-tech-accent mr-2"></i>Retroalimentación Académica</span>
+                    <span id="fb-status-badge" class="px-3 py-1 text-xs font-mono font-bold rounded-full"></span>
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-tech-900/80 p-4 rounded-xl border border-tech-700">
+                        <h4 class="font-mono text-xs font-bold uppercase text-tech-accent mb-2"><i class="fas fa-file-alt"></i> Observaciones PDF</h4>
+                        <p id="fb-doc-text" class="text-sm text-gray-300"></p>
+                    </div>
+                    <div class="bg-tech-900/80 p-4 rounded-xl border border-tech-700">
+                        <h4 class="font-mono text-xs font-bold uppercase text-tech-accent mb-2"><i class="fab fa-youtube"></i> Observaciones Video</h4>
+                        <p id="fb-video-text" class="text-sm text-gray-300"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTÓN PARA CORREGIR (Se muestra solo si está "No aprobado") -->
+            <div id="btn-corregir-container" class="hidden mt-6 flex justify-center">
+                <button onclick="showResubmitForm()" class="bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border border-yellow-500/40 font-mono font-bold py-3 px-8 rounded-xl transition flex items-center space-x-2">
+                    <i class="fas fa-edit"></i>
+                    <span>CORREGIR ENTREGABLES</span>
+                </button>
+            </div>
+
+            <!-- FORMULARIO AISLADO PARA REENVÍO DE ENTREGABLES -->
+            <div id="resubmit-container" class="hidden glass-panel rounded-2xl p-6 border border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+                <div class="flex items-center justify-between mb-4 border-b border-tech-700 pb-3">
+                    <h3 class="text-lg font-mono font-bold text-yellow-400">
+                        <i class="fas fa-upload mr-2"></i> Actualizar Entregables
+                    </h3>
+                </div>
+                <p class="text-sm text-gray-300 mb-6">Tu proyecto fue marcado como "No aprobado". Sube tu documento corregido y el nuevo enlace de tu video para una segunda revisión. <br><span class="text-tech-accent text-xs">Nota: Los datos generales de tu proyecto se mantendrán intactos.</span></p>
+
+                <form id="resubmit-form" onsubmit="handleResubmit(event)" class="space-y-5">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-300 mb-2">Nuevo Documento PDF / DOCX *</label>
+                            <input type="file" id="resubmit-doc" accept=".pdf,.doc,.docx" required class="w-full bg-tech-900 tech-border rounded-xl px-3 py-2 text-white text-sm tech-focus file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-yellow-500 file:text-tech-900 hover:file:bg-yellow-400">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-300 mb-2">Nuevo Enlace de Video (YouTube) *</label>
+                            <input type="url" id="resubmit-video" required class="w-full bg-tech-900 tech-border rounded-xl px-4 py-2.5 text-white text-sm tech-focus" placeholder="https://youtube.com/watch?v=...">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-4 border-t border-tech-700 gap-4 mt-6">
+                        <button type="button" onclick="cancelResubmit()" class="text-gray-400 hover:text-white font-mono text-xs px-4 py-2 transition">Cancelar</button>
+                        <button type="submit" class="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 font-mono font-bold py-2.5 px-6 rounded-xl glow-button text-sm flex items-center space-x-2">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>ENVIAR CORRECCIONES</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- WIZARD FORM -->
+            <div id="student-form-container" class="grid grid-cols-1 lg:grid-cols-3 gap-6 hidden">
+                <div class="lg:col-span-2 glass-panel rounded-2xl p-6">
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b border-tech-700 text-xs font-mono">
+                        <button type="button" onclick="goToStep(1)" id="step-btn-1" class="flex items-center space-x-2 text-tech-accent font-bold"><span class="w-6 h-6 rounded-full bg-tech-accent text-slate-950 flex items-center justify-center">1</span><span>Datos</span></button>
+                        <div class="h-0.5 flex-grow bg-tech-700 mx-2"></div>
+                        <button type="button" onclick="goToStep(2)" id="step-btn-2" class="flex items-center space-x-2 text-gray-500"><span class="w-6 h-6 rounded-full bg-tech-800 border border-tech-700 flex items-center justify-center">2</span><span>Equipo</span></button>
+                        <div class="h-0.5 flex-grow bg-tech-700 mx-2"></div>
+                        <button type="button" onclick="goToStep(3)" id="step-btn-3" class="flex items-center space-x-2 text-gray-500"><span class="w-6 h-6 rounded-full bg-tech-800 border border-tech-700 flex items-center justify-center">3</span><span>Entregables</span></button>
+                    </div>
+
+                    <form id="project-form" onsubmit="handleProjectRegistration(event)">
+                        <!-- PASO 1 -->
+                        <div id="form-step-1" class="space-y-4">
+                            <h4 class="text-sm font-mono font-bold text-tech-accent uppercase tracking-wider mb-2"><i class="fas fa-info-circle mr-2"></i>1. Datos Generales</h4>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-300 mb-1">Nombre Oficial del Proyecto *</label>
+                                <input type="text" id="proj-name" required oninput="updateLivePreview()" class="w-full bg-tech-900 tech-border rounded-xl px-4 py-2 text-white text-sm tech-focus">
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-300 mb-1">Categoría *</label>
+                                    <select id="proj-category" required onchange="updateLivePreview()" class="w-full bg-tech-900 tech-border rounded-xl px-3 py-2 text-white text-sm tech-focus">
+                                        <option value="">Seleccionar...</option>
+                                        <option value="Inteligencia Artificial y Ciencia de Datos">Inteligencia Artificial & Data Science</option>
+                                        <option value="Internet de las Cosas e Embebidos">Internet de las Cosas (IoT) & Embebidos</option>
+                                        <option value="Desarrollo Web y Sistemas Distribuidos">Desarrollo Web & Sistemas Distribuidos</option>
+                                        <option value="Aplicaciones Móviles">Aplicaciones Móviles</option>
+                                        <option value="Ciberseguridad y Redes">Ciberseguridad & Redes</option>
+                                        <option value="Videojuegos y Realidad Aumentada">Videojuegos, RA / RV</option>
+                                        <option value="Robótica y Automatización">Robótica & Automatización</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-300 mb-1">Malla *</label>
+                                    <select id="proj-level" required class="w-full bg-tech-900 tech-border rounded-xl px-3 py-2 text-white text-sm tech-focus">
+                                        <option value="">Seleccionar...</option>
+                                        <option value="INCO">INCO</option>
+                                        <option value="ICOM">ICOM</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-300 mb-1">Correo Institucional del Asesor Principal (@academicos.udg.mx) *</label>
+                                <input type="email" id="proj-advisor" required class="w-full bg-tech-900 tech-border rounded-xl px-4 py-2 text-white text-sm tech-focus" placeholder="asesor@academicos.udg.mx">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-300 mb-1">Resumen / Problemática a resolver *</label>
+                                <textarea id="proj-summary" required rows="3" oninput="updateLivePreview()" class="w-full bg-tech-900 tech-border rounded-xl px-4 py-2 text-white text-sm tech-focus"></textarea>
+                            </div>
+                            <div class="flex justify-end pt-2">
+                                <button type="button" onclick="goToStep(2)" class="bg-tech-700 hover:bg-tech-600 text-white font-mono font-bold px-5 py-2.5 rounded-xl text-xs transition">Siguiente <i class="fas fa-arrow-right"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- PASO 2 -->
+                        <div id="form-step-2" class="hidden space-y-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="text-sm font-mono font-bold text-tech-accent uppercase tracking-wider"><i class="fas fa-users mr-2"></i>2. Equipo</h4>
+                                <button type="button" onclick="addTeamMemberRow()" class="bg-tech-accent/20 hover:bg-tech-accent/30 text-tech-glow border border-tech-accent/40 font-mono text-xs px-3 py-1 rounded-lg transition">+ Integrante</button>
+                            </div>
+                            <div class="bg-tech-900/90 p-4 rounded-xl border border-tech-accent/40">
+                                <h5 class="text-xs font-mono text-tech-glow uppercase border-b border-tech-700 pb-2 mb-3">Datos del Líder (Tú)</h5>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <input type="text" id="lider-nombre" placeholder="Nombre Completo *" required class="w-full bg-tech-800 border border-tech-700 rounded-lg px-3 py-2 text-xs text-white tech-focus">
+                                    <input type="text" id="lider-codigo" placeholder="Código *" required class="w-full bg-tech-800 border border-tech-700 rounded-lg px-3 py-2 text-xs text-white tech-focus">
+                                    <input type="text" id="lider-whatsapp" placeholder="WhatsApp (10 dígitos) *" required class="w-full bg-tech-800 border border-tech-700 rounded-lg px-3 py-2 text-xs text-white tech-focus">
+                                    <input type="number" id="lider-semestre" placeholder="Semestre *" required min="1" max="15" class="w-full bg-tech-800 border border-tech-700 rounded-lg px-3 py-2 text-xs text-white tech-focus">
+                                </div>
+                            </div>
+                            <div class="space-y-3" id="team-members-list"></div>
+                            <div class="flex justify-between pt-4 border-t border-tech-700">
+                                <button type="button" onclick="goToStep(1)" class="text-gray-400 hover:text-white font-mono text-xs px-4 py-2"><i class="fas fa-arrow-left mr-1"></i> Anterior</button>
+                                <button type="button" onclick="goToStep(3)" class="bg-tech-700 hover:bg-tech-600 text-white font-mono font-bold px-5 py-2.5 rounded-xl text-xs transition">Siguiente <i class="fas fa-arrow-right"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- PASO 3 -->
+                        <div id="form-step-3" class="hidden space-y-4">
+                            <h4 class="text-sm font-mono font-bold text-tech-accent uppercase tracking-wider mb-2"><i class="fas fa-code-branch mr-2"></i>3. Entregables</h4>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-300 mb-2">Stack (Opcional):</label>
+                                <div class="flex flex-wrap gap-2" id="tech-chips-container">
+                                    <span onclick="toggleTechChip(this, 'Python')" class="tech-chip text-xs px-3 py-1 rounded-lg bg-tech-900 border border-tech-700 text-gray-300">Python</span>
+                                    <span onclick="toggleTechChip(this, 'JS/Node')" class="tech-chip text-xs px-3 py-1 rounded-lg bg-tech-900 border border-tech-700 text-gray-300">JS / Node</span>
+                                    <span onclick="toggleTechChip(this, 'React')" class="tech-chip text-xs px-3 py-1 rounded-lg bg-tech-900 border border-tech-700 text-gray-300">React</span>
+                                    <span onclick="toggleTechChip(this, 'TensorFlow')" class="tech-chip text-xs px-3 py-1 rounded-lg bg-tech-900 border border-tech-700 text-gray-300">TensorFlow</span>
+                                    <span onclick="toggleTechChip(this, 'IoT/C++')" class="tech-chip text-xs px-3 py-1 rounded-lg bg-tech-900 border border-tech-700 text-gray-300">IoT / C++</span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 gap-4 pt-2">
+                              <div>
+                                  <label class="block text-xs font-semibold text-gray-300 mb-1">Enlace a Repositorio (Opcional)</label>
+                                  <input type="url" id="proj-repo" class="w-full bg-tech-900 tech-border rounded-xl px-3 py-1.5 text-white text-sm tech-focus" placeholder="https://github.com/...">
+                              </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-300 mb-1">Subir Documento (Sección 2) *</label>
+                                    <input type="file" id="proj-doc" accept=".pdf,.doc,.docx" required class="w-full bg-tech-900 tech-border rounded-xl px-3 py-1.5 text-white text-sm tech-focus file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-tech-accent file:text-tech-900">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-300 mb-1">Enlace a Video Demostrativo (Sección 3) *</label>
+                                    <input type="url" id="proj-video" required class="w-full bg-tech-900 tech-border rounded-xl px-3 py-2 text-white text-sm tech-focus" placeholder="https://youtube.com/watch?v=...">
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center pt-4 border-t border-tech-700">
+                                <button type="button" onclick="goToStep(2)" class="text-gray-400 hover:text-white font-mono text-xs px-4 py-2"><i class="fas fa-arrow-left mr-1"></i> Anterior</button>
+                                <button type="submit" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-mono font-bold py-3 px-6 rounded-xl glow-button text-sm">
+                                    ENVIAR PROYECTO
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Preview Panel -->
+                <div class="glass-panel rounded-2xl p-6 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-xs font-mono font-bold text-gray-400 uppercase"><i class="fas fa-eye mr-1"></i> Ficha Técnica</span>
+                            <span class="text-[10px] bg-tech-accent/20 text-tech-accent px-2 py-0.5 rounded font-mono">EN VIVO</span>
+                        </div>
+                        <div class="bg-tech-950 p-5 rounded-xl border border-tech-700 space-y-4">
+                            <div class="flex justify-between items-start">
+                                <span id="preview-folio" class="text-xs font-mono font-bold text-tech-accent bg-tech-900 px-2.5 py-1 rounded border border-tech-accent/30">NUEVO</span>
+                                <span id="preview-category" class="text-[10px] text-gray-400 font-mono">Categoría</span>
+                            </div>
+                            <h3 id="preview-title" class="text-base font-bold text-white line-clamp-2">Nombre del Proyecto</h3>
+                            <p id="preview-summary" class="text-xs text-gray-400 line-clamp-3 italic">Descripción...</p>
+                            <div id="preview-tech-stack" class="flex flex-wrap gap-1"></div>
+                            <div class="pt-3 border-t border-tech-800 flex justify-between items-center text-xs text-gray-400 font-mono">
+                                <span id="preview-team-count"><i class="fas fa-user mr-1 text-tech-accent"></i> 1 Int.</span>
+                                <span class="text-yellow-400"><i class="fas fa-clock mr-1"></i> Pendiente</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 3: EVALUADOR DASHBOARD -->
+        <div id="view-evaluador" class="hidden w-full max-w-6xl space-y-6">
+            <div class="glass-panel rounded-2xl p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-tech-700 pb-4">
+                    <div>
+                        <h2 class="text-xl font-mono font-bold text-white"><i class="fas fa-clipboard-check text-tech-purple mr-3"></i> Panel del Evaluador</h2>
+                    </div>
+                    <button onclick="loadProjectsForEvaluation()" class="bg-tech-900 hover:bg-tech-700 text-gray-300 px-3 py-1.5 rounded-xl tech-border text-xs font-mono transition"><i class="fas fa-sync-alt"></i> Refrescar</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs text-gray-400 uppercase bg-tech-900/80 font-mono border-b border-tech-700">
+                            <tr>
+                                <th class="px-4 py-3">Folio</th>
+                                <th class="px-4 py-3">Proyecto</th>
+                                <th class="px-4 py-3">Entregables</th>
+                                <th class="px-4 py-3">Puntaje</th>
+                                <th class="px-4 py-3">Estado</th>
+                                <th class="px-4 py-3 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="evaluator-projects-list" class="divide-y divide-tech-700/50"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Modal Evaluador -->
+            <div id="evaluation-panel" class="hidden glass-panel rounded-2xl p-6 border-l-4 border-l-tech-purple">
+                <div class="flex justify-between items-center mb-6 border-b border-tech-700 pb-3">
+                    <h3 class="text-lg font-mono font-bold text-white">Evaluación Folio: <span id="eval-folio-display" class="text-tech-glow"></span></h3>
+                    <button onclick="closeEvaluationPanel()" class="text-gray-400 hover:text-white"><i class="fas fa-times text-lg"></i></button>
+                </div>
+                <form id="evaluation-form" onsubmit="submitEvaluation(event)" class="space-y-5">
+                    <input type="hidden" id="eval-folio-input">
+                    <!-- Cabecera de información del proyecto a evaluar -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-tech-900/60 p-4 rounded-xl border border-tech-700 mb-4">
+                        <div>
+                            <span class="text-xs font-mono text-gray-400 block">Proyecto:</span>
+                            <span id="eval-proj-name" class="font-bold text-white text-sm line-clamp-1"></span>
+                        </div>
+                        <div>
+                            <span class="text-xs font-mono text-gray-400 block">Malla:</span>
+                            <span id="eval-proj-cat" class="text-xs text-tech-accent font-mono"></span>
+                        </div>
+                    </div>
+                    <!-- Rúbrica resumida -->
+                    <div class="bg-tech-900/90 p-4 rounded-xl border border-tech-700 space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <span class="text-xs text-gray-300">Docs (25): </span><span id="lbl-score-doc" class="font-bold text-tech-accent text-xs">20</span>
+                                <input type="range" id="score-doc" min="0" max="25" value="20" oninput="calculateTotalScore()" class="w-full accent-tech-accent">
+                            </div>
+                            <div>
+                                <span class="text-xs text-gray-300">Video (25): </span><span id="lbl-score-video" class="font-bold text-tech-accent text-xs">20</span>
+                                <input type="range" id="score-video" min="0" max="25" value="20" oninput="calculateTotalScore()" class="w-full accent-tech-accent">
+                            </div>
+                            <div>
+                                <span class="text-xs text-gray-300">Innov (25): </span><span id="lbl-score-innov" class="font-bold text-tech-accent text-xs">20</span>
+                                <input type="range" id="score-innov" min="0" max="25" value="20" oninput="calculateTotalScore()" class="w-full accent-tech-accent">
+                            </div>
+                            <div>
+                                <span class="text-xs text-gray-300">Func (25): </span><span id="lbl-score-func" class="font-bold text-tech-accent text-xs">20</span>
+                                <input type="range" id="score-func" min="0" max="25" value="20" oninput="calculateTotalScore()" class="w-full accent-tech-accent">
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-tech-700 flex justify-between">
+                            <span class="text-xs text-gray-300">Total:</span>
+                            <span id="total-eval-score" class="text-xl font-bold text-tech-glow">80</span>
+                        </div>
+                    </div>
+                    <textarea id="eval-obs-doc" rows="2" class="w-full bg-tech-900 tech-border rounded-xl p-3 text-white text-sm tech-focus" placeholder="Obs Documento..."></textarea>
+                    <textarea id="eval-obs-video" rows="2" class="w-full bg-tech-900 tech-border rounded-xl p-3 text-white text-sm tech-focus" placeholder="Obs Video..."></textarea>
+
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center space-x-2 text-sm text-gray-300">
+                            <input type="checkbox" id="eval-approved" class="form-checkbox h-4 w-4 text-tech-accent rounded bg-tech-900">
+                            <span class="font-mono text-xs">Aprobado</span>
+                        </label>
+                        <button type="submit" class="bg-tech-purple hover:bg-purple-600 text-white font-mono font-bold py-2 px-6 rounded-xl text-xs">GUARDAR EVALUACIÓN</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- VISTA 4: COORDINADOR / ADMIN DASHBOARD COMPLETO -->
+        <div id="view-coordinador" class="hidden w-full max-w-7xl space-y-6">
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Tarjetas de Estadísticas -->
+                <div class="glass-panel p-6 rounded-2xl border-b-4 border-b-tech-accent text-center">
+                    <p class="text-xs font-mono text-gray-400 uppercase">Total Proyectos</p>
+                    <h3 id="admin-stat-total" class="text-4xl font-bold text-white mt-2">0</h3>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl border-b-4 border-b-emerald-400 text-center">
+                    <p class="text-xs font-mono text-gray-400 uppercase">Aprobados</p>
+                    <h3 id="admin-stat-aprobados" class="text-4xl font-bold text-emerald-400 mt-2">0</h3>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl border-b-4 border-b-yellow-400 text-center">
+                    <p class="text-xs font-mono text-gray-400 uppercase">En Revisión</p>
+                    <h3 id="admin-stat-revision" class="text-4xl font-bold text-yellow-400 mt-2">0</h3>
+                </div>
+            </div>
+
+            <!-- Panel de Configuración Administrativa -->
+            <div class="glass-panel rounded-2xl p-6">
+                <h2 class="text-lg font-mono font-bold text-white border-b border-tech-700 pb-3 mb-4"><i class="fas fa-sliders-h text-tech-emerald mr-2"></i> Configuración del Sistema</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-tech-900/80 p-4 rounded-xl border border-tech-700">
+                        <label class="block text-xs font-mono text-gray-400 mb-2">Fecha de Cierre (Deadline)</label>
+                        <input type="date" id="coord-date-reg" class="w-full bg-tech-800 tech-border rounded-lg px-3 py-2 text-xs text-white tech-focus">
+                        <button onclick="saveAdminConfig('deadline', 'coord-date-reg')" class="w-full mt-3 bg-tech-700 hover:bg-tech-600 text-white font-mono text-xs py-2 rounded-lg">Guardar Fecha</button>
+                    </div>
+                    <div class="bg-tech-900/80 p-4 rounded-xl border border-tech-700">
+                        <label class="block text-xs font-mono text-gray-400 mb-2">Apertura del Sistema</label>
+                        <select id="coord-toggle-reg" class="w-full bg-tech-800 tech-border rounded-lg px-3 py-2 text-xs text-white tech-focus">
+                            <option value="TRUE">ABIERTO - Recibiendo proyectos</option>
+                            <option value="FALSE">CERRADO - Bloquear ingresos</option>
+                        </select>
+                        <button onclick="saveAdminConfig('registrationOpen', 'coord-toggle-reg')" class="w-full mt-3 bg-tech-700 hover:bg-tech-600 text-white font-mono text-xs py-2 rounded-lg">Cambiar Estado</button>
+                    </div>
+                    <div class="bg-tech-900/80 p-4 rounded-xl border border-tech-700">
+                        <label class="block text-xs font-mono text-gray-400 mb-2">Aviso a Estudiantes</label>
+                        <textarea id="coord-announcement" rows="2" class="w-full bg-tech-800 tech-border rounded-lg px-3 py-2 text-xs text-white tech-focus" placeholder="Mensaje global..."></textarea>
+                        <button onclick="saveAdminConfig('announcement', 'coord-announcement')" class="w-full mt-3 bg-tech-accent hover:bg-tech-glow text-slate-950 font-bold font-mono text-xs py-2 rounded-lg">Publicar Aviso</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla Global de Proyectos -->
+            <div class="glass-panel rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-mono font-bold text-white"><i class="fas fa-database text-tech-accent mr-2"></i> Base de Datos de Proyectos</h3>
+                    <div class="flex gap-2">
+                        <button onclick="adminExportData()" class="bg-emerald-900 hover:bg-emerald-800 text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-mono"><i class="fas fa-file-excel mr-1"></i> CSV</button>
+                        <button onclick="loadAdminDashboard()" class="bg-tech-800 hover:bg-tech-700 text-white px-3 py-1.5 rounded-lg text-xs font-mono"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs text-gray-400 uppercase bg-tech-900/80 font-mono border-b border-tech-700">
+                            <tr>
+                                <th class="px-4 py-3">Folio</th>
+                                <th class="px-4 py-3">Proyecto / Malla</th>
+                                <th class="px-4 py-3">Líder</th>
+                                <th class="px-4 py-3">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="coord-projects-list" class="divide-y divide-tech-700/50"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Global Announcement Footer Banner -->
+    <div id="global-announcement" class="hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-tech-accent to-blue-600 text-slate-950 font-bold p-3 text-center shadow-lg z-50 text-xs font-mono flex items-center justify-center gap-4">
+        <span><i class="fas fa-bullhorn mr-2"></i><span id="announcement-text"></span></span>
+        <button onclick="document.getElementById('global-announcement').classList.add('hidden')" class="text-slate-950 hover:text-white"><i class="fas fa-times"></i></button>
+    </div>
+
+    <script>
+        // GLOBALS AND INIT
+        let TOKEN = sessionStorage.getItem('mod_token') || null;
+        let currentUser = sessionStorage.getItem('mod_email') || null;
+        let currentRole = sessionStorage.getItem('mod_rol') || null;
+        let currentProjectData = null; // Guardará la data del alumno silenciosamente
+
+        let currentStep = 1;
+        let selectedTechChips = new Set();
+        let teamMemberCount = 0;
+        let currentThemeMode = localStorage.getItem('techreg_theme') || 'dark';
+
+        window.onload = function() {
+            applyTheme(currentThemeMode);
+            if (TOKEN) {
+                showLoader("VALIDANDO SESIÓN...");
+                google.script.run.withSuccessHandler(sesion => {
+                    hideLoader();
+                    if (sesion) {
+                        currentUser = sesion.email;
+                        currentRole = sesion.rol;
+                        updateNav();
+                        routeUser();
+                        checkAnnouncement();
+                    } else {
+                        logout();
+                    }
+                }).withFailureHandler(()=>{hideLoader(); logout();}).validarSesion(TOKEN);
+            } else {
+                showView('view-login');
+            }
+        };
+
+        // UI HELPERS (LOADERS)
+        function showLoader(msg = "PROCESANDO...") {
+            document.getElementById('global-loader-msg').textContent = msg;
+            document.getElementById('global-loader').classList.remove('hidden');
+        }
+        function hideLoader() {
+            document.getElementById('global-loader').classList.add('hidden');
+        }
+
+        function showView(viewId) {
+            ['view-login', 'view-registro', 'view-alumno', 'view-evaluador', 'view-coordinador'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(viewId);
+            if(target) target.classList.remove('hidden');
+        }
+
+        function updateNav() {
+            const navUserInfo = document.getElementById('nav-user-info');
+            const badge = document.getElementById('nav-role-badge');
+            if (currentUser) {
+                navUserInfo.classList.remove('hidden');
+                document.getElementById('nav-username').textContent = currentUser.split('@')[0].toUpperCase();
+                document.getElementById('nav-email').textContent = currentUser;
+
+                badge.textContent = currentRole.toUpperCase();
+                badge.className = 'px-3 py-1 text-xs font-mono font-bold rounded-full border hidden sm:block ';
+                if (currentRole === 'alumno') badge.classList.add('bg-tech-accent/20', 'text-tech-accent', 'border-tech-accent/40');
+                else if (currentRole === 'evaluador' || currentRole === 'academico') badge.classList.add('bg-tech-purple/20', 'text-tech-purple', 'border-tech-purple/40');
+                else badge.classList.add('bg-tech-emerald/20', 'text-tech-emerald', 'border-tech-emerald/40');
+            } else {
+                navUserInfo.classList.add('hidden');
+            }
+        }
+
+        function routeUser() {
+            if (currentRole === 'alumno') {
+                setupAlumnoDashboard();
+                showView('view-alumno');
+            } else if (currentRole === 'evaluador' || currentRole === 'academico') {
+                loadProjectsForEvaluation();
+                showView('view-evaluador');
+            } else {
+                loadAdminDashboard();
+                showView('view-coordinador');
+            }
+        }
+
+        function checkAnnouncement() {
+            google.script.run.withSuccessHandler(res => {
+                if(res && res.trim() !== '') {
+                    document.getElementById('announcement-text').textContent = res;
+                    document.getElementById('global-announcement').classList.remove('hidden');
+                }
+            }).obtenerAnuncio();
+        }
+
+        // LOGIN / REGISTRO / LOGOUT
+        function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+            const errorDiv = document.getElementById('login-error');
+            errorDiv.classList.add('hidden');
+
+            showLoader("AUTENTICANDO...");
+            google.script.run.withSuccessHandler(res => {
+                hideLoader();
+                if (res.success) {
+                    TOKEN = res.token;
+                    currentUser = res.email;
+                    currentRole = res.rol;
+                    sessionStorage.setItem('mod_token', TOKEN);
+                    sessionStorage.setItem('mod_email', currentUser);
+                    sessionStorage.setItem('mod_rol', currentRole);
+                    updateNav();
+                    routeUser();
+                    checkAnnouncement();
+                } else {
+                    errorDiv.textContent = res.message;
+                    errorDiv.classList.remove('hidden');
+                }
+            }).withFailureHandler(err => {
+                hideLoader();
+                errorDiv.textContent = 'Error: ' + err.message;
+                errorDiv.classList.remove('hidden');
+            }).iniciarSesion(email, pass);
+        }
+
+        let currentRegToken = null; // Guardará el Token temporal para validar el OTP
+
+        function handleRegistrationRequest(event) {
+            event.preventDefault();
+            const email = document.getElementById('reg-email').value.trim();
+            const pass = document.getElementById('reg-pass').value;
+            const confirm = document.getElementById('reg-confirm').value;
+
+            if (pass !== confirm) { alert('Las contraseñas no coinciden.'); return; }
+
+            showLoader("ENVIANDO CÓDIGO AL CORREO...");
+            const data = { email: email, password: pass, confirmPassword: confirm };
+
+            google.script.run.withSuccessHandler(res => {
+                hideLoader();
+                if (res.success) {
+                    // Guardamos el token y pasamos a la pantalla del código
+                    currentRegToken = res.regToken;
+                    document.getElementById('reg-display-email').textContent = email;
+                    document.getElementById('reg-step-1').classList.add('hidden');
+                    document.getElementById('reg-step-2').classList.remove('hidden');
+                } else {
+                    alert("Error: " + res.message);
+                }
+            }).withFailureHandler(err => {
+                hideLoader(); alert("Error de red: " + err.message);
+            }).solicitarRegistro(data);
+        }
+
+        function handleRegistrationVerify(event) {
+            event.preventDefault();
+            const code = document.getElementById('reg-code').value.trim();
+
+            if(!code || code.length !== 6) {
+                alert("Ingresa el código completo de 6 dígitos."); return;
+            }
+
+            showLoader("VERIFICANDO CÓDIGO...");
+            google.script.run.withSuccessHandler(res => {
+                hideLoader();
+                if (res.success) {
+                    alert("¡Cuenta verificada y creada con éxito! Ya puedes iniciar sesión.");
+                    cancelRegistration();
+                } else {
+                    alert("Error: " + res.message);
+                }
+            }).withFailureHandler(err => {
+                hideLoader(); alert("Error de red: " + err.message);
+            }).verificarRegistro(currentRegToken, code);
+        }
+
+        function cancelRegistration() {
+            document.getElementById('reg-step-1').reset();
+            document.getElementById('reg-step-2').reset();
+            document.getElementById('reg-step-1').classList.remove('hidden');
+            document.getElementById('reg-step-2').classList.add('hidden');
+            currentRegToken = null;
+            showView('view-login');
+        }
+
+        function logout() {
+            if (TOKEN) google.script.run.cerrarSesion(TOKEN);
+
+            // Limpiar almacenamiento local y variables de sesión
+            sessionStorage.clear();
+            TOKEN = null; currentUser = null; currentRole = null;
+            updateNav();
+
+            // RESETEAR COMPLETAMENTE TODOS LOS FORMULARIOS Y CAMPOS
+            const loginForm = document.getElementById('login-form');
+            const regForm = document.getElementById('reg-step-1');
+            const regStep2 = document.getElementById('reg-step-2');
+            const projForm = document.getElementById('project-form');
+
+            if (loginForm) loginForm.reset();
+            if (regForm) regForm.reset();
+            if (regStep2) regStep2.reset();
+            if (projForm) projForm.reset();
+
+            // Limpiar dinámicos y estados visuales del estudiante
+            selectedTechChips.clear();
+            teamMemberCount = 0;
+            const chips = document.querySelectorAll('.tech-chip');
+            chips.forEach(c => c.classList.remove('active'));
+            const teamList = document.getElementById('team-members-list');
+            if (teamList) teamList.innerHTML = '';
+
+            // Ocultar paneles de éxito o feedback previo
+            const alreadyBox = document.getElementById('already-registered-box');
+            const feedbackSec = document.getElementById('student-feedback-section');
+            const formContainer = document.getElementById('student-form-container');
+            if(alreadyBox) alreadyBox.classList.add('hidden');
+            if(feedbackSec) feedbackSec.classList.add('hidden');
+            if(formContainer) formContainer.classList.add('hidden');
+
+            // Ocultar anuncios globales
+            const ann = document.getElementById('global-announcement');
+            if(ann) ann.classList.add('hidden');
+
+            showView('view-login');
+        }
+
+        // THEME
+        function applyTheme(mode) {
+            currentThemeMode = mode;
+            localStorage.setItem('techreg_theme', mode);
+            let eff = mode === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode;
+            document.documentElement.setAttribute('data-theme', eff);
+            ['dark', 'light'].forEach(t => {
+                const btn = document.getElementById(`theme-btn-${t}`);
+                if(btn) btn.className = (t===eff) ? "px-2.5 py-1 rounded-lg bg-tech-accent text-slate-950 font-bold transition flex items-center space-x-1 shadow-sm" : "px-2.5 py-1 rounded-lg text-gray-400 hover:text-white transition flex items-center space-x-1";
+            });
+        }
+        function setTheme(mode) { applyTheme(mode); }
+
+        // ALUMNOS: FLUJO WIZARD Y REGISTRO
+        function goToStep(step) {
+            currentStep = step;
+            [1, 2, 3].forEach(i => {
+                document.getElementById(`form-step-${i}`).classList.add('hidden');
+                const btn = document.getElementById(`step-btn-${i}`);
+                if (i === step) {
+                    btn.className = "flex items-center space-x-2 text-tech-accent font-bold";
+                    btn.querySelector('span:first-child').className = "w-6 h-6 rounded-full bg-tech-accent text-slate-950 flex items-center justify-center";
+                } else {
+                    btn.className = "flex items-center space-x-2 text-gray-500";
+                    btn.querySelector('span:first-child').className = "w-6 h-6 rounded-full bg-tech-800 border border-tech-700 flex items-center justify-center";
+                }
+            });
+            document.getElementById(`form-step-${step}`).classList.remove('hidden');
+        }
+
+        function addTeamMemberRow() {
+            if(teamMemberCount >= 2) return alert("Solo puedes agregar 2 miembros extra.");
+            teamMemberCount++;
+            const container = document.getElementById('team-members-list');
+            const row = document.createElement('div');
+            row.id = `member-row-${teamMemberCount}`;
+            row.className = "bg-tech-900/60 p-3 rounded-xl border border-tech-700 grid grid-cols-1 md:grid-cols-3 gap-2";
+            row.innerHTML = `
+                <input type="text" placeholder="Código *" required class="member-code w-full bg-tech-800 border border-tech-700 rounded-lg px-2.5 py-1.5 text-xs text-white tech-focus">
+                <input type="text" placeholder="Nombre Completo *" required class="member-name w-full bg-tech-800 border border-tech-700 rounded-lg px-2.5 py-1.5 text-xs text-white tech-focus">
+                <div class="flex space-x-2">
+                    <button type="button" onclick="removeTeamMemberRow(${teamMemberCount})" class="text-red-400 hover:text-red-300 px-2 py-1 rounded w-full border border-red-900"><i class="fas fa-trash-alt"></i> Quitar</button>
+                </div>`;
+            container.appendChild(row);
+            updateLivePreview();
+        }
+
+        function removeTeamMemberRow(id) {
+            document.getElementById(`member-row-${id}`).remove();
+            teamMemberCount--;
+            updateLivePreview();
+        }
+
+        function toggleTechChip(element, techName) {
+            if (selectedTechChips.has(techName)) {
+                selectedTechChips.delete(techName);
+                element.classList.remove('active');
+            } else {
+                selectedTechChips.add(techName);
+                element.classList.add('active');
+            }
+            updateLivePreview();
+        }
+
+        function updateLivePreview() {
+            document.getElementById('preview-title').textContent = document.getElementById('proj-name').value || 'Nombre del Proyecto';
+            document.getElementById('preview-category').textContent = document.getElementById('proj-category').value || 'Categoría';
+            document.getElementById('preview-summary').textContent = document.getElementById('proj-summary').value || 'La descripción resumida aparecerá aquí...';
+
+            const techContainer = document.getElementById('preview-tech-stack');
+            techContainer.innerHTML = '';
+            if (selectedTechChips.size === 0) {
+                techContainer.innerHTML = '<span class="text-[10px] px-2 py-0.5 rounded bg-tech-900 text-gray-500 border border-tech-800">Ninguna</span>';
+            } else {
+                selectedTechChips.forEach(tech => {
+                    techContainer.innerHTML += `<span class="text-[10px] px-2 py-0.5 rounded bg-tech-accent/20 text-tech-accent border border-tech-accent/30 font-mono">${tech}</span>`;
+                });
+            }
+            const extraCount = document.querySelectorAll('#team-members-list > div').length;
+            document.getElementById('preview-team-count').innerHTML = `<i class="fas fa-user mr-1 text-tech-accent"></i> ${1 + extraCount} Integrante(s)`;
+        }
+
+        function setupAlumnoDashboard() {
+            document.getElementById('student-status-header').innerHTML = `<p class="font-mono text-tech-glow animate-pulse"><i class="fas fa-spinner fa-spin mr-2"></i>Verificando registro previo...</p>`;
+
+            google.script.run.withSuccessHandler(proyecto => {
+                document.getElementById('student-status-header').innerHTML = `
+                    <div>
+                        <h2 class="text-2xl font-mono font-bold text-white flex items-center gap-2"><span>Portal de Registro de Proyecto</span></h2>
+                        <p class="text-sm text-gray-400 mt-1">Sube la documentación técnica y demostración audiovisual.</p>
+                    </div>
+                    <div id="student-folio-badge" class="hidden bg-tech-900 border border-tech-accent/40 rounded-xl px-4 py-2 font-mono text-right">
+                        <span class="text-[10px] text-gray-400 block uppercase">Folio Asignado</span>
+                        <span id="lbl-student-folio" class="text-xl font-bold text-tech-glow tracking-wider"></span>
+                    </div>`;
+
+                if (proyecto) {
+                    currentProjectData = proyecto; // GUARDAMOS EN MEMORIA
+                    document.getElementById('student-form-container').classList.add('hidden');
+                    document.getElementById('already-registered-box').classList.remove('hidden');
+                    document.getElementById('student-folio-badge').classList.remove('hidden');
+
+                    document.getElementById('lbl-student-folio').textContent = proyecto.Folio;
+                    document.getElementById('existing-proj-title').textContent = proyecto.TituloProyecto;
+                    document.getElementById('existing-proj-category').textContent = proyecto.TipoMalla;
+                    document.getElementById('existing-proj-leader').textContent = proyecto.NombreLider;
+                    document.getElementById('existing-proj-members-count').textContent = (proyecto.Nombre2do ? "Con" : "Sin") + " integrantes extra";
+
+                    const statusSpan = document.getElementById('existing-proj-status');
+                    statusSpan.textContent = proyecto.Estado;
+                    statusSpan.className = (proyecto.Estado === 'Aprobado') ? 'text-emerald-400 font-bold text-sm' : 'text-yellow-400 font-bold text-sm';
+
+                    // MOSTRAR BOTÓN DE CORRECCIÓN SI ESTÁ NO APROBADO
+                    if (proyecto.Estado === 'No aprobado') {
+                        document.getElementById('btn-corregir-container').classList.remove('hidden');
+                    } else {
+                        document.getElementById('btn-corregir-container').classList.add('hidden');
+                    }
+
+                    if (proyecto.Asesor_ObsDocumento || proyecto.Asesor_ObsVideo) {
+                        document.getElementById('student-feedback-section').classList.remove('hidden');
+                        document.getElementById('fb-doc-text').textContent = proyecto.Asesor_ObsDocumento || 'Ninguna observación.';
+                        document.getElementById('fb-video-text').textContent = proyecto.Asesor_ObsVideo || 'Ninguna observación.';
+                        const badge = document.getElementById('fb-status-badge');
+                        badge.textContent = proyecto.Estado;
+                        badge.className = proyecto.Estado === 'Aprobado' ? 'px-3 py-1 text-xs font-mono font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'px-3 py-1 text-xs font-mono font-bold rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/40';
+                    }
+                } else {
+                    document.getElementById('student-form-container').classList.remove('hidden');
+                    document.getElementById('already-registered-box').classList.add('hidden');
+                }
+            }).obtenerMiProyecto(TOKEN);
+        }
+
+        function handleProjectRegistration(event) {
+            event.preventDefault();
+
+            // Validar correo del asesor
+            const advEmail = document.getElementById('proj-advisor').value.trim();
+            if(!advEmail.endsWith('@academicos.udg.mx')) {
+                alert("El correo del asesor debe ser un dominio institucional: @academicos.udg.mx");
+                goToStep(1);
+                return;
+            }
+
+            showLoader("REGISTRANDO PROYECTO (SECCIÓN 1)...");
+
+            const membersRows = document.querySelectorAll('#team-members-list > div');
+            const techs = Array.from(selectedTechChips).join(', ');
+            const repoElement = document.getElementById('proj-repo');
+            const repo = repoElement ? repoElement.value : '';
+
+            let resumenCompleto = document.getElementById('proj-summary').value;
+            if(techs) resumenCompleto += "\nStack: " + techs;
+            if(repo) resumenCompleto += "\nRepo: " + repo;
+
+            const formData1 = {
+                tipoMalla: document.getElementById('proj-level').value,
+                tituloProyecto: document.getElementById('proj-name').value,
+                resumenProyecto: resumenCompleto,
+                nombreLider: document.getElementById('lider-nombre').value,
+                codigoLider: document.getElementById('lider-codigo').value,
+                correoLider: currentUser,
+                whatsappLider: document.getElementById('lider-whatsapp').value,
+                semestreLider: document.getElementById('lider-semestre').value,
+                asesor1: advEmail, // GUARDADO COMO ASESOR1
+                nombre2do: membersRows[0] ? membersRows[0].querySelector('.member-name').value : '',
+                codigo2do: membersRows[0] ? membersRows[0].querySelector('.member-code').value : '',
+                nombre3ro: membersRows[1] ? membersRows[1].querySelector('.member-name').value : '',
+                codigo3ro: membersRows[1] ? membersRows[1].querySelector('.member-code').value : '',
+                fechaPresentacion: new Date().toISOString().split('T')[0]
+            };
+
+            const fileInput = document.getElementById('proj-doc');
+            const videoLink = document.getElementById('proj-video').value;
+
+            google.script.run.withSuccessHandler(res1 => {
+                if(!res1.success) {
+                    hideLoader();
+                    alert(res1.message);
+                    return;
+                }
+
+                const procesarPaso3 = () => {
+                    showLoader("REGISTRANDO VIDEO (SECCIÓN 3)...");
+                    google.script.run.withSuccessHandler(() => {
+                        hideLoader();
+                        alert("¡Felicidades! Tu proyecto ha sido registrado y los entregables subidos con éxito.");
+                        setupAlumnoDashboard();
+                    }).withFailureHandler(e=>{
+                        hideLoader();
+                        alert("El proyecto y documento se guardaron, pero falló el video: " + e.message);
+                        setupAlumnoDashboard();
+                    }).registrarSeccion3(TOKEN, videoLink);
+                };
+
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    const reader = new FileReader();
+                    reader.onload = function() {
+                        const base64 = reader.result.split(',')[1];
+                        showLoader("SUBIENDO DOCUMENTO (SECCIÓN 2)...");
+                        google.script.run.withSuccessHandler(res2 => {
+                            if(!res2.success) alert("Atención, error en PDF: " + res2.message);
+                            procesarPaso3();
+                        }).subirSeccion2(TOKEN, base64, file.name, file.type);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    procesarPaso3();
+                }
+
+            }).withFailureHandler(err => {
+                hideLoader();
+                alert("Error de conexión: " + err.message);
+            }).enviarSeccion1(TOKEN, formData1);
+        }
+
+        function showResubmitForm() {
+            document.getElementById('already-registered-box').classList.add('hidden');
+            document.getElementById('student-feedback-section').classList.add('hidden');
+            document.getElementById('btn-corregir-container').classList.add('hidden');
+            document.getElementById('resubmit-container').classList.remove('hidden');
+        }
+
+        function cancelResubmit() {
+            document.getElementById('already-registered-box').classList.remove('hidden');
+            document.getElementById('student-feedback-section').classList.remove('hidden');
+            document.getElementById('btn-corregir-container').classList.remove('hidden');
+            document.getElementById('resubmit-container').classList.add('hidden');
+            document.getElementById('resubmit-form').reset();
+        }
+
+        function handleResubmit(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('resubmit-doc');
+            const videoLink = document.getElementById('resubmit-video').value;
+
+            if (fileInput.files.length === 0) {
+                alert("Debes seleccionar el documento corregido.");
+                return;
+            }
+
+            showLoader("SUBIENDO DOCUMENTO CORREGIDO...");
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function() {
+                const base64 = reader.result.split(',')[1];
+
+                // PASO 1. Subir Documento
+                google.script.run.withSuccessHandler(res2 => {
+                    if (!res2.success) { hideLoader(); alert("Error al subir documento: " + res2.message); return; }
+
+                    showLoader("ACTUALIZANDO VIDEO...");
+                    // PASO 2. Registrar Video
+                    google.script.run.withSuccessHandler(res3 => {
+                        if (!res3.success) { hideLoader(); alert("Error al actualizar video: " + res3.message); return; }
+
+                        showLoader("ACTUALIZANDO ESTADO DEL DICTAMEN...");
+                        // PASO 3. Usar la información en memoria para regresarlo a "Registrado" sin alterarla
+                        const oldData = {
+                            tipoMalla: currentProjectData.TipoMalla,
+                            tituloProyecto: currentProjectData.TituloProyecto,
+                            resumenProyecto: currentProjectData.ResumenProyecto,
+                            nombreLider: currentProjectData.NombreLider,
+                            codigoLider: currentProjectData.CodigoLider,
+                            correoLider: currentProjectData.CorreoLider,
+                            whatsappLider: currentProjectData.WhatsappLider,
+                            semestreLider: currentProjectData.SemestreLider,
+                            asesor1: currentProjectData.Asesor1,
+                            nombre2do: currentProjectData.Nombre2do || '',
+                            codigo2do: currentProjectData.Codigo2do || '',
+                            nombre3ro: currentProjectData.Nombre3ro || '',
+                            codigo3ro: currentProjectData.Codigo3ro || '',
+                            fechaPresentacion: currentProjectData.FechaPresentacion
+                        };
+
+                        google.script.run.withSuccessHandler(res4 => {
+                            hideLoader();
+                            if(res4.success) {
+                                alert("Tus correcciones han sido enviadas. El proyecto volverá a ser evaluado.");
+                                cancelResubmit();
+                                setupAlumnoDashboard(); // Recarga visual
+                            } else {
+                                alert("Se guardaron los archivos pero falló el cambio de estado: " + res4.message);
+                            }
+                        }).withFailureHandler(err => {
+                            hideLoader(); alert("Error al cambiar estado: " + err.message);
+                        }).actualizarSeccion1(TOKEN, oldData);
+
+                    }).withFailureHandler(err => {
+                        hideLoader(); alert("Error de red (Video): " + err.message);
+                    }).registrarSeccion3(TOKEN, videoLink);
+
+                }).withFailureHandler(err => {
+                    hideLoader(); alert("Error de red (Documento): " + err.message);
+                }).subirSeccion2(TOKEN, base64, file.name, file.type);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // EVALUADOR: TABLA Y MODAL
+        let evalProjectsData = [];
+
+        function loadProjectsForEvaluation() {
+            showLoader("BUSCANDO TUS PROYECTOS...");
+            google.script.run.withSuccessHandler(res => {
+                hideLoader();
+                if(res.success) {
+                    evalProjectsData = res.proyectos;
+                    renderEvaluatorTable(res.proyectos);
+                } else {
+                    document.getElementById('evaluator-projects-list').innerHTML = `<tr><td colspan="7" class="text-center text-red-400 py-4">${res.message}</td></tr>`;
+                }
+            }).withFailureHandler(()=>{hideLoader();}).obtenerProyectosAsesor(TOKEN);
+        }
+
+        function filterEvaluatorProjects() {
+            const query = document.getElementById('eval-search-input').value.toLowerCase();
+            const filtered = evalProjectsData.filter(p =>
+                (p.Folio || '').toLowerCase().includes(query) ||
+                (p.TituloProyecto || '').toLowerCase().includes(query) ||
+                (p.NombreLider || '').toLowerCase().includes(query)
+            );
+            renderEvaluatorTable(filtered);
+        }
+
+        function renderEvaluatorTable(projects) {
+            const tbody = document.getElementById('evaluator-projects-list');
+            tbody.innerHTML = '';
+            if(projects.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 py-4 font-mono">No hay proyectos asignados a evaluar.</td></tr>';
+                return;
+            }
+
+            projects.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-tech-800/50 transition-colors";
+                const totalExtras = (p.Nombre2do ? 1 : 0) + (p.Nombre3ro ? 1 : 0);
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-mono font-bold text-tech-accent">${p.Folio}</td>
+                    <td class="px-4 py-3">
+                        <div class="font-bold text-gray-200 line-clamp-1" title="${p.TituloProyecto}">${p.TituloProyecto}</div>
+                        <div class="text-[11px] font-mono text-gray-400">${p.TipoMalla}</div>
+                    </td>
+                    <td class="px-4 py-3 text-xs text-gray-300">
+                        <div class="line-clamp-1" title="${p.NombreLider}">${p.NombreLider}</div>
+                        <span class="text-[10px] text-gray-500 font-mono">+${totalExtras} extra(s)</span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex space-x-3 text-base">
+                            ${p.Seccion2_ArchivoURL ? `<a href="${p.Seccion2_ArchivoURL}" target="_blank" class="text-blue-400 hover:text-blue-300"><i class="fas fa-file-pdf"></i></a>` : '<span class="text-gray-600"><i class="fas fa-file-pdf"></i></span>'}
+                            ${p.Seccion3_LinkVideo ? `<a href="${p.Seccion3_LinkVideo}" target="_blank" class="text-red-400 hover:text-red-300"><i class="fab fa-youtube"></i></a>` : '<span class="text-gray-600"><i class="fab fa-youtube"></i></span>'}
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 font-mono font-bold ${p.Asesor_Puntaje >= 80 ? 'text-emerald-400' : 'text-yellow-400'}">
+                        ${p.Asesor_Puntaje !== '' ? p.Asesor_Puntaje + ' pts' : '--'}
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="px-2.5 py-1 text-[10px] font-mono font-bold rounded-full border ${p.Estado === 'Aprobado' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'}">
+                            ${p.Estado}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="openEvaluationPanel('${p.Folio}')" class="bg-tech-purple/20 hover:bg-tech-purple/30 text-tech-purple border border-tech-purple/40 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition">
+                            Evaluar
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openEvaluationPanel(folio) {
+            const project = evalProjectsData.find(p => p.Folio === folio);
+            if (!project) return;
+
+            document.getElementById('eval-folio-display').textContent = folio;
+            document.getElementById('eval-folio-input').value = folio;
+            document.getElementById('eval-proj-name').textContent = project.TituloProyecto;
+            document.getElementById('eval-proj-cat').textContent = project.TipoMalla;
+
+            let score = parseInt(project.Asesor_Puntaje) || 0;
+            let val = Math.floor(score / 4);
+            ['doc', 'video', 'innov', 'func'].forEach(id => {
+                document.getElementById(`score-${id}`).value = val;
+            });
+            calculateTotalScore();
+
+            document.getElementById('eval-obs-doc').value = project.Asesor_ObsDocumento || '';
+            document.getElementById('eval-obs-video').value = project.Asesor_ObsVideo || '';
+            document.getElementById('eval-approved').checked = (project.Estado === 'Aprobado');
+
+            document.getElementById('evaluation-panel').classList.remove('hidden');
+            document.getElementById('evaluation-panel').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeEvaluationPanel() { document.getElementById('evaluation-panel').classList.add('hidden'); }
+
+        function calculateTotalScore() {
+            const sDoc = parseInt(document.getElementById('score-doc').value) || 0;
+            const sVid = parseInt(document.getElementById('score-video').value) || 0;
+            const sInn = parseInt(document.getElementById('score-innov').value) || 0;
+            const sFun = parseInt(document.getElementById('score-func').value) || 0;
+
+            document.getElementById('lbl-score-doc').textContent = `${sDoc} pts`;
+            document.getElementById('lbl-score-video').textContent = `${sVid} pts`;
+            document.getElementById('lbl-score-innov').textContent = `${sInn} pts`;
+            document.getElementById('lbl-score-func').textContent = `${sFun} pts`;
+
+            const total = sDoc + sVid + sInn + sFun;
+            document.getElementById('total-eval-score').textContent = `${total} / 100`;
+            document.getElementById('total-eval-score').className = total >= 80 ? 'text-2xl font-mono font-bold text-emerald-400' : 'text-2xl font-mono font-bold text-yellow-400';
+
+            document.getElementById('eval-approved').checked = (total >= 80);
+        }
+
+        function submitEvaluation(event) {
+            event.preventDefault();
+            const total = parseInt(document.getElementById('total-eval-score').textContent.split(' ')[0]);
+
+            const payload = {
+                folio: document.getElementById('eval-folio-input').value,
+                estado: document.getElementById('eval-approved').checked ? 'Aprobado' : 'No aprobado',
+                puntaje: total,
+                observaciones: "Calificado desde panel online.",
+                obsDocumento: document.getElementById('eval-obs-doc').value,
+                obsVideo: document.getElementById('eval-obs-video').value
+            };
+
+            showLoader("GUARDANDO EVALUACIÓN...");
+            google.script.run.withSuccessHandler(res => {
+                hideLoader();
+                if(res.success) {
+                    alert("Evaluación guardada exitosamente.");
+                    closeEvaluationPanel();
+                    loadProjectsForEvaluation();
+                } else {
+                    alert("Error: " + res.message);
+                }
+            }).withFailureHandler(()=>{hideLoader();}).evaluarProyecto(TOKEN, payload);
+        }
+
+        // ADMIN / COORDINADOR: DASHBOARD
+        function loadAdminDashboard() {
+            showLoader("CARGANDO DATOS ADMINISTRATIVOS...");
+
+            // 1. Obtener Stats
+            google.script.run.withSuccessHandler(res => {
+                if(res.success) {
+                    document.getElementById('admin-stat-total').textContent = res.estadisticas.totalProyectos;
+                    document.getElementById('admin-stat-aprobados').textContent = res.estadisticas.porEstado['Aprobado'] || 0;
+                    document.getElementById('admin-stat-revision').textContent = (res.estadisticas.porEstado['En revisión'] || 0) + (res.estadisticas.porEstado['Registrado'] || 0);
+                }
+            }).adminObtenerEstadisticas(TOKEN);
+
+            // 2. Obtener Configuración Global
+            google.script.run.withSuccessHandler(res => {
+                if(res.success) {
+                    document.getElementById('coord-date-reg').value = res.config.deadline || '';
+                    document.getElementById('coord-toggle-reg').value = res.config.registrationOpen || 'TRUE';
+                    document.getElementById('coord-announcement').value = res.config.announcement || '';
+                }
+            }).adminObtenerConfig(TOKEN);
+
+            // 3. Obtener Lista de Proyectos
+            google.script.run.withSuccessHandler(res => {
+                hideLoader();
+                if(res.success) {
+                    const tbody = document.getElementById('coord-projects-list');
+                    tbody.innerHTML = '';
+                    res.proyectos.forEach(p => {
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-tech-800/50 transition-colors";
+                        tr.innerHTML = `
+                            <td class="px-4 py-3 font-mono font-bold text-tech-accent">${p.Folio}</td>
+                            <td class="px-4 py-3 text-xs"><div class="font-bold text-gray-200">${p.TituloProyecto}</div><span class="text-[10px] text-gray-400 font-mono">${p.TipoMalla}</span></td>
+                            <td class="px-4 py-3 text-xs font-mono text-gray-300">${p.NombreLider}<br><span class="text-[10px] text-gray-500">${p.EmailLider}</span></td>
+                            <td class="px-4 py-3"><span class="px-2 py-0.5 text-[10px] font-mono font-bold rounded ${p.Estado === 'Aprobado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'}">${p.Estado}</span></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            }).withFailureHandler(()=>{hideLoader();}).adminListarProyectos(TOKEN, {});
+        }
+
+        function saveAdminConfig(clave, inputId) {
+            const valor = document.getElementById(inputId).value;
+            showLoader("ACTUALIZANDO CONFIGURACIÓN...");
+            google.script.run.withSuccessHandler(res => {
+                hideLoader();
+                alert(res.message);
+                if(clave === 'announcement') checkAnnouncement();
+            }).withFailureHandler(()=>{hideLoader();}).adminActualizarConfig(TOKEN, clave, valor);
+        }
+
+        function adminExportData() {
+            showLoader("GENERANDO CSV...");
+            google.script.run.withSuccessHandler(res => {
+                hideLoader();
+                if(res.success) {
+                    const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.download = "Proyectos_Modulares_CUCEI.csv";
+                    link.click();
+                } else {
+                    alert("Error: " + res.message);
+                }
+            }).withFailureHandler(()=>{hideLoader();}).adminExportarCSV(TOKEN);
+        }
+
+    </script>
+</body>
+</html>
