@@ -3,14 +3,7 @@
  * CUCEI COWORKING SYSTEM - Backend Principal
  * Code.gs
  * ============================================================
- * Arquitectura modular con funciones separadas por dominio.
- * Utiliza Google Sheets como base de datos y MailApp para notificaciones.
- * ============================================================
  */
-
-// ─────────────────────────────────────────────────────────────
-// CONSTANTES DE CONFIGURACIÓN
-// ─────────────────────────────────────────────────────────────
 
 const CONFIG = {
   SHEET_USUARIOS:    'usuarios',
@@ -19,156 +12,55 @@ const CONFIG = {
   SHEET_CONFIG:      'Configuracion',
   SHEET_REGISTROS:   'Registros',
 
-  DOMINIOS_ALUMNO:   ['@alumnos.udg.mx', '@academicos.udg.mx', '@cucei.udg.mx'],
-  DOMINIOS_ADMIN:    ['@academicos.udg.mx', '@cucei.udg.mx'],
+  DOMINIOS_ALUMNO:   ['@alumnos.udg.mx'],
+  DOMINIOS_MAESTRO:  ['@academicos.udg.mx', '@cucei.udg.mx'],
 
-  ESTADOS: {
-    PENDIENTE: 'Pendiente',
-    ACEPTADA:  'Aceptada',
-    RECHAZADA: 'Rechazada'
-  },
-
-  // Correo del administrador principal (actualizar)
-  CORREO_ADMIN: 'admin@cucei.udg.mx',
-
-  // Horas de operación
+  ESTADOS: { PENDIENTE: 'Pendiente', ACEPTADA:  'Aceptada', RECHAZADA: 'Rechazada' },
   HORA_APERTURA: '08:00',
   HORA_CIERRE:   '20:00'
 };
 
-// ─────────────────────────────────────────────────────────────
-// PUNTO DE ENTRADA: doGet
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Punto de entrada principal de la aplicación web.
- * Verifica el acceso del usuario y sirve el HTML apropiado.
- * @returns {HtmlOutput} La página web renderizada
- */
 function doGet() {
   try {
-    // Inicializar hojas si no existen
     inicializarHojas_();
-
     return HtmlService.createTemplateFromFile('index')
       .evaluate()
       .setTitle('Coworkings CUCEI - Reservas')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
-
   } catch (error) {
     registrarLog_('SISTEMA', 'ERROR_DOGet', error.toString());
-    return HtmlService.createHtmlOutput(
-      'Error al cargar la aplicación.'
-    );
+    return HtmlService.createHtmlOutput('Error detallado al cargar: ' + error.toString());
   }
 }
 
-/**
- * Incluye archivos externos en las plantillas HTML.
- * Uso: <?!= include('filename'); ?> en el HTML
- * @param {string} filename - Nombre del archivo a incluir
- * @returns {string} Contenido del archivo
- */
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 // ─────────────────────────────────────────────────────────────
-// MÓDULO: AUTENTICACIÓN Y CONTROL DE ACCESO
+// AUTENTICACIÓN CUSTOM Y REGISTRO (Roles adaptados)
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Obtiene la información completa del usuario activo y su rol.
- * Es la función principal que el frontend llama al iniciar.
- * @returns {Object} { correo, nombre, rol, accesoConcedido }
- */
-function obtenerInfoUsuario() {
-  try {
-    const correo = Session.getActiveUser().getEmail();
-
-    if (!correo || correo === '') {
-      return {
-        accesoConcedido: false,
-        rol: 'anonimo',
-        mensaje: 'No se pudo identificar tu cuenta de Google. Asegúrate de estar autenticado.'
-      };
-    }
-
-    const rol = determinarRolUsuario_(correo);
-
-    if (rol === 'denegado') {
-      registrarLog_(correo, 'ACCESO_DENEGADO', `Intento de acceso con dominio no permitido: ${correo}`);
-      return {
-        accesoConcedido: false,
-        rol: 'denegado',
-        correo: correo,
-        mensaje: 'Tu correo no pertenece a un dominio institucional de CUCEI autorizado.'
-      };
-    }
-
-    // Registrar o actualizar usuario en la hoja 'usuarios'
-    registrarOActualizarUsuario_(correo, rol);
-
-    registrarLog_(correo, 'ACCESO_CONCEDIDO', `Rol asignado: ${rol}`);
-
-    return {
-      accesoConcedido: true,
-      rol: rol,
-      correo: correo
-    };
-
-  } catch (error) {
-    registrarLog_('ERROR', 'obtenerInfoUsuario', error.toString());
-    return {
-      accesoConcedido: false,
-      rol: 'error',
-      mensaje: 'Error interno al verificar identidad: ' + error.toString()
-    };
+/** Hashea la contraseña con SHA-256 */
+function hashPassword_(password) {
+  const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password);
+  let txtHash = '';
+  for (let i = 0; i < rawHash.length; i++) {
+    let hashVal = rawHash[i];
+    if (hashVal < 0) hashVal += 256;
+    if (hashVal.toString(16).length == 1) txtHash += '0';
+    txtHash += hashVal.toString(16);
   }
+  return txtHash;
 }
 
-// Para calar el admin
-// function obtenerInfoUsuario() {
-//   try {
-//     // 🚀 MOCK PARA PRUEBAS: Forzar vista de administrador
-//     // Se comenta la validación real de Session.getActiveUser().getEmail()
-
-//     const correoSimulado = 'martha.angulo8828@alumnos.udg.mx';
-//     const rolSimulado = 'admin';
-//     // const rolSimulado = 'alumno';
-
-//     // Opcional: Registrar el acceso simulado en los logs para que no falle esa parte
-//     registrarOActualizarUsuario_(correoSimulado, rolSimulado);
-//     registrarLog_(correoSimulado, 'ACCESO_CONCEDIDO_SIMULADO', `Rol asignado: ${rolSimulado}`);
-
-//     return {
-//       accesoConcedido: true,
-//       rol: rolSimulado,
-//       correo: correoSimulado
-//     };
-
-//   } catch (error) {
-//     return {
-//       accesoConcedido: false,
-//       rol: 'error',
-//       mensaje: 'Error interno en el mock: ' + error.toString()
-//     };
-//   }
-// }
-
-/**
- * Determina el rol de un usuario según su dominio de correo.
- * @param {string} correo - Correo electrónico del usuario
- * @returns {string} 'admin' | 'alumno' | 'denegado'
- * @private
- */
 function determinarRolUsuario_(correo) {
   const correoLower = correo.toLowerCase();
 
-  // Admin tiene prioridad si el dominio coincide
-  const esAdmin = CONFIG.DOMINIOS_ADMIN.some(d => correoLower.endsWith(d));
-  if (esAdmin) return 'admin';
+  // Si el dominio es academico/cucei el rol predeterminado es "maestro"
+  const esMaestro = CONFIG.DOMINIOS_MAESTRO.some(d => correoLower.endsWith(d));
+  if (esMaestro) return 'maestro';
 
   const esAlumno = CONFIG.DOMINIOS_ALUMNO.some(d => correoLower.endsWith(d));
   if (esAlumno) return 'alumno';
@@ -176,1026 +68,392 @@ function determinarRolUsuario_(correo) {
   return 'denegado';
 }
 
-// ─────────────────────────────────────────────────────────────
-// MÓDULO: RESERVAS (Alumno)
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Registra una nueva reserva de coworking.
- * Valida colisiones antes de guardar y envía correo de confirmación.
- * @param {Object} datos - Datos del formulario de reserva
- * @returns {Object} { exito: boolean, mensaje: string }
- */
-function registrarReserva(datos) {
+function registrarUsuarioCustom(correo, codigo, contrasenia) {
   try {
-    // 1. Validar que el usuario tenga acceso
-    const infoUsuario = obtenerInfoUsuario();
-    if (!infoUsuario.accesoConcedido) {
-      return { exito: false, mensaje: 'Acceso denegado. No tienes permiso para crear reservas.' };
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
+    const data = sheet.getDataRange().getValues();
+    const correoLower = String(correo).trim().toLowerCase();
+    const codigoLower = String(codigo).trim().toLowerCase();
+
+    const rol = determinarRolUsuario_(correoLower);
+    if (rol === 'denegado') {
+      return { exito: false, mensaje: 'El correo no pertenece a un dominio autorizado (@alumnos, @academicos, @cucei).' };
     }
 
-    // 2. Validar datos mínimos requeridos
-    const validacion = validarDatosReserva_(datos);
-    if (!validacion.valido) {
-      return { exito: false, mensaje: validacion.mensaje };
+    // Verificar existencia
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (String(row[1]).toLowerCase() === correoLower) return { exito: false, mensaje: 'El correo ya está registrado.' };
+      if (String(row[2]).toLowerCase() === codigoLower) return { exito: false, mensaje: 'El código ya está registrado.' };
     }
+
+    const passHash = hashPassword_(contrasenia);
+    const nuevoId = `USR-${Date.now()}`;
+    sheet.appendRow([nuevoId, correoLower, codigoLower, passHash, rol, '', new Date()]);
+    registrarLog_(correoLower, 'REGISTRO_USUARIO', `Rol asignado: ${rol}`);
+
+    return { exito: true, mensaje: 'Registro exitoso.' };
+  } catch(e) {
+     return { exito: false, mensaje: 'Error interno: ' + e.toString() };
+  }
+}
+
+function loginUsuarioCustom(identificador, contrasenia) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
+    const data = sheet.getDataRange().getValues();
+    const idLower = String(identificador).trim().toLowerCase();
+    const passHash = hashPassword_(contrasenia);
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const correo = String(row[1]).toLowerCase();
+      const codigo = String(row[2]).toLowerCase();
+      const storedHash = String(row[3]);
+
+      if (correo === idLower || codigo === idLower) {
+        if (storedHash === passHash) {
+          // row[4] lee el rol directamente de la base de datos (por si un admin lo actualizó)
+          return {
+            exito: true,
+            usuario: {
+              accesoConcedido: true,
+              correo: row[1],
+              codigo: row[2],
+              rol: row[4],
+              nombre: row[5]
+            }
+          };
+        } else {
+          return { exito: false, mensaje: 'Contraseña incorrecta.' };
+        }
+      }
+    }
+    return { exito: false, mensaje: 'Usuario no encontrado.' };
+  } catch(e) {
+    return { exito: false, mensaje: 'Error interno: ' + e.toString() };
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// MÓDULO: GESTIÓN DE USUARIOS (NUEVO)
+// ─────────────────────────────────────────────────────────────
+
+function obtenerListaUsuarios(adminCorreo) {
+  try {
+    // Validacion basica (el frontend restringe, pero se puede poner validación estricta leyendo la hoja de nuevo)
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
+    const data = sheet.getDataRange().getValues();
+
+    let isRequeridorAdmin = false;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1]).toLowerCase() === String(adminCorreo).toLowerCase() && data[i][4] === 'admin') {
+        isRequeridorAdmin = true; break;
+      }
+    }
+
+    if (!isRequeridorAdmin) return { exito: false, mensaje: 'Permisos insuficientes.' };
+
+    const usuarios = [];
+    for (let i = 1; i < data.length; i++) {
+      if(!data[i][0]) continue;
+      usuarios.push({
+        id: data[i][0],
+        correo: data[i][1],
+        codigo: data[i][2],
+        rol: data[i][4]
+      });
+    }
+
+    return { exito: true, usuarios: usuarios };
+  } catch(e) {
+    return { exito: false, mensaje: e.toString() };
+  }
+}
+
+function actualizarRolUsuario(idUsuario, nuevoRol, adminCorreo) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(idUsuario)) {
+        sheet.getRange(i + 1, 5).setValue(nuevoRol); // Columna E (5) es el Rol
+        registrarLog_(adminCorreo, 'CAMBIO_ROL_USUARIO', `User ID: ${idUsuario} cambiado a ${nuevoRol}`);
+        return { exito: true, mensaje: 'Rol actualizado exitosamente' };
+      }
+    }
+    return { exito: false, mensaje: 'Usuario no encontrado' };
+  } catch (e) {
+    return { exito: false, mensaje: e.toString() };
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// MÓDULO: RESERVAS Y ADMIN DASHBOARD
+// ─────────────────────────────────────────────────────────────
+
+function registrarReserva(datos, sesionCorreo) {
+  try {
+    const validacion = validarDatosReserva_(datos);
+    if (!validacion.valido) return { exito: false, mensaje: validacion.mensaje };
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheetReservas = obtenerOCrearHoja_(ss, CONFIG.SHEET_RESERVAS);
     const nombreCompleto = `${datos.nombres} ${datos.apellidoPaterno} ${datos.apellidoMaterno}`.trim();
     const odsTexto = (datos.ods && datos.ods.length > 0) ? datos.ods.join(', ') : 'Ninguno seleccionado';
-
     const reservasCreadas = [];
 
-    // 3. Procesar cada fecha seleccionada
     for (const fechaSol of datos.fechas) {
-
-      // 4. VALIDACIÓN CRÍTICA: Verificar colisiones de horario
-      const colision = verificarColision_(
-        sheetReservas,
-        datos.coworking,
-        fechaSol,
-        datos.horaEntrada,
-        datos.horaSalida
-      );
-
+      const colision = verificarColision_(sheetReservas, datos.coworking, fechaSol, datos.horaEntrada, datos.horaSalida);
       if (colision.hayColision) {
-        registrarLog_(
-          datos.correo,
-          'COLISION_DETECTADA',
-          `Coworking: ${datos.coworking}, Fecha: ${fechaSol}, Hora: ${datos.horaEntrada}-${datos.horaSalida}`
-        );
-        return {
-          exito: false,
-          mensaje: `Conflicto de horario para el ${formatearFechaLegible_(fechaSol)}: ${colision.mensaje}`
-        };
+        return { exito: false, mensaje: `Conflicto de horario para el ${formatearFechaLegible_(fechaSol)}: ${colision.mensaje}` };
       }
-
-      // 5. Generar ID único para la reserva
       const idReserva = generarIdReserva_();
-
-      // 6. Guardar en Google Sheets
       sheetReservas.appendRow([
-        idReserva,                          // A: ID_Reserva
-        datos.correo,                       // B: Correo
-        fechaSol,                           // C: Fecha
-        datos.horaEntrada,                  // D: Hora_Inicio
-        datos.horaSalida,                   // E: Hora_Fin
-        CONFIG.ESTADOS.PENDIENTE,           // F: Estado
-        datos.coworking,                    // G: Espacio/Aula
-        nombreCompleto,                     // H: Nombre_Completo
-        datos.codigo,                       // I: Codigo
-        datos.telefono,                     // J: Telefono
-        datos.extension || 'N/A',           // K: Extension
-        datos.rol,                          // L: Rol_Usuario
-        datos.actividad,                    // M: Actividad
-        datos.descripcionActividad,         // N: Descripcion
-        odsTexto,                           // O: ODS
-        new Date()                          // P: Fecha_Registro
+        idReserva, datos.correo, fechaSol, datos.horaEntrada, datos.horaSalida,
+        CONFIG.ESTADOS.PENDIENTE, datos.coworking, nombreCompleto, datos.codigo,
+        datos.telefono, datos.extension || 'N/A', datos.rol, datos.actividad,
+        datos.descripcionActividad, odsTexto, new Date()
       ]);
-
       reservasCreadas.push(idReserva);
     }
 
-    // 7. Registrar en log
-    registrarLog_(
-      datos.correo,
-      'RESERVA_CREADA',
-      `IDs: ${reservasCreadas.join(', ')} | Coworking: ${datos.coworking} | Fechas: ${datos.fechas.join(', ')}`
-    );
-
-    // 8. Enviar correo de confirmación al usuario
+    registrarLog_(sesionCorreo, 'RESERVA_CREADA', `IDs: ${reservasCreadas.join(', ')} | Coworking: ${datos.coworking}`);
     enviarCorreoConfirmacion_(datos, nombreCompleto, odsTexto, reservasCreadas);
+    try { procesarRegistroLegacy_(datos, nombreCompleto, odsTexto); } catch (e) { }
 
-    // 9. Integración legacy con hoja "Registros" y Google Calendar (compatibilidad)
-    try {
-      procesarRegistroLegacy_(datos, nombreCompleto, odsTexto);
-    } catch (legacyError) {
-      // No bloquear el flujo principal si el legacy falla
-      registrarLog_(datos.correo, 'ADVERTENCIA_LEGACY', legacyError.toString());
-    }
-
-    return {
-      exito: true,
-      mensaje: `✅ ¡Reserva${reservasCreadas.length > 1 ? 's' : ''} creada${reservasCreadas.length > 1 ? 's' : ''} con éxito! Recibirás un correo de confirmación en ${datos.correo}. Estado: En espera de validación.`
-    };
-
+    return { exito: true, mensaje: `¡Reserva creada con éxito! Estado: En espera.` };
   } catch (error) {
-    registrarLog_('ERROR', 'registrarReserva', error.toString());
-    return {
-      exito: false,
-      mensaje: 'Error interno al procesar la reserva. Por favor intenta de nuevo. ' + error.toString()
-    };
+    return { exito: false, mensaje: 'Error al procesar reserva: ' + error.toString() };
   }
 }
 
-/**
- * Verifica si existe una colisión de horario para un espacio y fecha específicos.
- * Una colisión ocurre cuando la reserva nueva se superpone con una existente
- * en estado Pendiente o Aceptada.
- * @param {Sheet} sheet - Hoja de reservas
- * @param {string} coworking - Nombre del espacio
- * @param {string} fecha - Fecha en formato YYYY-MM-DD
- * @param {string} horaInicio - Hora de inicio HH:MM
- * @param {string} horaFin - Hora de fin HH:MM
- * @returns {Object} { hayColision: boolean, mensaje: string }
- * @private
- */
 function verificarColision_(sheet, coworking, fecha, horaInicio, horaFin) {
   const ultimaFila = sheet.getLastRow();
-
-  // Si solo hay encabezado o está vacía, no hay colisión
-  if (ultimaFila <= 1) {
-    return { hayColision: false };
-  }
-
+  if (ultimaFila <= 1) return { hayColision: false };
   const registros = sheet.getRange(2, 1, ultimaFila - 1, 7).getValues();
   const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
-
   const inicioNuevo = convertirHoraAMinutos_(horaInicio);
   const finNuevo    = convertirHoraAMinutos_(horaFin);
 
   for (const fila of registros) {
-    const [, correoExist, fechaExist, hiExist, hfExist, estadoExist, coworkingExist] = fila;
+    const [, , fechaExist, hiExist, hfExist, estadoExist, coworkingExist] = fila;
+    if (estadoExist !== CONFIG.ESTADOS.PENDIENTE && estadoExist !== CONFIG.ESTADOS.ACEPTADA) continue;
+    if (String(coworkingExist).trim().toLowerCase() !== coworking.trim().toLowerCase()) continue;
 
-    // Solo evaluar reservas activas (Pendiente o Aceptada)
-    if (estadoExist !== CONFIG.ESTADOS.PENDIENTE && estadoExist !== CONFIG.ESTADOS.ACEPTADA) {
-      continue;
-    }
-
-    // Verificar mismo coworking
-    if (String(coworkingExist).trim().toLowerCase() !== coworking.trim().toLowerCase()) {
-      continue;
-    }
-
-    // Normalizar fecha de la hoja (puede ser Date o string)
     let fechaNorm;
-    try {
-      fechaNorm = fechaExist instanceof Date
-        ? Utilities.formatDate(fechaExist, tz, 'yyyy-MM-dd')
-        : String(fechaExist).trim();
-    } catch (e) {
-      continue;
-    }
+    try { fechaNorm = fechaExist instanceof Date ? Utilities.formatDate(fechaExist, tz, 'yyyy-MM-dd') : String(fechaExist).trim(); }
+    catch (e) { continue; }
 
     if (fechaNorm !== fecha) continue;
 
-    // Verificar superposición de rangos horarios
     const inicioExist = convertirHoraAMinutos_(String(hiExist).substring(0, 5));
     const finExist    = convertirHoraAMinutos_(String(hfExist).substring(0, 5));
-
-    // Algoritmo de superposición de intervalos: A se superpone con B si A.inicio < B.fin && A.fin > B.inicio
     if (inicioNuevo < finExist && finNuevo > inicioExist) {
-      return {
-        hayColision: true,
-        mensaje: `El horario ${horaInicio}–${horaFin} se superpone con una reserva existente (${hiExist}–${hfExist}) en estado "${estadoExist}".`
-      };
+      return { hayColision: true, mensaje: `Superposición de horario.` };
     }
   }
-
   return { hayColision: false };
 }
 
-// ─────────────────────────────────────────────────────────────
-// MÓDULO: DASHBOARD ADMINISTRADOR
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Obtiene todos los datos necesarios para el dashboard del administrador.
- * Incluye métricas, lista de reservas y datos para gráficas.
- * @returns {Object} Datos completos del dashboard
- */
-function obtenerDashboardAdmin() {
+function obtenerDashboardAdmin(adminCorreo) {
   try {
-    // Verificar que sea administrador
-    const infoUsuario = obtenerInfoUsuario();
-    if (!infoUsuario.accesoConcedido || infoUsuario.rol !== 'admin') {
-      return { exito: false, mensaje: 'Acceso denegado. Se requieren permisos de administrador.' };
-    }
-
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheetReservas = obtenerOCrearHoja_(ss, CONFIG.SHEET_RESERVAS);
     const ultimaFila = sheetReservas.getLastRow();
 
     if (ultimaFila <= 1) {
-      return {
-        exito: true,
-        reservas: [],
-        metricas: { total: 0, pendientes: 0, aceptadas: 0, rechazadas: 0 },
-        graficaEstados: { labels: ['Pendiente', 'Aceptada', 'Rechazada'], datos: [0, 0, 0] },
-        graficaEspacios: { labels: [], datos: [] }
-      };
+      return { exito: true, reservas: [], metricas: { total: 0, pendientes: 0, aceptadas: 0, rechazadas: 0 }, graficaEstados: { labels: ['Pendiente', 'Aceptada', 'Rechazada'], datos: [0, 0, 0] }, graficaEspacios: { labels: [], datos: [] } };
     }
 
     const datos = sheetReservas.getRange(2, 1, ultimaFila - 1, 16).getValues();
     const tz = ss.getSpreadsheetTimeZone();
     const reservas = [];
-
-    // Contadores para métricas
     let pendientes = 0, aceptadas = 0, rechazadas = 0;
     const espaciosConteo = {};
 
     for (const fila of datos) {
-      const [idReserva, correo, fecha, horaInicio, horaFin, estado, coworking,
-             nombreCompleto, codigo, telefono, extension, rol,
-             actividad, descripcion, ods, fechaRegistro] = fila;
+      const [idReserva, correo, fecha, horaInicio, horaFin, estado, coworking, nombreCompleto, codigo, telefono, extension, rol, actividad, descripcion, ods, fechaRegistro] = fila;
+      if (!idReserva) continue;
 
-      if (!idReserva) continue; // Saltar filas vacías
+      let fechaStr = fecha instanceof Date ? Utilities.formatDate(fecha, tz, 'yyyy-MM-dd') : String(fecha).trim();
 
-      // Normalizar fecha
-      let fechaStr = '';
-      try {
-        fechaStr = fecha instanceof Date
-          ? Utilities.formatDate(fecha, tz, 'yyyy-MM-dd')
-          : String(fecha).trim();
-      } catch (e) {
-        fechaStr = String(fecha).trim();
-      }
+      switch(estado) { case CONFIG.ESTADOS.PENDIENTE: pendientes++; break; case CONFIG.ESTADOS.ACEPTADA: aceptadas++; break; case CONFIG.ESTADOS.RECHAZADA: rechazadas++; break; }
 
-      // Contar por estado
-      switch(estado) {
-        case CONFIG.ESTADOS.PENDIENTE:  pendientes++;  break;
-        case CONFIG.ESTADOS.ACEPTADA:   aceptadas++;   break;
-        case CONFIG.ESTADOS.RECHAZADA:  rechazadas++;  break;
-      }
-
-      // Contar por espacio
       const coworkingKey = String(coworking).trim();
       espaciosConteo[coworkingKey] = (espaciosConteo[coworkingKey] || 0) + 1;
 
-      reservas.push({
-        idReserva:      String(idReserva),
-        correo:         String(correo),
-        fecha:          fechaStr,
-        horaInicio:     formatearHoraSegura_(horaInicio),
-        horaFin:        formatearHoraSegura_(horaFin),
-        estado:         String(estado),
-        coworking:      coworkingKey,
-        nombreCompleto: String(nombreCompleto),
-        codigo:         String(codigo),
-        telefono:       String(telefono),
-        extension:      String(extension),
-        rol:            String(rol),
-        actividad:      String(actividad),
-        descripcion:    String(descripcion),
-        ods:            String(ods),
-        fechaRegistro:  fechaRegistro instanceof Date
-                          ? Utilities.formatDate(fechaRegistro, tz, 'dd/MM/yyyy HH:mm')
-                          : String(fechaRegistro)
-      });
+      reservas.push({ idReserva: String(idReserva), correo: String(correo), fecha: fechaStr, horaInicio: formatearHoraSegura_(horaInicio), horaFin: formatearHoraSegura_(horaFin), estado: String(estado), coworking: coworkingKey, nombreCompleto: String(nombreCompleto), codigo: String(codigo), telefono: String(telefono), extension: String(extension), rol: String(rol), actividad: String(actividad), descripcion: String(descripcion), ods: String(ods), fechaRegistro: fechaRegistro instanceof Date ? Utilities.formatDate(fechaRegistro, tz, 'dd/MM/yyyy HH:mm') : String(fechaRegistro) });
     }
 
-    // Ordenar reservas: pendientes primero, luego por fecha desc
     reservas.sort((a, b) => {
       const prioridad = { 'Pendiente': 0, 'Aceptada': 1, 'Rechazada': 2 };
-      if (prioridad[a.estado] !== prioridad[b.estado]) {
-        return prioridad[a.estado] - prioridad[b.estado];
-      }
+      if (prioridad[a.estado] !== prioridad[b.estado]) return prioridad[a.estado] - prioridad[b.estado];
       return b.fecha.localeCompare(a.fecha);
     });
 
-    registrarLog_(infoUsuario.correo, 'DASHBOARD_CONSULTADO', `Total registros: ${reservas.length}`);
-
-    return {
-      exito: true,
-      reservas: reservas,
-      metricas: {
-        total:      reservas.length,
-        pendientes: pendientes,
-        aceptadas:  aceptadas,
-        rechazadas: rechazadas
-      },
-      graficaEstados: {
-        labels: ['Pendiente', 'Aceptada', 'Rechazada'],
-        datos:  [pendientes, aceptadas, rechazadas]
-      },
-      graficaEspacios: {
-        labels: Object.keys(espaciosConteo),
-        datos:  Object.values(espaciosConteo)
-      }
-    };
-
-  } catch (error) {
-    registrarLog_('ERROR', 'obtenerDashboardAdmin', error.toString());
-    return { exito: false, mensaje: 'Error al cargar el dashboard: ' + error.toString() };
-  }
+    registrarLog_(adminCorreo, 'DASHBOARD_CONSULTADO', `Total: ${reservas.length}`);
+    return { exito: true, reservas: reservas, metricas: { total: reservas.length, pendientes, aceptadas, rechazadas }, graficaEstados: { labels: ['Pendiente', 'Aceptada', 'Rechazada'], datos: [pendientes, aceptadas, rechazadas] }, graficaEspacios: { labels: Object.keys(espaciosConteo), datos: Object.values(espaciosConteo) } };
+  } catch (error) { return { exito: false, mensaje: error.toString() }; }
 }
 
-/**
- * Actualiza el estado de una reserva (Aceptada o Rechazada).
- * Regla de negocio: Una reserva Aceptada NO puede modificarse.
- * @param {string} idReserva - ID único de la reserva
- * @param {string} nuevoEstado - 'Aceptada' o 'Rechazada'
- * @returns {Object} { exito: boolean, mensaje: string }
- */
-
-function actualizarEstadoReserva(idReserva, nuevoEstado) {
+function actualizarEstadoReserva(idReserva, nuevoEstado, adminCorreo) {
   try {
-    const infoUsuario = obtenerInfoUsuario();
-    if (!infoUsuario.accesoConcedido || infoUsuario.rol !== 'admin') {
-      return { exito: false, mensaje: 'Acceso denegado. Solo administradores pueden cambiar el estado.' };
-    }
-
-    const estadosPermitidos = [CONFIG.ESTADOS.ACEPTADA, CONFIG.ESTADOS.RECHAZADA];
-    if (!estadosPermitidos.includes(nuevoEstado)) {
-      return { exito: false, mensaje: `Estado inválido: "${nuevoEstado}".` };
-    }
-
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheetReservas = obtenerOCrearHoja_(ss, CONFIG.SHEET_RESERVAS);
-    const ultimaFila = sheetReservas.getLastRow();
-
-    if (ultimaFila <= 1) {
-      return { exito: false, mensaje: 'No se encontraron reservas en el sistema.' };
-    }
-
-    // MODIFICADO: Leer 16 columnas en lugar de 8 para obtener todos los detalles
-    const datos = sheetReservas.getRange(2, 1, ultimaFila - 1, 16).getValues();
+    const datos = sheetReservas.getRange(2, 1, sheetReservas.getLastRow() - 1, 16).getValues();
 
     for (let i = 0; i < datos.length; i++) {
-      const [idFila, correoFila, , , , estadoFila] = datos[i];
+      if (String(datos[i][0]).trim() !== String(idReserva).trim()) continue;
+      if (datos[i][5] === CONFIG.ESTADOS.ACEPTADA) return { exito: false, mensaje: '🔒 Esta reserva ya fue Aceptada.' };
 
-      if (String(idFila).trim() !== String(idReserva).trim()) continue;
+      sheetReservas.getRange(i + 2, 6).setValue(nuevoEstado);
+      registrarLog_(adminCorreo, `RESERVA_${nuevoEstado.toUpperCase()}`, `ID: ${idReserva} | Admin: ${adminCorreo}`);
+      enviarNotificacionCambioEstado_(String(datos[i][1]), idReserva, nuevoEstado, datos[i]);
+      if (nuevoEstado === CONFIG.ESTADOS.ACEPTADA) crearEventoCalendario_(datos[i]);
 
-      if (estadoFila === CONFIG.ESTADOS.ACEPTADA) {
-        registrarLog_(infoUsuario.correo, 'INTENTO_MODIFICACION_BLOQUEADO', `ID: ${idReserva} ya está Aceptada.`);
-        return { exito: false, mensaje: '🔒 Esta reserva ya fue Aceptada y no puede modificarse.' };
-      }
-
-      const filaHoja = i + 2;
-      sheetReservas.getRange(filaHoja, 6).setValue(nuevoEstado);
-
-      registrarLog_(infoUsuario.correo, `RESERVA_${nuevoEstado.toUpperCase()}`, `ID: ${idReserva} | Usuario: ${correoFila} | Admin: ${infoUsuario.correo}`);
-
-      enviarNotificacionCambioEstado_(String(correoFila), idReserva, nuevoEstado, datos[i]);
-
-      // NUEVO: Crear evento en Google Calendar si fue aprobada
-      if (nuevoEstado === CONFIG.ESTADOS.ACEPTADA) {
-        crearEventoCalendario_(datos[i]);
-      }
-
-      return { exito: true, mensaje: `✅ Reserva ${idReserva} marcada como "${nuevoEstado}" exitosamente.` };
+      return { exito: true, mensaje: `✅ Reserva ${idReserva} actualizada a "${nuevoEstado}".` };
     }
-
-    return { exito: false, mensaje: `No se encontró la reserva con ID: ${idReserva}` };
-
-  } catch (error) {
-    registrarLog_('ERROR', 'actualizarEstadoReserva', error.toString());
-    return { exito: false, mensaje: 'Error al actualizar el estado: ' + error.toString() };
-  }
+    return { exito: false, mensaje: `No encontrada.` };
+  } catch (error) { return { exito: false, mensaje: error.toString() }; }
 }
 
-/**
- * Busca el historial de reservas de un usuario por correo electrónico.
- * @param {string} correoBusqueda - Correo a buscar
- * @returns {Object} { exito: boolean, reservas: Array }
- */
-function buscarReservasPorCorreo(correoBusqueda) {
+function buscarReservasPorCorreo(correoBusqueda, adminCorreo) {
   try {
-    // Validar permisos
-    const infoUsuario = obtenerInfoUsuario();
-    if (!infoUsuario.accesoConcedido || infoUsuario.rol !== 'admin') {
-      return { exito: false, mensaje: 'Acceso denegado.' };
-    }
-
-    if (!correoBusqueda || correoBusqueda.trim() === '') {
-      return { exito: false, mensaje: 'Por favor ingresa un correo para buscar.' };
-    }
-
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheetReservas = obtenerOCrearHoja_(ss, CONFIG.SHEET_RESERVAS);
-    const ultimaFila = sheetReservas.getLastRow();
-
-    if (ultimaFila <= 1) {
-      return { exito: true, reservas: [], mensaje: 'No hay reservas registradas.' };
-    }
-
-    const datos = sheetReservas.getRange(2, 1, ultimaFila - 1, 16).getValues();
+    const datos = sheetReservas.getRange(2, 1, sheetReservas.getLastRow() - 1, 16).getValues();
     const tz = ss.getSpreadsheetTimeZone();
     const resultados = [];
     const busquedaLower = correoBusqueda.trim().toLowerCase();
 
     for (const fila of datos) {
-      const [idReserva, correo, fecha, horaInicio, horaFin, estado, coworking,
-             nombreCompleto, codigo, telefono, extension, rol,
-             actividad, descripcion, ods, fechaRegistro] = fila;
-
-      if (!String(correo).toLowerCase().includes(busquedaLower)) continue;
-
-      let fechaStr = '';
-      try {
-        fechaStr = fecha instanceof Date
-          ? Utilities.formatDate(fecha, tz, 'yyyy-MM-dd')
-          : String(fecha).trim();
-      } catch (e) { fechaStr = String(fecha).trim(); }
-
-      resultados.push({
-        idReserva:      String(idReserva),
-        correo:         String(correo),
-        fecha:          fechaStr,
-        horaInicio:     String(horaInicio).substring(0, 5),
-        horaFin:        String(horaFin).substring(0, 5),
-        estado:         String(estado),
-        coworking:      String(coworking),
-        nombreCompleto: String(nombreCompleto),
-        codigo:         String(codigo),
-        actividad:      String(actividad),
-        fechaRegistro:  fechaRegistro instanceof Date
-                          ? Utilities.formatDate(fechaRegistro, tz, 'dd/MM/yyyy HH:mm')
-                          : String(fechaRegistro)
-      });
+      if (!String(fila[1]).toLowerCase().includes(busquedaLower)) continue;
+      let fStr = fila[2] instanceof Date ? Utilities.formatDate(fila[2], tz, 'yyyy-MM-dd') : String(fila[2]).trim();
+      resultados.push({ idReserva: String(fila[0]), correo: String(fila[1]), fecha: fStr, horaInicio: String(fila[3]).substring(0, 5), horaFin: String(fila[4]).substring(0, 5), estado: String(fila[5]), coworking: String(fila[6]) });
     }
-
-    registrarLog_(
-      infoUsuario.correo,
-      'BUSQUEDA_REALIZADA',
-      `Búsqueda: "${correoBusqueda}" | Resultados: ${resultados.length}`
-    );
-
-    return {
-      exito: true,
-      reservas: resultados,
-      total: resultados.length,
-      mensaje: resultados.length > 0
-        ? `Se encontraron ${resultados.length} reserva(s) para "${correoBusqueda}".`
-        : `No se encontraron reservas para "${correoBusqueda}".`
-    };
-
-  } catch (error) {
-    registrarLog_('ERROR', 'buscarReservasPorCorreo', error.toString());
-    return { exito: false, mensaje: 'Error en la búsqueda: ' + error.toString() };
-  }
+    registrarLog_(adminCorreo, 'BUSQUEDA_REALIZADA', `"${correoBusqueda}"`);
+    return { exito: true, reservas: resultados, mensaje: resultados.length > 0 ? `Se encontraron ${resultados.length} reservas.` : `No se encontraron.` };
+  } catch (error) { return { exito: false, mensaje: error.toString() }; }
 }
 
 // ─────────────────────────────────────────────────────────────
-// MÓDULO: CORREOS ELECTRÓNICOS
+// CORREOS Y NOTIFICACIONES
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Envía el correo de confirmación de reserva al usuario.
- * Usa plantilla HTML profesional con identidad CUCEI.
- * @param {Object} datos - Datos de la reserva
- * @param {string} nombreCompleto - Nombre completo del usuario
- * @param {string} odsTexto - Texto de ODS seleccionados
- * @param {Array} idsReservas - IDs de las reservas creadas
- * @private
- */
 function enviarCorreoConfirmacion_(datos, nombreCompleto, odsTexto, idsReservas) {
   try {
-    const fechasFormateadas = datos.fechas
-      .map(f => {
-        const partes = f.split('-');
-        return `${partes[2]}/${partes[1]}/${partes[0]}`;
-      })
-      .join(', ');
-
-    const asunto = `📋 Solicitud de Reserva Recibida – ${datos.coworking} | CUCEI`;
-
-    const cuerpoHtml = generarPlantillaCorreo_({
-      titulo:      'Solicitud de Reserva Recibida',
-      subtitulo:   'Tu solicitud está en espera de confirmación',
-      nombreUsuario: datos.nombres,
-      estado:      'En espera de confirmación',
-      estadoColor: '#f59e0b',
-      detalles: [
-        { etiqueta: 'Espacio / Aula',        valor: datos.coworking },
-        { etiqueta: 'Actividad',             valor: datos.actividad },
-        { etiqueta: 'Fecha(s)',              valor: fechasFormateadas },
-        { etiqueta: 'Horario',              valor: `${datos.horaEntrada} – ${datos.horaSalida} hrs` },
-        { etiqueta: 'Rol',                   valor: datos.rol === 'estudiante' ? 'Comunidad Estudiantil' : 'Personal Administrativo' },
-        { etiqueta: 'Código',                valor: datos.codigo },
-        { etiqueta: 'ODS Vinculados',        valor: odsTexto },
-        { etiqueta: 'ID(s) de Reserva',      valor: idsReservas.join(', ') }
-      ],
-      mensaje: 'Tu solicitud ha sido recibida y está siendo revisada por el equipo de administración de CUCEI. Recibirás una notificación cuando sea aprobada o rechazada.'
-    });
-
-    MailApp.sendEmail({
-      to:       datos.correo,
-      subject:  asunto,
-      htmlBody: cuerpoHtml
-    });
-
-  } catch (error) {
-    registrarLog_(datos.correo, 'ERROR_CORREO_CONFIRMACION', error.toString());
-    // No lanzar el error para no bloquear el flujo principal
-  }
+    const fechasFormateadas = datos.fechas.map(f => `${f.split('-')[2]}/${f.split('-')[1]}/${f.split('-')[0]}`).join(', ');
+    const html = generarPlantillaCorreo_({ titulo: 'Solicitud Recibida', subtitulo: 'Espera confirmación', nombreUsuario: datos.nombres, estado: 'En espera', estadoColor: '#f59e0b', detalles: [{etiqueta:'Espacio',valor:datos.coworking},{etiqueta:'Fechas',valor:fechasFormateadas},{etiqueta:'Horario',valor:`${datos.horaEntrada}-${datos.horaSalida}`},{etiqueta:'IDs',valor:idsReservas.join(', ')}], mensaje: 'Tu solicitud fue recibida.'});
+    MailApp.sendEmail({ to: datos.correo, subject: `📋 Solicitud – ${datos.coworking}`, htmlBody: html });
+  } catch (e) {}
 }
 
-/**
- * Envía notificación al usuario cuando un admin cambia el estado de su reserva.
- * @param {string} correoUsuario - Correo del usuario
- * @param {string} idReserva - ID de la reserva
- * @param {string} nuevoEstado - Nuevo estado
- * @param {Array} filaReserva - Datos de la fila de la reserva
- * @private
- */
-
-/**
- * Envía notificación al usuario cuando un admin cambia el estado de su reserva.
- * @param {string} correoUsuario - Correo del usuario
- * @param {string} idReserva - ID de la reserva
- * @param {string} nuevoEstado - Nuevo estado
- * @param {Array} filaReserva - Datos de la fila de la reserva
- * @private
- */
 function enviarNotificacionCambioEstado_(correoUsuario, idReserva, nuevoEstado, filaReserva) {
   try {
-    const [, , fecha, horaInicio, horaFin, , coworking, nombreCompleto, , , , , actividad] = filaReserva;
-
     const esAprobada = nuevoEstado === CONFIG.ESTADOS.ACEPTADA;
-    const asunto = esAprobada
-      ? `✅ ¡Tu reserva fue APROBADA! – ${coworking} | CUCEI`
-      : `❌ Tu reserva fue rechazada – ${coworking} | CUCEI`;
-
-    const primerNombre = String(nombreCompleto).split(' ')[0] || 'usuario';
-    const fechaStr = fecha instanceof Date
-      ? Utilities.formatDate(fecha, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), 'dd/MM/yyyy')
-      : String(fecha);
-
-    // NUEVO: Usar el formateador seguro para extraer la hora correctamente
-    const hiStr = formatearHoraSegura_(horaInicio);
-    const hfStr = formatearHoraSegura_(horaFin);
-
-    const cuerpoHtml = generarPlantillaCorreo_({
-      titulo:      esAprobada ? '¡Reserva Aprobada!' : 'Reserva Rechazada',
-      subtitulo:   esAprobada
-                     ? 'Tu espacio ha sido confirmado. ¡Hasta pronto!'
-                     : 'Lamentablemente tu solicitud no fue aprobada.',
-      nombreUsuario: primerNombre,
-      estado:      nuevoEstado,
-      estadoColor: esAprobada ? '#10b981' : '#ef4444',
-      detalles: [
-        { etiqueta: 'ID de Reserva',  valor: idReserva },
-        { etiqueta: 'Espacio / Aula', valor: String(coworking) },
-        { etiqueta: 'Actividad',      valor: String(actividad) },
-        { etiqueta: 'Fecha',          valor: fechaStr },
-        // MODIFICADO: Aplicar las horas formateadas en lugar de substring
-        { etiqueta: 'Horario',        valor: `${hiStr} – ${hfStr} hrs` }
-      ],
-      mensaje: esAprobada
-        ? 'Recuerda llegar puntualmente y respetar las normas del espacio de coworking.'
-        : 'Si tienes dudas sobre el motivo del rechazo, por favor contacta a la administración de CUCEI.'
-    });
-
-    MailApp.sendEmail({
-      to:       correoUsuario,
-      subject:  asunto,
-      htmlBody: cuerpoHtml
-    });
-
-  } catch (error) {
-    registrarLog_(correoUsuario, 'ERROR_NOTIFICACION_ESTADO', error.toString());
-  }
+    const html = generarPlantillaCorreo_({ titulo: esAprobada ? 'Aprobada' : 'Rechazada', subtitulo: esAprobada ? 'Confirmado.' : 'No aprobada.', nombreUsuario: String(filaReserva[7]).split(' ')[0], estado: nuevoEstado, estadoColor: esAprobada ? '#10b981' : '#ef4444', detalles: [{etiqueta:'Espacio',valor:filaReserva[6]},{etiqueta:'ID',valor:idReserva}], mensaje: 'Gestión completada.'});
+    MailApp.sendEmail({ to: correoUsuario, subject: esAprobada ? `✅ Aprobada: ${filaReserva[6]}` : `❌ Rechazada: ${filaReserva[6]}`, htmlBody: html });
+  } catch (e) {}
 }
 
-/**
- * Genera la plantilla HTML para correos electrónicos.
- * Diseño profesional, minimalista con identidad CUCEI.
- * @param {Object} opciones - Opciones de la plantilla
- * @returns {string} HTML del correo
- * @private
- */
 function generarPlantillaCorreo_(opciones) {
-  const filasDetalles = opciones.detalles.map(d => `
-    <tr>
-      <td style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
-        <strong style="color: #64748b; font-size: 13px;">${d.etiqueta}</strong><br>
-        <span style="color: #0f172a; font-size: 15px;">${d.valor}</span>
-      </td>
-    </tr>
-  `).join('');
-
-  return `
-  <!DOCTYPE html>
-  <html lang="es">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${opciones.titulo}</title>
-  </head>
-  <body style="margin: 0; padding: 20px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f8fafc;">
-
-    <table width="100%" max-width="600" align="center" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-
-      <!-- Header -->
-      <tr>
-        <td style="background-color: #002f5c; padding: 30px 20px; text-align: center;">
-          <table width="100%">
-            <tr>
-              <td align="center">
-                <span style="display: block; color: #bae6fd; font-size: 12px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase;">UdeG</span>
-                <span style="display: block; color: #ffffff; font-size: 28px; font-weight: 900; margin-top: 4px;">CUCEI</span>
-                <span style="display: block; color: #93c5fd; font-size: 13px; margin-top: 4px;">Red de Espacios de Colaboración</span>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-
-      <!-- Hero Section -->
-      <tr>
-        <td style="padding: 40px 30px; text-align: center; border-bottom: 1px solid #f1f5f9;">
-          <div style="display: inline-block; padding: 6px 16px; border-radius: 20px; background-color: ${opciones.estadoColor}15; color: ${opciones.estadoColor}; font-size: 12px; font-weight: bold; margin-bottom: 16px;">
-            ${opciones.estado.toUpperCase()}
-          </div>
-          <h1 style="margin: 0 0 10px 0; color: #0f172a; font-size: 24px;">${opciones.titulo}</h1>
-          <p style="margin: 0; color: #64748b; font-size: 16px;">${opciones.subtitulo}</p>
-        </td>
-      </tr>
-
-      <!-- Main Content -->
-      <tr>
-        <td style="padding: 30px;">
-          <p style="margin: 0 0 20px 0; color: #334155; font-size: 16px; line-height: 1.6;">
-            <strong>Hola, ${opciones.nombreUsuario},</strong><br>
-            ${opciones.mensaje}
-          </p>
-
-          <div style="background-color: #f8fafc; border-radius: 8px; padding: 20px;">
-            <h3 style="margin: 0 0 15px 0; color: #0f172a; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;">Detalles de la Solicitud</h3>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              ${filasDetalles}
-            </table>
-          </div>
-        </td>
-      </tr>
-
-      <!-- Footer Info -->
-      <tr>
-        <td style="padding: 0 30px 30px 30px;">
-          <table width="100%" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 15px;">
-            <tr>
-              <td style="color: #166534; font-size: 13px; line-height: 1.5; text-align: center;">
-                ℹ️ Importante: Este correo es informativo. <br>
-                Para cualquier consulta, comunícate directamente con la <br>
-                administración de CUCEI.
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-
-      <!-- Footer Legal -->
-      <tr>
-        <td style="background-color: #f1f5f9; padding: 20px; text-align: center;">
-          <p style="margin: 0; color: #64748b; font-size: 12px; line-height: 1.6;">
-            © ${new Date().getFullYear()} Coordinación de Ingeniería en Computación – CUCEI<br>
-            Universidad de Guadalajara · Este correo fue generado automáticamente
-          </p>
-        </td>
-      </tr>
-    </table>
-
-  </body>
-  </html>
-  `;
+  const filas = opciones.detalles.map(d => `<tr><td style="padding:10px 0; border-bottom:1px solid #f1f5f9;"><strong>${d.etiqueta}</strong><br>${d.valor}</td></tr>`).join('');
+  return `<div style="font-family:sans-serif; padding:20px; background:#f8fafc;"><div style="background:#fff; padding:20px; border-radius:8px;"><h2>${opciones.titulo}</h2><p>${opciones.mensaje}</p><table>${filas}</table></div></div>`;
 }
 
 // ─────────────────────────────────────────────────────────────
-// MÓDULO: LOGS Y AUDITORÍA
+// LOGS Y UTILIDADES BASICAS
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Registra una acción en la hoja de logs para auditoría.
- * @param {string} usuario - Correo o identificador del usuario
- * @param {string} accion - Tipo de acción realizada
- * @param {string} detalles - Descripción detallada de la acción
- * @private
- */
 function registrarLog_(usuario, accion, detalles) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheetLogs = obtenerOCrearHoja_(ss, CONFIG.SHEET_LOGS);
-
-    sheetLogs.appendRow([
-      new Date(),                             // A: Timestamp
-      String(usuario || 'SISTEMA'),           // B: Usuario
-      String(accion || 'ACCION'),             // C: Accion
-      String(detalles || '').substring(0, 500) // D: Detalles (máx 500 chars)
-    ]);
-  } catch (e) {
-    // Silenciar errores de logging para no afectar el flujo principal
-    console.error('Error al escribir log:', e);
-  }
+    const sheet = obtenerOCrearHoja_(SpreadsheetApp.getActiveSpreadsheet(), CONFIG.SHEET_LOGS);
+    sheet.appendRow([new Date(), String(usuario), String(accion), String(detalles).substring(0, 500)]);
+  } catch (e) {}
 }
 
-// ─────────────────────────────────────────────────────────────
-// MÓDULO: INICIALIZACIÓN DE HOJAS
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Inicializa todas las hojas necesarias del sistema si no existen.
- * Se llama automáticamente en doGet().
- * @private
- */
 function inicializarHojas_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  // Hoja: usuarios
   const hUsuarios = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
   if (hUsuarios.getLastRow() === 0) {
-    hUsuarios.appendRow(['ID', 'Correo', 'Nombre', 'Rol', 'Fecha_Registro']);
-    hUsuarios.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#002f5c').setFontColor('#ffffff');
+    hUsuarios.appendRow(['ID', 'Correo', 'Codigo', 'PasswordHash', 'Rol', 'Nombre', 'Fecha_Registro']);
+    hUsuarios.getRange(1, 1, 1, 7).setFontWeight('bold').setBackground('#002f5c').setFontColor('#ffffff');
   }
-
-  // Hoja: capacidad (Reservaciones)
   const hReservas = obtenerOCrearHoja_(ss, CONFIG.SHEET_RESERVAS);
   if (hReservas.getLastRow() === 0) {
-    hReservas.appendRow([
-      'ID_Reserva', 'Correo', 'Fecha', 'Hora_Inicio', 'Hora_Fin',
-      'Estado', 'Espacio_Aula', 'Nombre_Completo', 'Codigo',
-      'Telefono', 'Extension', 'Rol', 'Actividad', 'Descripcion',
-      'ODS', 'Fecha_Registro'
-    ]);
+    hReservas.appendRow(['ID_Reserva', 'Correo', 'Fecha', 'Hora_Inicio', 'Hora_Fin', 'Estado', 'Espacio_Aula', 'Nombre_Completo', 'Codigo', 'Telefono', 'Extension', 'Rol', 'Actividad', 'Descripcion', 'ODS', 'Fecha_Registro']);
     hReservas.getRange(1, 1, 1, 16).setFontWeight('bold').setBackground('#002f5c').setFontColor('#ffffff');
   }
-
-  // Hoja: logs
   const hLogs = obtenerOCrearHoja_(ss, CONFIG.SHEET_LOGS);
   if (hLogs.getLastRow() === 0) {
     hLogs.appendRow(['Timestamp', 'Usuario', 'Accion', 'Detalles']);
-    hLogs.getRange(1, 1, 1, 4).setFontWeight('bold').setBackground('#002f5c').setFontColor('#ffffff');
   }
 }
 
-/**
- * Registra o actualiza un usuario en la hoja 'usuarios'.
- * @param {string} correo - Correo del usuario
- * @param {string} rol - Rol asignado
- * @private
- */
-function registrarOActualizarUsuario_(correo, rol) {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
-    const ultimaFila = sheet.getLastRow();
-
-    if (ultimaFila > 1) {
-      const datos = sheet.getRange(2, 2, ultimaFila - 1, 1).getValues();
-      for (let i = 0; i < datos.length; i++) {
-        if (String(datos[i][0]).toLowerCase() === correo.toLowerCase()) {
-          // Usuario ya existe, no hacer nada
-          return;
-        }
-      }
-    }
-
-    // Nuevo usuario: agregar registro
-    const nuevoId = `USR-${Date.now()}`;
-    sheet.appendRow([nuevoId, correo, '', rol, new Date()]);
-
-  } catch (e) {
-    console.error('Error al registrar usuario:', e);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// MÓDULO: UTILIDADES
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Obtiene una hoja por nombre o la crea si no existe.
- * @param {Spreadsheet} ss - Spreadsheet activo
- * @param {string} nombre - Nombre de la hoja
- * @returns {Sheet} La hoja encontrada o creada
- * @private
- */
 function obtenerOCrearHoja_(ss, nombre) {
   let sheet = ss.getSheetByName(nombre);
-  if (!sheet) {
-    sheet = ss.insertSheet(nombre);
-  }
-  return sheet;
+  return sheet ? sheet : ss.insertSheet(nombre);
 }
 
-/**
- * Genera un ID único para una reserva.
- * Formato: RES-YYYYMMDD-RANDOM
- * @returns {string} ID único
- * @private
- */
 function generarIdReserva_() {
-  const fecha = Utilities.formatDate(new Date(), 'America/Mexico_City', 'yyyyMMdd');
-  const random = Math.random().toString(36).substring(2, 7).toUpperCase();
-  return `RES-${fecha}-${random}`;
+  return `RES-${Utilities.formatDate(new Date(), 'America/Mexico_City', 'yyyyMMdd')}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 }
 
-/**
- * Convierte una cadena de hora HH:MM a minutos totales.
- * @param {string} horaStr - Hora en formato HH:MM
- * @returns {number} Minutos totales
- * @private
- */
-function convertirHoraAMinutos_(horaStr) {
-  const partes = String(horaStr).split(':');
-  return parseInt(partes[0], 10) * 60 + parseInt(partes[1], 10);
-}
+function convertirHoraAMinutos_(horaStr) { const p = String(horaStr).split(':'); return parseInt(p[0], 10) * 60 + parseInt(p[1], 10); }
+function convertirMinutosAHoraString_(m) { return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; }
+function formatearFechaLegible_(fStr) { const p = fStr.split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fStr; }
 
-/**
- * Convierte minutos totales a cadena de hora HH:MM.
- * @param {number} totalMinutos
- * @returns {string} Hora en formato HH:MM
- * @private
- */
-function convertirMinutosAHoraString_(totalMinutos) {
-  const hrs = Math.floor(totalMinutos / 60);
-  const min = totalMinutos % 60;
-  return `${String(hrs).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-}
-
-/**
- * Formatea una fecha YYYY-MM-DD a formato legible DD/MM/YYYY.
- * @param {string} fechaStr - Fecha en formato ISO
- * @returns {string} Fecha formateada
- * @private
- */
-function formatearFechaLegible_(fechaStr) {
-  const partes = fechaStr.split('-');
-  return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : fechaStr;
-}
-
-/**
- * Valida los datos mínimos requeridos para crear una reserva.
- * @param {Object} datos - Datos del formulario
- * @returns {Object} { valido: boolean, mensaje: string }
- * @private
- */
 function validarDatosReserva_(datos) {
-  const camposRequeridos = ['correo', 'nombres', 'apellidoPaterno', 'coworking', 'horaEntrada', 'horaSalida'];
-
-  for (const campo of camposRequeridos) {
-    if (!datos[campo] || String(datos[campo]).trim() === '') {
-      return { valido: false, mensaje: `El campo "${campo}" es requerido y está vacío.` };
-    }
-  }
-
-  if (!datos.fechas || datos.fechas.length === 0) {
-    return { valido: false, mensaje: 'Debes seleccionar al menos una fecha.' };
-  }
-
-  // Validar que horaFin sea mayor que horaInicio
-  if (convertirHoraAMinutos_(datos.horaEntrada) >= convertirHoraAMinutos_(datos.horaSalida)) {
-    return { valido: false, mensaje: 'La hora de salida debe ser posterior a la hora de entrada.' };
-  }
-
+  const campos = ['correo', 'nombres', 'apellidoPaterno', 'coworking', 'horaEntrada', 'horaSalida'];
+  for (const c of campos) if (!datos[c] || String(datos[c]).trim() === '') return { valido: false, mensaje: `Campo ${c} vacío.` };
+  if (!datos.fechas || datos.fechas.length === 0) return { valido: false, mensaje: 'Selecciona una fecha.' };
+  if (convertirHoraAMinutos_(datos.horaEntrada) >= convertirHoraAMinutos_(datos.horaSalida)) return { valido: false, mensaje: 'Salida debe ser posterior a la entrada.' };
   return { valido: true };
 }
 
-// ─────────────────────────────────────────────────────────────
-// COMPATIBILIDAD LEGACY (Sistema anterior)
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Mantiene compatibilidad con el sistema legacy (hoja Registros + Google Calendar).
- * @param {Object} datos - Datos de la reserva
- * @param {string} nombreCompleto - Nombre completo
- * @param {string} odsTexto - ODS seleccionados
- * @private
- */
 function procesarRegistroLegacy_(datos, nombreCompleto, odsTexto) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetRegistros = ss.getSheetByName('Registros');
-  if (!sheetRegistros) return; // Si no existe la hoja legacy, ignorar
-
-  const minutosInicio = convertirHoraAMinutos_(datos.horaEntrada);
-  const minutosFin    = convertirHoraAMinutos_(datos.horaSalida);
-  const horasSlots    = [];
-
-  for (let m = minutosInicio; m < minutosFin; m += 30) {
-    horasSlots.push(convertirMinutosAHoraString_(m));
-  }
-
-  for (const fechaSol of datos.fechas) {
-    let eventoId = '';
-    try {
-      const cal = CalendarApp.getDefaultCalendar();
-      const fechaHoraInicio = new Date(`${fechaSol}T${datos.horaEntrada}:00`);
-      const fechaHoraFin    = new Date(`${fechaSol}T${datos.horaSalida}:00`);
-      const tituloEvento = `Reserva [${datos.actividad}] ${datos.coworking} - ${nombreCompleto}`;
-      const evento = cal.createEvent(tituloEvento, fechaHoraInicio, fechaHoraFin, {
-        description: `Usuario: ${nombreCompleto}\nCorreo: ${datos.correo}\nODS: ${odsTexto}`,
-        guests:      datos.correo,
-        sendInvites: true
-      });
-      eventoId = evento.getId();
-    } catch (calError) {
-      registrarLog_(datos.correo, 'ADVERTENCIA_CALENDAR', calError.toString());
-    }
-
-    // Insertar en la hoja "Registros" (legacy) dividida en slots
-    for (const slot of horasSlots) {
-      sheetRegistros.appendRow([
-        new Date(),                 // Marca temporal
-        datos.correo,               // Dirección de correo electrónico
-        datos.nombres,              // Nombres
-        datos.apellidoPaterno,      // Apellido paterno
-        datos.apellidoMaterno,      // Apellido materno
-        datos.codigo,               // Código de estudiante
-        datos.telefono,             // Número de teléfono
-        datos.rol,                  // ¿Eres estudiante o trabajador?
-        datos.extension,            // Extensión
-        datos.actividad,            // Nombre del proyecto o actividad
-        datos.descripcionActividad, // Descripción
-        datos.coworking,            // Coworking seleccionado
-        fechaSol,                   // Fecha
-        slot,                       // Hora de entrada (slot)
-        odsTexto,                   // ODS
-        eventoId                    // ID Evento Calendar
-      ]);
+  if (!sheetRegistros) return;
+  const hSlots = [];
+  for (let m = convertirHoraAMinutos_(datos.horaEntrada); m < convertirHoraAMinutos_(datos.horaSalida); m += 30) hSlots.push(convertirMinutosAHoraString_(m));
+  for (const f of datos.fechas) {
+    for (const slot of hSlots) {
+      sheetRegistros.appendRow([new Date(), datos.correo, datos.nombres, datos.apellidoPaterno, datos.apellidoMaterno, datos.codigo, datos.telefono, datos.rol, datos.extension, datos.actividad, datos.descripcionActividad, datos.coworking, f, slot, odsTexto, '']);
     }
   }
 }
 
-/**
- * Crea un evento en Google Calendar cuando se aprueba una reserva e invita al usuario.
- * @param {Array} filaReserva - Datos de la fila completa de la reserva
- * @private
- */
-
-/**
- * Crea un evento en Google Calendar cuando se aprueba una reserva e invita al usuario.
- * @param {Array} filaReserva - Datos de la fila completa de la reserva
- * @private
- */
-function crearEventoCalendario_(filaReserva) {
+function crearEventoCalendario_(fila) {
   try {
-    // Desestructurar las columnas importantes (basado en el orden de la hoja 'capacidad')
-    const [, correo, fecha, horaInicio, horaFin, , coworking, nombreCompleto, , , , , actividad, , ods] = filaReserva;
-
     const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
-    let fechaStr = '';
-
-    // Extraer la fecha de forma segura
-    if (fecha instanceof Date) {
-      fechaStr = Utilities.formatDate(fecha, tz, 'yyyy-MM-dd');
-    } else {
-      fechaStr = String(fecha).trim();
-      // Si el texto viene como DD/MM/YYYY, convertirlo a YYYY-MM-DD para Calendar
-      if (fechaStr.includes('/') && fechaStr.split('/')[0].length === 2) {
-         const partes = fechaStr.split('/');
-         fechaStr = `${partes[2]}-${partes[1]}-${partes[0]}`;
-      }
-    }
-
-    // Extraer horas en formato HH:mm de forma segura (ej: "14:30")
-    const hiStr = formatearHoraSegura_(horaInicio);
-    const hfStr = formatearHoraSegura_(horaFin);
-
-    // Formato requerido por Date nativo de Apps Script: YYYY-MM-DDTHH:mm:00
-    const fechaHoraInicio = new Date(`${fechaStr}T${hiStr}:00`);
-    const fechaHoraFin    = new Date(`${fechaStr}T${hfStr}:00`);
-
-    // Comprobación de seguridad para evitar crasheos si la fecha es inválida
-    if (isNaN(fechaHoraInicio.getTime()) || isNaN(fechaHoraFin.getTime())) {
-        registrarLog_('ERROR_CALENDAR', 'FECHA_INVALIDA', `Inicio: ${fechaStr}T${hiStr}:00, Fin: ${fechaStr}T${hfStr}:00`);
-        return;
-    }
-
-    const cal = CalendarApp.getDefaultCalendar();
-    const tituloEvento = `Reserva confirmada: ${coworking} - ${nombreCompleto}`;
-    const descripcionEvento = `Actividad: ${actividad}\nODS: ${ods}\nSolicitante: ${nombreCompleto}\n\nReserva gestionada por CUCEI Coworking System.`;
-
-    cal.createEvent(tituloEvento, fechaHoraInicio, fechaHoraFin, {
-      description: descripcionEvento,
-      guests: String(correo),
-      sendInvites: true
-    });
-
-    registrarLog_('SISTEMA', 'CALENDAR_CREADO', `Evento en ${coworking} para ${correo}`);
-  } catch (error) {
-    registrarLog_('ERROR', 'crearEventoCalendario', error.toString());
-  }
+    let fStr = fila[2] instanceof Date ? Utilities.formatDate(fila[2], tz, 'yyyy-MM-dd') : String(fila[2]).trim();
+    if (fStr.includes('/')) fStr = `${fStr.split('/')[2]}-${fStr.split('/')[1]}-${fStr.split('/')[0]}`;
+    const inicio = new Date(`${fStr}T${formatearHoraSegura_(fila[3])}:00`);
+    const fin = new Date(`${fStr}T${formatearHoraSegura_(fila[4])}:00`);
+    if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) return;
+    CalendarApp.getDefaultCalendar().createEvent(`Reserva confirmada: ${fila[6]} - ${fila[7]}`, inicio, fin, { description: fila[13], guests: String(fila[1]), sendInvites: true });
+  } catch (e) {}
 }
 
-
-/**
- * Extrae de forma segura la hora en formato HH:mm 24hrs
- * resolviendo el problema de conversión automática de Google Sheets (Sat Dec 30 1899).
- */
 function formatearHoraSegura_(valor) {
   if (!valor) return "00:00";
-
-  // Si Google Sheets lo convirtió a un objeto Date
-  if (valor instanceof Date) {
-    return Utilities.formatDate(valor, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), 'HH:mm');
-  }
-
+  if (valor instanceof Date) return Utilities.formatDate(valor, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), 'HH:mm');
   const str = String(valor).trim();
-
-  // Si es un texto tipo "08:00 AM" o "02:30 PM"
   const match = str.match(/(\d+):(\d+)\s*(AM|PM)?/i);
   if (match) {
     let h = parseInt(match[1], 10);
-    const m = match[2];
-    const ampm = match[3] ? match[3].toUpperCase() : null;
-
-    if (ampm === 'PM' && h < 12) h += 12;
-    if (ampm === 'AM' && h === 12) h = 0;
-
-    return `${String(h).padStart(2, '0')}:${m}`;
+    if (match[3]?.toUpperCase() === 'PM' && h < 12) h += 12;
+    if (match[3]?.toUpperCase() === 'AM' && h === 12) h = 0;
+    return `${String(h).padStart(2, '0')}:${match[2]}`;
   }
-
-  // Fallback si no tiene AM/PM
   return str.substring(0, 5);
 }

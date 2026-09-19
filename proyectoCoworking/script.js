@@ -1,4 +1,5 @@
 <script>
+
 /**
  * ============================================================
  * CUCEI COWORKING SYSTEM – Controlador Frontend
@@ -11,7 +12,6 @@
 
   // ──────────────────────────────────────────────────────────
   // MÓDULO: GasApi
-  // Wrapper que convierte google.script.run en Promesas ES6
   // ──────────────────────────────────────────────────────────
   const GasApi = {
     ejecutar(nombreFuncion, ...args) {
@@ -33,26 +33,38 @@
 
   // ──────────────────────────────────────────────────────────
   // MÓDULO: AuthService
-  // Gestiona autenticación y renderizado condicional de vistas
   // ──────────────────────────────────────────────────────────
   const AuthService = {
     usuario: null,
 
     async inicializar() {
       try {
-        const info = await GasApi.ejecutar('obtenerInfoUsuario');
-        this.usuario = info;
-        this._renderizarVista(info);
+        const sesionGuardada = localStorage.getItem('coworking_sesion');
+
+        if (sesionGuardada) {
+          this.usuario = JSON.parse(sesionGuardada);
+          this._renderizarVista(this.usuario);
+        } else {
+          this.usuario = null;
+          this._renderizarVistaPublica();
+        }
       } catch (error) {
         console.error('[AuthService] Error al inicializar:', error);
-        this._mostrarErrorCritico(
-          'No se pudo conectar con el servidor. ' +
-          'Verifica tu conexión y recarga la página.'
-        );
       } finally {
         const pantallaGlobal = document.getElementById('pantallaGlobalCarga');
         if (pantallaGlobal) pantallaGlobal.classList.add('hidden');
       }
+    },
+
+    _renderizarVistaPublica() {
+      const header = document.getElementById('headerPrincipal');
+      if (header) header.classList.remove('hidden');
+
+      document.getElementById('headerAuthButtons').classList.remove('hidden');
+      document.getElementById('headerUsuarioLogueado').classList.add('hidden');
+
+      document.getElementById('vistaAdmin').classList.add('hidden');
+      document.getElementById('vistaAlumno').classList.remove('hidden');
     },
 
     _renderizarVista(info) {
@@ -64,15 +76,25 @@
         return;
       }
 
+      document.getElementById('headerAuthButtons').classList.add('hidden');
+      document.getElementById('headerUsuarioLogueado').classList.remove('hidden');
+      document.getElementById('headerUsuarioLogueado').classList.add('flex');
+
       this._actualizarHeader(info);
 
+      // Solo los administradores puros van al panel
       if (info.rol === 'admin') {
-        const vista = document.getElementById('vistaAdmin');
-        if (vista) vista.classList.remove('hidden');
+        const vistaAdmin = document.getElementById('vistaAdmin');
+        const vistaAlumno = document.getElementById('vistaAlumno');
+        if (vistaAlumno) vistaAlumno.classList.add('hidden');
+        if (vistaAdmin) vistaAdmin.classList.remove('hidden');
         AdminDashboard.inicializar();
       } else {
-        const vista = document.getElementById('vistaAlumno');
-        if (vista) vista.classList.remove('hidden');
+        // Alumnos y Maestros ven el catálogo de espacios
+        const vistaAdmin = document.getElementById('vistaAdmin');
+        const vistaAlumno = document.getElementById('vistaAlumno');
+        if (vistaAdmin) vistaAdmin.classList.add('hidden');
+        if (vistaAlumno) vistaAlumno.classList.remove('hidden');
         StudentView.inicializar(info);
       }
     },
@@ -90,17 +112,29 @@
       if (badgeRol) {
         badgeRol.classList.remove('hidden');
         if (info.rol === 'admin') {
-          badgeRol.className =
-            'text-xs font-bold px-2.5 py-1 rounded-full ' +
-            'bg-purple-500/20 text-purple-200 border border-purple-500/30';
+          badgeRol.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30';
           badgeRol.innerHTML = 'Admin';
+        } else if (info.rol === 'maestro') {
+          badgeRol.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-500/30';
+          badgeRol.innerHTML = 'Maestro';
         } else {
-          badgeRol.className =
-            'text-xs font-bold px-2.5 py-1 rounded-full ' +
-            'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30';
+          badgeRol.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-500/30';
           badgeRol.innerHTML = 'Alumno';
         }
       }
+    },
+
+    cerrarSesion() {
+      // 1. Borramos los datos de sesión local
+      localStorage.removeItem('coworking_sesion');
+      this.usuario = null;
+
+      // 2. Limpiamos las vistas temporalmente por seguridad
+      document.getElementById('vistaAdmin').classList.add('hidden');
+      document.getElementById('vistaAlumno').classList.add('hidden');
+
+      // 3. Recargamos el iframe de forma segura (limpia toda la memoria de JS)
+      location.reload();
     },
 
     _mostrarVistaDenegada(mensaje) {
@@ -108,28 +142,136 @@
       const msgEl = document.getElementById('mensajeDenegado');
       if (msgEl) msgEl.textContent = mensaje;
       if (vista) vista.classList.remove('hidden');
+
+      document.getElementById('vistaAlumno').classList.add('hidden');
+      document.getElementById('vistaAdmin').classList.add('hidden');
+      document.getElementById('headerAuthButtons').classList.remove('hidden');
+      document.getElementById('headerUsuarioLogueado').classList.add('hidden');
     },
 
-    _mostrarErrorCritico(texto) {
-      const pantalla = document.getElementById('pantallaGlobalCarga');
-      if (!pantalla) return;
-      pantalla.innerHTML = `
-        <div class="text-center p-6 bg-white rounded-xl shadow-xl max-w-sm">
-          <i class="fa-solid fa-triangle-exclamation text-4xl text-rose-500 mb-4"></i>
-          <h2 class="text-xl font-bold text-slate-800 mb-2">Error de Conexión</h2>
-          <p class="text-slate-600 text-sm mb-4">${texto}</p>
-          <button onclick="location.reload()" class="bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-rose-700 transition-colors">
-            Reintentar
-          </button>
-        </div>
-      `;
-      pantalla.classList.remove('hidden');
+    // ===== MODAL DE AUTENTICACIÓN =====
+    abrirModalAuth(modo = 'login') {
+      this.setAuthMode(modo);
+      document.getElementById('modalAuth').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      this._ocultarMensajeAuth();
+    },
+
+    cerrarModalAuth() {
+      document.getElementById('modalAuth').classList.add('hidden');
+      document.body.style.overflow = 'auto';
+      document.getElementById('formLogin').reset();
+      document.getElementById('formRegister').reset();
+    },
+
+    setAuthMode(modo) {
+      const formLogin = document.getElementById('formLogin');
+      const formReg = document.getElementById('formRegister');
+      const btnLogin = document.getElementById('btnTabLogin');
+      const btnReg = document.getElementById('btnTabRegister');
+
+      this._ocultarMensajeAuth();
+
+      if (modo === 'login') {
+        formLogin.classList.remove('hidden');
+        formReg.classList.add('hidden');
+        btnLogin.className = 'flex-1 text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c]';
+        btnReg.className = 'flex-1 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700';
+      } else {
+        formLogin.classList.add('hidden');
+        formReg.classList.remove('hidden');
+        btnReg.className = 'flex-1 text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c]';
+        btnLogin.className = 'flex-1 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700';
+      }
+    },
+
+    async procesarLogin(evento) {
+      evento.preventDefault();
+      const id = document.getElementById('loginId').value.trim();
+      const pass = document.getElementById('loginPass').value.trim();
+      const btn = document.getElementById('btnLoginSubmit');
+
+      this._mostrarCargandoAuth(btn, true, 'Iniciando...');
+      this._ocultarMensajeAuth();
+
+      try {
+        const res = await GasApi.ejecutar('loginUsuarioCustom', id, pass);
+        if (res.exito) {
+          localStorage.setItem('coworking_sesion', JSON.stringify(res.usuario));
+          this.cerrarModalAuth();
+          this.inicializar(); // Refresca las vistas
+        } else {
+          this._mostrarMensajeAuth(res.mensaje, 'error');
+        }
+      } catch (err) {
+        this._mostrarMensajeAuth('Error de conexión.', 'error');
+      } finally {
+        this._mostrarCargandoAuth(btn, false, 'Iniciar Sesión');
+      }
+    },
+
+  async procesarRegistro(evento) {
+      evento.preventDefault();
+      const correo = document.getElementById('regEmail').value.trim();
+      const codigo = document.getElementById('regCodigo').value.trim();
+      const pass = document.getElementById('regPass').value.trim();
+      const btn = document.getElementById('btnRegSubmit');
+
+      this._mostrarCargandoAuth(btn, true, 'Registrando...');
+      this._ocultarMensajeAuth();
+
+      try {
+        const res = await GasApi.ejecutar('registrarUsuarioCustom', correo, codigo, pass);
+        if (res.exito) {
+          this._mostrarMensajeAuth('Registro exitoso. Iniciando sesión...', 'exito');
+          const loginRes = await GasApi.ejecutar('loginUsuarioCustom', correo, pass);
+          if (loginRes.exito) {
+            localStorage.setItem('coworking_sesion', JSON.stringify(loginRes.usuario));
+            setTimeout(() => {
+              this.cerrarModalAuth();
+              this.inicializar();
+            }, 1500);
+          }
+        } else {
+          this._mostrarMensajeAuth(res.mensaje, 'error');
+        }
+      } catch (err) {
+        this._mostrarMensajeAuth('Error de conexión.', 'error');
+      } finally {
+        this._mostrarCargandoAuth(btn, false, 'Crear Cuenta');
+      }
+    },
+
+    // ==========================================
+    // FUNCIONES AUXILIARES FALTANTES
+    // ==========================================
+
+    _mostrarCargandoAuth(btn, activo, texto) {
+      btn.disabled = activo;
+      btn.innerHTML = activo ? `<i class="fa-solid fa-spinner fa-spin mr-2"></i>${texto}` : texto;
+    },
+
+    _mostrarMensajeAuth(texto, tipo) {
+      const div = document.getElementById('formAuthMsg');
+      if (!div) return;
+      div.textContent = texto;
+      div.className = `mb-4 p-3 rounded-lg text-sm font-semibold text-center ${
+        tipo === 'error'
+          ? 'bg-rose-50 text-rose-600 border border-rose-200'
+          : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+      }`;
+      div.classList.remove('hidden');
+    },
+
+    _ocultarMensajeAuth() {
+      const div = document.getElementById('formAuthMsg');
+      if (div) div.classList.add('hidden');
     }
   };
 
+
   // ──────────────────────────────────────────────────────────
   // MÓDULO: StudentView
-  // Formulario de reserva, selector de fechas y horario
   // ──────────────────────────────────────────────────────────
   const StudentView = {
     fechasSeleccionadas: [],
@@ -140,9 +282,11 @@
       '17:00','17:30','18:00','18:30','19:00','19:30','20:00'
     ],
     correoUsuario: '',
+    codigoUsuario: '',
 
     inicializar(infoUsuario) {
       this.correoUsuario = infoUsuario.correo || '';
+      this.codigoUsuario = infoUsuario.codigo || '';
       this._poblarSelectores();
     },
 
@@ -166,8 +310,6 @@
 
     seleccionarRol(rol) {
       document.getElementById('inputRol').value = rol;
-      document.getElementById('pantallaSelectorRol').classList.add('hidden');
-      document.getElementById('contenedorFormulario').classList.remove('hidden');
 
       const badge       = document.getElementById('badgeRol');
       const labelCodigo = document.getElementById('labelCodigo');
@@ -180,6 +322,12 @@
         if (inputCorreo) inputCorreo.value = this.correoUsuario;
       }
 
+      if (this.codigoUsuario) {
+        inputCodigo.value = this.codigoUsuario;
+        inputCodigo.readOnly = true;
+        inputCodigo.className = "w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-sm cursor-not-allowed";
+      }
+
       const hoy = new Date();
       const min = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
       document.getElementById('selectorFecha').min = min;
@@ -188,15 +336,15 @@
         badge.className   = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100';
         badge.textContent = 'Estudiante';
         labelCodigo.textContent   = 'Código de Alumno:';
-        inputCodigo.placeholder   = 'Ej. 218XXXXXX';
+        if(!inputCodigo.value) inputCodigo.placeholder = 'Ej. 218XXXXXX';
         campoExt.classList.add('hidden');
         inputExt.required = false;
         inputExt.value    = '';
       } else {
         badge.className   = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100';
-        badge.textContent = 'Administrativo';
+        badge.textContent = 'Administrativo / Maestro';
         labelCodigo.textContent   = 'Código de Trabajador:';
-        inputCodigo.placeholder   = 'Ej. 95XXXXX';
+        if(!inputCodigo.value) inputCodigo.placeholder = 'Ej. 95XXXXX';
         campoExt.classList.remove('hidden');
         inputExt.required = true;
       }
@@ -295,7 +443,7 @@
       this._ocultarMensaje(msgDiv);
 
       try {
-        const resultado = await GasApi.ejecutar('registrarReserva', datos);
+        const resultado = await GasApi.ejecutar('registrarReserva', datos, this.correoUsuario);
 
         if (resultado.exito) {
           this._mostrarMensaje(msgDiv, resultado.mensaje, 'exito');
@@ -349,11 +497,6 @@
       this.fechasSeleccionadas = [];
       this._renderizarEtiquetasFechas();
 
-      const selectorRol = document.getElementById('pantallaSelectorRol');
-      const contenedor  = document.getElementById('contenedorFormulario');
-      if (selectorRol) selectorRol.classList.remove('hidden');
-      if (contenedor)  contenedor.classList.add('hidden');
-
       document.querySelectorAll('input[name="ods_check"]')
         .forEach(cb => { cb.checked = false; });
 
@@ -364,10 +507,14 @@
 
   // ──────────────────────────────────────────────────────────
   // MÓDULO: ModalController
-  // Controla el modal de detalle y reserva de coworkings (vista alumno)
   // ──────────────────────────────────────────────────────────
   const ModalController = {
     abrir(boton) {
+      if (!AuthService.usuario) {
+        AuthService.abrirModalAuth('login');
+        return;
+      }
+
       const titulo    = boton.dataset.coworking  || '';
       const desc      = boton.dataset.desc       || '';
       const capacidad = boton.dataset.cap        || '';
@@ -401,6 +548,11 @@
 
       StudentView.resetear();
 
+      // Cargar rol automáticamente en base al perfil logueado
+      const rolUsuario = AuthService.usuario.rol;
+      const tipoFormulario = (rolUsuario === 'maestro' || rolUsuario === 'admin') ? 'administrativo' : 'estudiante';
+      StudentView.seleccionarRol(tipoFormulario);
+
       const modal = document.getElementById('modalReserva');
       if (modal) modal.classList.remove('hidden');
       document.body.style.overflow = 'hidden';
@@ -421,17 +573,18 @@
 
   // ──────────────────────────────────────────────────────────
   // MÓDULO: AdminDashboard
-  // Dashboard de administrador: métricas, tabla, gráficas, búsqueda y modal
   // ──────────────────────────────────────────────────────────
   const AdminDashboard = {
     todasLasReservas: [],
+    todosLosUsuarios: [],
     filtroActivo: 'todos',
     _charts: {},
     _reservaEnModal: null,
 
     async inicializar() {
       try {
-        const datos = await GasApi.ejecutar('obtenerDashboardAdmin');
+        const adminCorreo = AuthService.usuario ? AuthService.usuario.correo : '';
+        const datos = await GasApi.ejecutar('obtenerDashboardAdmin', adminCorreo);
 
         if (!datos.exito) {
           this._mostrarErrorDashboard(datos.mensaje);
@@ -444,11 +597,98 @@
         this._renderizarGraficas(datos.graficaEstados, datos.graficaEspacios);
         this._renderizarTabla(this.todasLasReservas);
 
+        // Cargar usuarios en background
+        this.cargarUsuarios(adminCorreo);
+
       } catch (error) {
         console.error('[AdminDashboard] Error al inicializar:', error);
-        this._mostrarErrorDashboard(
-          'Error al cargar el dashboard: ' + (error.message || 'Inténtalo de nuevo.')
-        );
+        this._mostrarErrorDashboard('Error al cargar el dashboard: ' + (error.message || 'Inténtalo de nuevo.'));
+      }
+    },
+
+    cambiarTab(tab) {
+      const btnReservas = document.getElementById('tabBtnReservas');
+      const btnUsuarios = document.getElementById('tabBtnUsuarios');
+      const vistaReservas = document.getElementById('adminVistaReservas');
+      const vistaUsuarios = document.getElementById('adminVistaUsuarios');
+
+      if (tab === 'reservas') {
+        btnReservas.className = "px-4 py-2 text-sm font-bold border-b-2 border-[#002f5c] text-[#002f5c]";
+        btnUsuarios.className = "px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-colors";
+        vistaReservas.classList.remove('hidden');
+        vistaUsuarios.classList.add('hidden');
+      } else {
+        btnUsuarios.className = "px-4 py-2 text-sm font-bold border-b-2 border-[#002f5c] text-[#002f5c]";
+        btnReservas.className = "px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-colors";
+        vistaUsuarios.classList.remove('hidden');
+        vistaReservas.classList.add('hidden');
+      }
+    },
+
+    async cargarUsuarios(adminCorreo) {
+      try {
+        const res = await GasApi.ejecutar('obtenerListaUsuarios', adminCorreo);
+        if (res.exito) {
+          this.todosLosUsuarios = res.usuarios;
+          this._renderizarTablaUsuarios(this.todosLosUsuarios);
+        }
+      } catch (e) {
+        console.error("Error al cargar usuarios", e);
+      }
+    },
+
+    _renderizarTablaUsuarios(usuarios) {
+      const cuerpo = document.getElementById('cuerpoTablaUsuarios');
+      if (!cuerpo) return;
+
+      if (usuarios.length === 0) {
+        cuerpo.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-slate-500 text-sm">No hay usuarios registrados.</td></tr>`;
+        return;
+      }
+
+      cuerpo.innerHTML = usuarios.map(u => {
+        const isAdmin = u.rol === 'admin';
+        const isMaestro = u.rol === 'maestro';
+        let badgeClass = 'bg-emerald-50 text-emerald-700 border border-emerald-200'; // alumno default
+        if (isAdmin) badgeClass = 'bg-purple-50 text-purple-700 border border-purple-200';
+        else if (isMaestro) badgeClass = 'bg-blue-50 text-blue-700 border border-blue-200';
+
+        const nextRol = isAdmin ? (u.correo.includes('@alumnos') ? 'alumno' : 'maestro') : 'admin';
+        const actionText = isAdmin ? 'Quitar Admin' : 'Hacer Admin';
+        const actionColor = isAdmin ? 'text-rose-600 bg-rose-50 hover:bg-rose-100' : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100';
+
+        return `
+          <tr class="hover:bg-slate-50 border-b border-slate-100">
+            <td class="px-4 py-3 text-slate-500 text-xs font-mono">${u.id}</td>
+            <td class="px-4 py-3 text-sm text-slate-800 font-medium">${u.correo}</td>
+            <td class="px-4 py-3 text-sm text-slate-600">${u.codigo}</td>
+            <td class="px-4 py-3">
+              <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${badgeClass}">${u.rol}</span>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <button onclick="AdminDashboard.cambiarRolUsuario('${u.id}', '${nextRol}')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${actionColor}">
+                ${actionText}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    },
+
+    async cambiarRolUsuario(idUsuario, nuevoRol) {
+      const adminCorreo = AuthService.usuario ? AuthService.usuario.correo : '';
+      if (!confirm(`¿Estás seguro de cambiar el rol a ${nuevoRol.toUpperCase()}?`)) return;
+
+      try {
+        const res = await GasApi.ejecutar('actualizarRolUsuario', idUsuario, nuevoRol, adminCorreo);
+        if (res.exito) {
+          alert("Rol actualizado correctamente.");
+          this.cargarUsuarios(adminCorreo);
+        } else {
+          alert("Error: " + res.mensaje);
+        }
+      } catch (error) {
+        alert("Error de conexión al cambiar el rol.");
       }
     },
 
@@ -562,38 +802,23 @@
         const [yyyy, mm, dd] = (r.fecha || '').split('-');
         const fechaLegible = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : r.fecha;
 
-        // Se agregó cursor-pointer y el evento onclick a toda la fila (tr)
         return `
           <tr onclick="AdminDashboard.abrirModal('${r.idReserva}')" class="hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 cursor-pointer">
-            <td class="px-4 py-3 text-slate-500 font-mono text-[11px] whitespace-nowrap">
-              ${r.idReserva}
-            </td>
+            <td class="px-4 py-3 text-slate-500 font-mono text-[11px] whitespace-nowrap">${r.idReserva}</td>
             <td class="px-4 py-3">
               <div class="font-semibold text-slate-800 text-sm">${this._escapar(r.nombreCompleto)}</div>
               <div class="text-slate-500 text-xs">${this._escapar(r.correo)}</div>
             </td>
-            <td class="px-4 py-3 text-sm text-slate-700">
-              ${this._escapar(r.coworking)}
-            </td>
-            <td class="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-              ${fechaLegible}
-            </td>
-            <td class="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-              ${r.horaInicio} – ${r.horaFin}
-            </td>
+            <td class="px-4 py-3 text-sm text-slate-700">${this._escapar(r.coworking)}</td>
+            <td class="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">${fechaLegible}</td>
+            <td class="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">${r.horaInicio} – ${r.horaFin}</td>
             <td class="px-4 py-3">
-              <span class="text-[11px] font-bold px-2.5 py-1 rounded-full ${badgeClase}">
-                ${r.estado}
-              </span>
+              <span class="text-[11px] font-bold px-2.5 py-1 rounded-full ${badgeClase}">${r.estado}</span>
             </td>
             <td class="px-4 py-3 text-right">
               ${esPendiente
-                ? `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${r.idReserva}')" class="text-xs bg-[#002f5c] hover:bg-[#001f3f] text-white px-3 py-1.5 rounded-lg transition-colors">
-                     Revisar
-                   </button>`
-                : `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${r.idReserva}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg transition-colors">
-                     Ver detalle
-                   </button>`
+                ? `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${r.idReserva}')" class="text-xs bg-[#002f5c] hover:bg-[#001f3f] text-white px-3 py-1.5 rounded-lg transition-colors">Revisar</button>`
+                : `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${r.idReserva}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg transition-colors">Ver detalle</button>`
               }
             </td>
           </tr>
@@ -695,13 +920,14 @@
 
     async cambiarEstado(idReserva, nuevoEstado) {
       const accionesEl = document.getElementById('modalAdminAcciones');
+      const adminCorreo = AuthService.usuario ? AuthService.usuario.correo : '';
 
       if (accionesEl) {
         accionesEl.innerHTML = `<div class="w-full text-center p-3 text-slate-500 text-sm font-bold"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Procesando…</div>`;
       }
 
       try {
-        const resultado = await GasApi.ejecutar('actualizarEstadoReserva', idReserva, nuevoEstado);
+        const resultado = await GasApi.ejecutar('actualizarEstadoReserva', idReserva, nuevoEstado, adminCorreo);
 
         if (resultado.exito) {
           const idx = this.todasLasReservas.findIndex(r => r.idReserva === idReserva);
@@ -743,6 +969,7 @@
       const inputEl     = document.getElementById('inputBusqueda');
       const resultadoEl = document.getElementById('resultadoBusqueda');
       const query       = inputEl ? inputEl.value.trim() : '';
+      const adminCorreo = AuthService.usuario ? AuthService.usuario.correo : '';
 
       if (!query) {
         this._mostrarResultadoBusqueda(resultadoEl, '<div class="p-4 text-center text-slate-500 text-sm">Escribe un correo para buscar.</div>');
@@ -752,7 +979,7 @@
       this._mostrarResultadoBusqueda(resultadoEl, `<div class="p-4 text-center text-slate-500 text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Buscando reservas…</div>`);
 
       try {
-        const resultado = await GasApi.ejecutar('buscarReservasPorCorreo', query);
+        const resultado = await GasApi.ejecutar('buscarReservasPorCorreo', query, adminCorreo);
 
         if (!resultado.exito) {
           this._mostrarResultadoBusqueda(resultadoEl, `<div class="p-4 text-center text-rose-600 text-sm font-semibold">${resultado.mensaje}</div>`);
@@ -788,11 +1015,9 @@
                       <td class="p-2 text-xs font-mono text-slate-500">${r.idReserva}</td>
                       <td class="p-2 text-sm text-slate-800">${this._escapar(r.coworking)}</td>
                       <td class="p-2 text-sm text-slate-600">${fecha}</td>
-                      <td class="p-2 text-sm text-slate-600 font-medium">${r.horaInicio} – ${r.horaFin}</td>
+                      <td class="p-2 text-sm text-slate-600 font-medium">${r.horaInicio} –${r.horaFin}</td>
                       <td class="p-2 text-center">
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${this._obtenerClaseBadge(r.estado)}">
-                          ${r.estado}
-                        </span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${this._obtenerClaseBadge(r.estado)}">${r.estado}</span>
                       </td>
                     </tr>
                   `;
@@ -882,9 +1107,6 @@
     }
   };
 
-  // ──────────────────────────────────────────────────────────
-  // INICIALIZACIÓN GLOBAL
-  // ──────────────────────────────────────────────────────────
   global.GasApi          = GasApi;
   global.AuthService     = AuthService;
   global.StudentView     = StudentView;
