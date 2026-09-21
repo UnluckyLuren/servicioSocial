@@ -13,7 +13,8 @@ const CONFIG = {
   SHEET_REGISTROS:   'Registros',
 
   DOMINIOS_ALUMNO:   ['@alumnos.udg.mx'],
-  DOMINIOS_MAESTRO:  ['@academicos.udg.mx', '@cucei.udg.mx'],
+  // Se agregó el dominio de administrativos aquí:
+  DOMINIOS_MAESTRO:  ['@academicos.udg.mx', '@cucei.udg.mx', '@administrativos.udg.mx'],
 
   ESTADOS: { PENDIENTE: 'Pendiente', ACEPTADA:  'Aceptada', RECHAZADA: 'Rechazada' },
   HORA_APERTURA: '08:00',
@@ -68,6 +69,8 @@ function determinarRolUsuario_(correo) {
   return 'denegado';
 }
 
+
+
 function registrarUsuarioCustom(correo, codigo, contrasenia) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -78,7 +81,7 @@ function registrarUsuarioCustom(correo, codigo, contrasenia) {
 
     const rol = determinarRolUsuario_(correoLower);
     if (rol === 'denegado') {
-      return { exito: false, mensaje: 'El correo no pertenece a un dominio autorizado (@alumnos, @academicos, @cucei).' };
+      return { exito: false, mensaje: 'El correo no pertenece a un dominio autorizado (@alumnos, @academicos, @cucei, @administrativos).' };
     }
 
     // Verificar existencia
