@@ -1,0 +1,4087 @@
+<meta>
+  <meta>
+  <title>Coworkings CUCEI - Reservas</title>
+  <script>
+  <link>
+
+  <link>
+  <script></script>
+
+  <script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    * { font-family: 'Inter', sans-serif; }
+    .hidden { display: none !important; }
+    /* Scrollbar personalizado */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+    /* Badges */
+    .badge-pendiente { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+    .badge-aceptada  { background:#d1fae5; color:#065f46; border:1px solid #a7f3d0; }
+    .badge-rechazada { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+    .badge-devuelta  { background:#ede9fe; color:#5b21b6; border:1px solid #ddd6fe; }
+    /* Tipo actividad cards */
+    .tipo-actividad-card input:checked + label {
+      border-color: #002f5c;
+      background-color: #eff6ff;
+      color: #002f5c;
+    }
+    .tipo-actividad-card input:checked + label .tipo-icon {
+      color: #002f5c;
+    }
+    /* FullCalendar custom */
+    .fc .fc-button-primary { background-color: #002f5c !important; border-color: #002f5c !important; }
+    .fc .fc-button-primary:hover { background-color: #001f3f !important; }
+    .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: #001f3f !important; }
+    .fc-event { cursor: pointer; font-size: 11px; }
+    .fc .fc-toolbar-title { font-size: 1rem; font-weight: 700; color: #002f5c; }
+    /* Animaciones */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fadeIn { animation: fadeIn 0.25s ease forwards; }
+    /* File upload zone */
+    .upload-zone { border: 2px dashed #cbd5e1; transition: all 0.2s; }
+    .upload-zone:hover, .upload-zone.dragover { border-color: #002f5c; background: #eff6ff; }
+    /* Toggle switch */
+    .toggle-checkbox:checked { right: 0; border-color: #002f5c; }
+    .toggle-checkbox:checked + .toggle-label { background-color: #002f5c; }
+  </style>
+
+
+
+
+
+
+  Cargando sistema…
+
+
+
+<header>
+
+
+
+
+
+
+
+        UdeG
+        CUCEI · Coworkings
+        CUCEI Coworkings
+
+
+
+
+
+
+        Iniciar Sesión
+
+
+        Registrarse
+
+
+
+
+
+
+
+
+        Mis Reservas
+        0
+
+
+
+
+
+
+
+
+
+
+
+
+
+        Salir
+
+
+
+</header>
+
+
+
+
+
+
+
+
+
+      Autenticación
+
+
+
+
+
+        <button>
+          Ingresar
+        </button>
+        <button>
+          Registrarse
+
+
+
+
+
+
+
+      <form>
+
+          Correo o Código
+
+
+
+
+
+
+          Contraseña
+
+
+
+
+
+
+          Iniciar Sesión
+
+      </form>
+
+
+      <form>
+
+          Correo Institucional
+
+
+
+
+
+
+          Código de Alumno/Trabajador
+
+
+
+
+
+
+          Contraseña
+
+
+
+
+
+
+          Crear Cuenta
+
+
+
+
+
+
+
+
+
+
+
+  Acceso Denegado
+  No se pudo acceder.
+
+
+
+
+
+
+  <section>
+
+
+         ¡Nuevos Espacios Disponibles!
+
+
+        Disfruta de los espacios que hay para ti 🙂
+
+
+        Reserva un lugar en cualquiera de nuestros coworkings equipados dentro de CUCEI.
+        Elige el que mejor se adapte a tus necesidades del día.
+
+
+  </section>
+
+
+
+
+
+
+
+
+
+
+            Mis Reservas por Corregir
+            Solicitudes devueltas para edición y reenvío
+
+
+        <button>
+
+
+
+
+
+
+          Cargando...
+
+
+
+
+
+
+  <section>
+
+      Nuestros Espacios
+      Haz clic en "Ver detalles y reservar" para conocer el espacio. (Requiere iniciar sesión).
+
+
+
+
+
+
+
+
+
+
+          Coworking 1 – Bosch
+          Espacio tecnológico ideal para desarrollo técnico con pantallas y mesas amplias.
+
+             Ver detalles y reservar
+
+
+
+
+
+
+
+
+
+
+
+          Coworking 2 – Eventos
+          Sala interactiva moderna para exposiciones, conferencias y trabajo colaborativo.
+
+             Ver detalles y reservar
+
+
+
+
+
+
+
+
+
+
+
+          Coworking 3 – Creación
+          Zona de concentración con cabinas individuales y luz cálida ideal para exámenes.
+
+             Ver detalles y reservar
+
+
+
+
+
+
+
+
+
+
+
+          Coworking 4 – General
+          Espacio dinámico con pizarrones gigantes para lluvia de ideas y diseño de proyectos.
+
+             Ver detalles y reservar
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          <button>
+
+
+
+
+
+
+
+
+            Capacidad:
+
+
+
+
+
+
+          ¿Qué incluye?
+
+
+
+
+
+
+
+
+          Completa tu reserva
+
+
+
+
+
+
+
+              Reserva devuelta para edición
+
+
+
+
+
+        <form>
+
+
+
+
+
+
+
+               Datos Personales
+
+
+
+                Nombres
+
+
+
+                Apellido Paterno
+
+
+
+                Apellido Materno
+
+
+
+
+
+                Código:
+
+
+
+                Teléfono
+
+
+
+
+              Extensión Telefónica
+
+
+
+
+
+
+                Correo de Responsable (Opcional)
+
+
+
+
+              Correo Electrónico
+
+
+
+
+
+
+
+               Tipo de Actividad *
+
+
+
+
+
+
+
+                  Conferencia
+
+
+
+
+
+
+
+                  Club
+
+
+
+
+
+
+
+                  Clases
+
+
+
+
+              Selecciona un tipo de actividad.
+
+
+
+
+
+
+               Datos del Evento
+
+
+
+                Nombre del Evento o Actividad
+
+
+
+                Breve Descripción de la Actividad
+
+
+
+
+
+
+
+
+               ODS Vinculados
+
+
+
+                 ODS 1: Fin de la Pobreza
+
+
+                 ODS 2: Hambre Cero
+
+
+                 ODS 3: Salud y Bienestar
+
+
+                 ODS 4: Educación de Calidad
+
+
+                 ODS 5: Igualdad de Género
+
+
+                 ODS 6: Agua y Saneamiento
+
+
+                 ODS 7: Energía Asequible
+
+
+                 ODS 8: Trabajo Decente
+
+
+                 ODS 9: Industria e Innovación
+
+
+                 ODS 10: Reducción Desigualdades
+
+
+                 ODS 11: Ciudades Sostenibles
+
+
+                 ODS 12: Producción Responsable
+
+
+                 ODS 13: Acción por el Clima
+
+
+                 ODS 14: Vida Submarina
+
+
+                 ODS 15: Ecosistemas Terrestres
+
+
+                 ODS 16: Paz y Justicia
+
+
+                 ODS 17: Alianzas
+
+
+
+
+
+
+
+               Fechas y Horarios
+
+
+
+
+
+
+
+
+                Usar el mismo horario para todas las fechas
+                Aplica un rango de horas global a todas las fechas seleccionadas
+
+
+
+
+
+
+
+                 Añadir
+
+
+
+
+
+
+
+
+              Horario para todas las fechas:
+
+
+                  Hora de Entrada
+
+
+
+                  Hora de Salida
+
+
+
+
+
+
+
+
+
+              Agrega al menos una fecha.
+
+
+
+
+
+
+               Archivos Complementarios
+              (Opcional, máx. 5 archivos · 5MB c/u)
+
+
+
+              Arrastra archivos aquí o haz clic para seleccionar
+              PDF, DOCX, XLSX, PNG, JPG · máx. 5MB por archivo
+
+
+
+
+
+
+
+
+
+
+
+            Confirmar mi reserva
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          Panel de Administración
+
+        Gestiona reservas y perfiles de usuarios del sistema.
+
+      <button>
+         Actualizar
+
+
+
+
+
+      <button>
+         Gestión de Reservas
+
+      <button>
+         Calendario Digital
+
+      <button>
+         Usuarios y Roles
+
+
+
+
+
+
+
+
+
+
+
+
+
+             Reservas por Estado
+
+
+            <canvas></canvas>
+
+
+
+
+             Reservas por Espacio
+
+
+            <canvas>
+
+
+
+
+
+
+
+           Buscador de Reservas por Correo
+
+
+
+
+            <input>
+
+          <button>
+            Buscar
+
+          <button>
+
+
+
+
+
+
+
+
+
+
+             Todas las Reservas
+
+
+
+            <button>Todos
+            <button>Pendientes
+            <button>Aceptadas
+            <button>Rechazadas
+            <button>Devueltas
+
+
+
+
+
+
+          Cargando reservas…
+
+
+
+
+
+
+
+                ID
+                Solicitante
+                Espacio
+                Fecha
+                Horario
+                Estado
+                Acciones
+
+
+
+
+
+
+                  No hay reservas que coincidan con el filtro seleccionado.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            <label>Espacio:</label>
+            <select>
+              Todos
+              Coworking 1 - Bosch
+              Coworking 2 - Eventos
+              Coworking 3 - Creación
+              Coworking 4 - General
+            </select>
+
+
+            <label>Estado:
+            <select>
+              Todos
+              Pendiente
+              Aceptada
+              Rechazada
+
+
+
+
+
+               Pendiente
+
+
+               Aceptada
+
+
+               Rechazada
+
+
+
+
+
+
+
+
+
+
+
+
+             Directorio de Usuarios
+
+          Haz upgrade o downgrade de los privilegios del sistema.
+
+
+
+
+
+                ID Usuario
+                Correo Institucional
+                Código
+                Rol Actual
+                Acciones
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            Detalle de Reserva
+            Información completa de la solicitud
+
+
+
+
+          <button>
+
+
+
+
+
+
+
+
+
+
+
+
+           Datos del Solicitante
+
+
+
+
+
+
+
+           Datos de la Reserva
+
+
+
+
+
+
+
+           ODS Vinculados
+
+
+
+
+
+
+
+           Descripción de la Actividad
+
+
+
+
+
+
+
+           Archivos Adjuntos
+
+
+
+
+
+
+
+           Motivo de Rechazo
+
+        <textarea></textarea>
+
+        <label>
+
+
+            Permitir al usuario editar y reenviar esta solicitud
+            El estado cambiará a "Devuelta". El usuario verá el motivo y podrá corregir y reenviar.
+
+
+
+          <button>
+            Cancelar
+
+          <button>
+             Confirmar Rechazo
+
+
+
+
+
+
+
+
+
+
+
+
+<footer>
+  © 2026 Coordinación de Ingeniería en Computación – CUCEI · Universidad de Guadalajara
+</footer>
+
+
+
+
+script.js
+
+<script>
+/**
+ * ============================================================
+ * CUCEI COWORKING SYSTEM – Controlador Frontend v2.0
+ * script.js
+ * ============================================================
+ */
+
+(function (global) {
+  'use strict';
+
+  // ──────────────────────────────────────────────────────────
+  // MÓDULO: GasApi
+  // ──────────────────────────────────────────────────────────
+  const GasApi = {
+    ejecutar(nombreFuncion, ...args) {
+      return new Promise((resolve, reject) => {
+        if (typeof google === 'undefined' || !google.script) {
+          reject(new Error('google.script.run no está disponible.'));
+          return;
+        }
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject)
+          [nombreFuncion](...args);
+      });
+    }
+  };
+
+  // ──────────────────────────────────────────────────────────
+  // MÓDULO: AuthService
+  // ──────────────────────────────────────────────────────────
+  const AuthService = {
+    usuario: null,
+
+    async inicializar() {
+      try {
+        const sesionGuardada = localStorage.getItem('coworking_sesion');
+        if (sesionGuardada) {
+          this.usuario = JSON.parse(sesionGuardada);
+          this._renderizarVista(this.usuario);
+        } else {
+          this.usuario = null;
+          this._renderizarVistaPublica();
+        }
+      } catch (error) {
+        console.error('[AuthService] Error al inicializar:', error);
+        this._renderizarVistaPublica();
+      } finally {
+        const pantallaGlobal = document.getElementById('pantallaGlobalCarga');
+        if (pantallaGlobal) pantallaGlobal.classList.add('hidden');
+      }
+    },
+
+    _renderizarVistaPublica() {
+      document.getElementById('headerPrincipal')?.classList.remove('hidden');
+      document.getElementById('headerAuthButtons')?.classList.remove('hidden');
+      document.getElementById('headerUsuarioLogueado')?.classList.add('hidden');
+      document.getElementById('vistaAdmin')?.classList.add('hidden');
+      document.getElementById('vistaAlumno')?.classList.remove('hidden');
+    },
+
+    _renderizarVista(info) {
+      document.getElementById('headerPrincipal')?.classList.remove('hidden');
+
+      if (!info.accesoConcedido) {
+        this._mostrarVistaDenegada(info.mensaje || 'Acceso no autorizado.');
+        return;
+      }
+
+      document.getElementById('headerAuthButtons')?.classList.add('hidden');
+      const headerUser = document.getElementById('headerUsuarioLogueado');
+      if (headerUser) {
+        headerUser.classList.remove('hidden');
+        headerUser.classList.add('flex');
+      }
+
+      this._actualizarHeader(info);
+
+      if (info.rol === 'admin') {
+        document.getElementById('vistaAlumno')?.classList.add('hidden');
+        document.getElementById('vistaAdmin')?.classList.remove('hidden');
+        document.getElementById('btnMisReservas')?.classList.add('hidden');
+        AdminDashboard.inicializar();
+      } else {
+        document.getElementById('vistaAdmin')?.classList.add('hidden');
+        document.getElementById('vistaAlumno')?.classList.remove('hidden');
+        // Mostrar botón Mis Reservas
+        const btnMis = document.getElementById('btnMisReservas');
+        if (btnMis) {
+          btnMis.classList.remove('hidden');
+          btnMis.classList.add('flex');
+        }
+        StudentView.inicializar(info);
+      }
+    },
+
+    _actualizarHeader(info) {
+      const correoWrapper = document.getElementById('headerCorreoUsuario');
+      const correoTexto   = document.getElementById('textoCorreoHeader');
+      const badgeRol      = document.getElementById('headerBadgeRol');
+
+      if (info.correo && correoTexto) {
+        correoTexto.textContent = info.correo;
+        correoWrapper?.classList.remove('hidden');
+        correoWrapper?.classList.add('flex');
+      }
+
+      if (badgeRol) {
+        badgeRol.classList.remove('hidden');
+        const rolClases = {
+          admin:   'text-xs font-bold px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30',
+          maestro: 'text-xs font-bold px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-500/30',
+          alumno:  'text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'
+        };
+        badgeRol.className = rolClases[info.rol] || rolClases.alumno;
+        badgeRol.textContent = info.rol.charAt(0).toUpperCase() + info.rol.slice(1);
+      }
+    },
+
+    cerrarSesion() {
+      localStorage.removeItem('coworking_sesion');
+      this.usuario = null;
+      location.reload();
+    },
+
+    _mostrarVistaDenegada(mensaje) {
+      const msgEl = document.getElementById('mensajeDenegado');
+      if (msgEl) msgEl.textContent = mensaje;
+      document.getElementById('vistaDenegada')?.classList.remove('hidden');
+      document.getElementById('vistaAlumno')?.classList.add('hidden');
+      document.getElementById('vistaAdmin')?.classList.add('hidden');
+      document.getElementById('headerAuthButtons')?.classList.remove('hidden');
+      document.getElementById('headerUsuarioLogueado')?.classList.add('hidden');
+    },
+
+    abrirModalAuth(modo = 'login') {
+      this.setAuthMode(modo);
+      document.getElementById('modalAuth')?.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      this._ocultarMensajeAuth();
+    },
+
+    cerrarModalAuth() {
+      document.getElementById('modalAuth')?.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+      document.getElementById('formLogin')?.reset();
+      document.getElementById('formRegister')?.reset();
+    },
+
+    setAuthMode(modo) {
+      const formLogin = document.getElementById('formLogin');
+      const formReg   = document.getElementById('formRegister');
+      const btnLogin  = document.getElementById('btnTabLogin');
+      const btnReg    = document.getElementById('btnTabRegister');
+
+      this._ocultarMensajeAuth();
+
+      if (modo === 'login') {
+        formLogin?.classList.remove('hidden');
+        formReg?.classList.add('hidden');
+        if (btnLogin) btnLogin.className = 'flex-1 text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c]';
+        if (btnReg)   btnReg.className   = 'flex-1 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700';
+      } else {
+        formLogin?.classList.add('hidden');
+        formReg?.classList.remove('hidden');
+        if (btnReg)   btnReg.className   = 'flex-1 text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c]';
+        if (btnLogin) btnLogin.className = 'flex-1 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700';
+      }
+    },
+
+    async procesarLogin(evento) {
+      evento.preventDefault();
+      const id   = document.getElementById('loginId').value.trim();
+      const pass = document.getElementById('loginPass').value.trim();
+      const btn  = document.getElementById('btnLoginSubmit');
+
+      this._mostrarCargandoAuth(btn, true, 'Iniciando...');
+      this._ocultarMensajeAuth();
+
+      try {
+        const res = await GasApi.ejecutar('loginUsuarioCustom', id, pass);
+        if (res.exito) {
+          localStorage.setItem('coworking_sesion', JSON.stringify(res.usuario));
+          this.cerrarModalAuth();
+          this.inicializar();
+        } else {
+          this._mostrarMensajeAuth(res.mensaje, 'error');
+        }
+      } catch (err) {
+        this._mostrarMensajeAuth('Error de conexión.', 'error');
+      } finally {
+        this._mostrarCargandoAuth(btn, false, 'Iniciar Sesión');
+      }
+    },
+
+    async procesarRegistro(evento) {
+      evento.preventDefault();
+      const correo = document.getElementById('regEmail').value.trim();
+      const codigo = document.getElementById('regCodigo').value.trim();
+      const pass   = document.getElementById('regPass').value.trim();
+      const btn    = document.getElementById('btnRegSubmit');
+
+      if (pass.length < 8) {
+        this._mostrarMensajeAuth('La contraseña debe tener al menos 8 caracteres.', 'error');
+        return;
+      }
+
+      this._mostrarCargandoAuth(btn, true, 'Registrando...');
+      this._ocultarMensajeAuth();
+
+      try {
+        const res = await GasApi.ejecutar('registrarUsuarioCustom', correo, codigo, pass);
+        if (res.exito) {
+          this._mostrarMensajeAuth('Registro exitoso. Iniciando sesión...', 'exito');
+          const loginRes = await GasApi.ejecutar('loginUsuarioCustom', correo, pass);
+          if (loginRes.exito) {
+            localStorage.setItem('coworking_sesion', JSON.stringify(loginRes.usuario));
+            setTimeout(() => { this.cerrarModalAuth(); this.inicializar(); }, 1500);
+          }
+        } else {
+          this._mostrarMensajeAuth(res.mensaje, 'error');
+        }
+      } catch (err) {
+        this._mostrarMensajeAuth('Error de conexión.', 'error');
+      } finally {
+        this._mostrarCargandoAuth(btn, false, 'Crear Cuenta');
+      }
+    },
+
+    _mostrarCargandoAuth(btn, activo, texto) {
+      if (!btn) return;
+      btn.disabled = activo;
+      btn.innerHTML = activo
+        ? `<i class="fa-solid fa-spinner fa-spin mr-2"></i>${texto}`
+        : texto;
+    },
+
+    _mostrarMensajeAuth(texto, tipo) {
+      const div = document.getElementById('formAuthMsg');
+      if (!div) return;
+      div.textContent = texto;
+      div.className = `mb-4 p-3 rounded-lg text-sm font-semibold text-center ${
+        tipo === 'error'
+          ? 'bg-rose-50 text-rose-600 border border-rose-200'
+          : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+      }`;
+      div.classList.remove('hidden');
+    },
+
+    _ocultarMensajeAuth() {
+      document.getElementById('formAuthMsg')?.classList.add('hidden');
+    }
+  };
+
+  // ──────────────────────────────────────────────────────────
+  // MÓDULO: StudentView
+  // ──────────────────────────────────────────────────────────
+  const StudentView = {
+    fechasSeleccionadas: [],   // [{ fecha: 'yyyy-mm-dd', horaEntrada: '08:00', horaSalida: '10:00' }]
+    archivosSeleccionados: [], // [{ nombre, tipo, base64, tamano }]
+    correoUsuario: '',
+    codigoUsuario: '',
+    usarMismoHorario: true,    // por defecto checkbox marcado
+
+    HORAS: [
+      '08:00','08:30','09:00','09:30','10:00','10:30',
+      '11:00','11:30','12:00','12:30','13:00','13:30',
+      '14:00','14:30','15:00','15:30','16:00','16:30',
+      '17:00','17:30','18:00','18:30','19:00','19:30','20:00'
+    ],
+
+    inicializar(infoUsuario) {
+      this.correoUsuario = infoUsuario.correo || '';
+      this.codigoUsuario = infoUsuario.codigo || '';
+      this._poblarSelectoresGlobales();
+      // Cargar reservas devueltas en background
+      this._cargarReservasDevueltas();
+    },
+
+    _poblarSelectoresGlobales() {
+      const selectEntrada = document.getElementById('horaEntrada');
+      if (!selectEntrada) return;
+      selectEntrada.innerHTML = this.HORAS.slice(0, -1)
+        .map(h => `<option value="${h}">${this._formatearAmPm(h)}</option>`)
+        .join('');
+      this.filtrarHoraSalida();
+    },
+
+    _formatearAmPm(horaStr) {
+      const [h, m] = horaStr.split(':').map(Number);
+      const ampm   = h >= 12 ? 'PM' : 'AM';
+      const hora12 = h % 12 || 12;
+      return `${String(hora12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
+    },
+
+    // ── Toggle: mismo horario para todas las fechas ──
+    toggleMismoHorario() {
+      const checkbox = document.getElementById('checkMismoHorario');
+      this.usarMismoHorario = checkbox.checked;
+
+      const horarioGlobal     = document.getElementById('horarioGlobal');
+      const horariosPorFecha  = document.getElementById('horariosPorFecha');
+
+      if (this.usarMismoHorario) {
+        horarioGlobal?.classList.remove('hidden');
+        horariosPorFecha?.classList.add('hidden');
+      } else {
+        horarioGlobal?.classList.add('hidden');
+        horariosPorFecha?.classList.remove('hidden');
+        this._renderizarHorariosPorFecha();
+      }
+    },
+
+    _renderizarHorariosPorFecha() {
+      const contenedor = document.getElementById('horariosPorFecha');
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
+
+      if (this.fechasSeleccionadas.length === 0) {
+        contenedor.innerHTML = `
+          <p class="text-xs text-slate-400 text-center py-2">
+            <i class="fa-solid fa-circle-info mr-1"></i>Agrega fechas primero para configurar sus horarios individuales.
+          </p>`;
+        return;
+      }
+
+      this.fechasSeleccionadas.forEach((item, idx) => {
+        const [yyyy, mm, dd] = item.fecha.split('-');
+        const legible = `${dd}/${mm}/${yyyy}`;
+
+        const div = document.createElement('div');
+        div.className = 'bg-white border border-slate-200 rounded-xl p-3 animate-fadeIn';
+        div.innerHTML = `
+          <p class="text-xs font-black text-[#002f5c] mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-calendar-day"></i> ${legible}
+          </p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Hora de Entrada</label>
+              <select id="entrada_${idx}" onchange="StudentView._actualizarHoraSalida(${idx})"
+                class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#002f5c]/30">
+                ${this.HORAS.slice(0,-1).map(h => `<option value="${h}" ${h === (item.horaEntrada||'08:00') ? 'selected' : ''}>${this._formatearAmPm(h)}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Hora de Salida</label>
+              <select id="salida_${idx}"
+                class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#002f5c]/30">
+                ${this._opcionesSalidaParaEntrada(item.horaEntrada || '08:00', item.horaSalida)}
+              </select>
+            </div>
+          </div>
+        `;
+        contenedor.appendChild(div);
+      });
+    },
+
+    _opcionesSalidaParaEntrada(horaEntrada, horaSeleccionada) {
+      const idx = this.HORAS.indexOf(horaEntrada);
+      const opciones = this.HORAS.slice(idx + 1);
+      return opciones.map(h => `<option value="${h}" ${h === horaSeleccionada ? 'selected' : ''}>${this._formatearAmPm(h)}</option>`).join('');
+    },
+
+    _actualizarHoraSalida(idx) {
+      const entrada = document.getElementById(`entrada_${idx}`)?.value;
+      const salida  = document.getElementById(`salida_${idx}`);
+      if (!entrada || !salida) return;
+      salida.innerHTML = this._opcionesSalidaParaEntrada(entrada, '');
+      // Actualizar en array
+      if (this.fechasSeleccionadas[idx]) {
+        this.fechasSeleccionadas[idx].horaEntrada = entrada;
+      }
+    },
+
+    seleccionarRol(rol) {
+      document.getElementById('inputRol').value = rol;
+      const badge        = document.getElementById('badgeRol');
+      const labelCodigo  = document.getElementById('labelCodigo');
+      const inputCodigo  = document.getElementById('codigo');
+      const campoExt     = document.getElementById('campoExtension');
+      const inputExt     = document.getElementById('extension');
+      const campoResp    = document.getElementById('campoResponsable');
+
+      if (this.correoUsuario) {
+        const inputCorreo = document.getElementById('correo');
+        if (inputCorreo) inputCorreo.value = this.correoUsuario;
+      }
+      if (this.codigoUsuario) {
+        inputCodigo.value    = this.codigoUsuario;
+        inputCodigo.readOnly = true;
+        inputCodigo.className = 'w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-sm cursor-not-allowed';
+      }
+
+      const hoy = new Date();
+      const min = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+      const selectorFecha = document.getElementById('selectorFecha');
+      if (selectorFecha) selectorFecha.min = min;
+
+      if (rol === 'estudiante') {
+        if (badge) {
+          badge.className   = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100';
+          badge.textContent = 'Estudiante';
+        }
+        if (labelCodigo)  labelCodigo.textContent = 'Código de Alumno:';
+        if (!inputCodigo.value && inputCodigo) inputCodigo.placeholder = 'Ej. 218XXXXXX';
+        campoExt?.classList.add('hidden');
+        campoResp?.classList.add('hidden');
+        if (inputExt) { inputExt.required = false; inputExt.value = ''; }
+      } else {
+        if (badge) {
+          badge.className   = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100';
+          badge.textContent = 'Administrativo / Maestro';
+        }
+        if (labelCodigo)  labelCodigo.textContent = 'Código de Trabajador:';
+        if (!inputCodigo.value && inputCodigo) inputCodigo.placeholder = 'Ej. 95XXXXX';
+        campoExt?.classList.remove('hidden');
+        campoResp?.classList.remove('hidden');
+        if (inputExt) inputExt.required = true;
+      }
+    },
+
+    filtrarHoraSalida() {
+      const entrada = document.getElementById('horaEntrada');
+      const salida  = document.getElementById('horaSalida');
+      if (!entrada || !salida) return;
+      const indexEntrada   = this.HORAS.indexOf(entrada.value);
+      const horasFiltradas = this.HORAS.slice(indexEntrada + 1);
+      salida.innerHTML = horasFiltradas
+        .map(h => `<option value="${h}">${this._formatearAmPm(h)}</option>`)
+        .join('');
+    },
+
+    agregarFecha() {
+      const input = document.getElementById('selectorFecha');
+      const valor = input?.value;
+
+      if (!valor) {
+        this._mostrarToast('Selecciona una fecha en el calendario primero.', 'warn');
+        return;
+      }
+
+      if (this.fechasSeleccionadas.some(f => f.fecha === valor)) {
+        input.value = '';
+        this._mostrarToast('Esa fecha ya fue agregada.', 'warn');
+        return;
+      }
+
+      this.fechasSeleccionadas.push({ fecha: valor, horaEntrada: '08:00', horaSalida: '10:00' });
+      this._renderizarEtiquetasFechas();
+
+      if (!this.usarMismoHorario) {
+        this._renderizarHorariosPorFecha();
+      }
+      input.value = '';
+
+      // Ocultar error fechas si había
+      document.getElementById('errorFechas')?.classList.add('hidden');
+    },
+
+    eliminarFecha(fecha) {
+      this.fechasSeleccionadas = this.fechasSeleccionadas.filter(f => f.fecha !== fecha);
+      this._renderizarEtiquetasFechas();
+      if (!this.usarMismoHorario) this._renderizarHorariosPorFecha();
+    },
+
+    _renderizarEtiquetasFechas() {
+      const contenedor = document.getElementById('listaFechasAgregadas');
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
+
+      [...this.fechasSeleccionadas].sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(item => {
+        const [yyyy, mm, dd] = item.fecha.split('-');
+        const legible = `${dd}/${mm}/${yyyy}`;
+        const span = document.createElement('span');
+        span.className = 'inline-flex items-center gap-1.5 bg-blue-50 text-[#002f5c] text-xs font-semibold px-2.5 py-1 rounded-lg border border-blue-100 shadow-sm';
+        span.innerHTML = `
+          <i class="fa-solid fa-calendar-day text-[10px]"></i>
+          ${legible}
+          <button type="button" onclick="StudentView.eliminarFecha('${item.fecha}')"
+            class="text-blue-400 hover:text-blue-700 font-black ml-1 hover:bg-blue-100 rounded px-0.5">×</button>
+        `;
+        contenedor.appendChild(span);
+      });
+    },
+
+    // ── Toggle horario global visible on init ──
+    _inicializarHorarioUI() {
+      const checkbox = document.getElementById('checkMismoHorario');
+      if (checkbox) {
+        checkbox.checked = true;
+        this.usarMismoHorario = true;
+      }
+      document.getElementById('horarioGlobal')?.classList.remove('hidden');
+      document.getElementById('horariosPorFecha')?.classList.add('hidden');
+    },
+
+    // ── Procesamiento de archivos ──
+    onDragOver(event) {
+      event.preventDefault();
+      document.getElementById('uploadZone')?.classList.add('dragover');
+    },
+    onDragLeave(event) {
+      document.getElementById('uploadZone')?.classList.remove('dragover');
+    },
+    onDrop(event) {
+      event.preventDefault();
+      document.getElementById('uploadZone')?.classList.remove('dragover');
+      const files = event.dataTransfer?.files;
+      if (files) this._procesarListaArchivos(files);
+    },
+
+    procesarArchivos(event) {
+      this._procesarListaArchivos(event.target.files);
+    },
+
+    _procesarListaArchivos(fileList) {
+      const TIPOS_PERMITIDOS = ['application/pdf','application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'image/png','image/jpeg'];
+      const MAX_SIZE  = 5 * 1024 * 1024; // 5MB
+      const MAX_FILES = 5;
+
+      Array.from(fileList).forEach(file => {
+        if (this.archivosSeleccionados.length >= MAX_FILES) {
+          this._mostrarToast(`Máximo ${MAX_FILES} archivos permitidos.`, 'warn');
+          return;
+        }
+        if (file.size > MAX_SIZE) {
+          this._mostrarToast(`El archivo "${file.name}" supera los 5MB.`, 'error');
+          return;
+        }
+        if (!TIPOS_PERMITIDOS.includes(file.type)) {
+          this._mostrarToast(`Tipo de archivo no permitido: ${file.name}`, 'error');
+          return;
+        }
+        if (this.archivosSeleccionados.some(a => a.nombre === file.name)) {
+          return; // Duplicado
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          // Extraer base64 sin el prefijo data:...;base64,
+          const base64 = e.target.result.split(',')[1];
+          this.archivosSeleccionados.push({
+            nombre: file.name,
+            tipo:   file.type,
+            base64: base64,
+            tamano: file.size
+          });
+          this._renderizarListaArchivos();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // Limpiar input para permitir re-selección
+      document.getElementById('inputArchivos').value = '';
+    },
+
+    _renderizarListaArchivos() {
+      const lista = document.getElementById('listaArchivos');
+      if (!lista) return;
+      lista.innerHTML = '';
+
+      this.archivosSeleccionados.forEach((archivo, idx) => {
+        const tamanoKb = (archivo.tamano / 1024).toFixed(1);
+        const iconos = {
+          'application/pdf': 'fa-file-pdf text-rose-500',
+          'image/png':       'fa-file-image text-blue-500',
+          'image/jpeg':      'fa-file-image text-blue-500'
+        };
+        const icono = iconos[archivo.tipo] || 'fa-file text-slate-500';
+
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2 animate-fadeIn';
+        div.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0">
+            <i class="fa-solid ${icono} flex-shrink-0"></i>
+            <span class="text-xs font-semibold text-slate-700 truncate">${this._escapar(archivo.nombre)}</span>
+            <span class="text-[10px] text-slate-400 flex-shrink-0">${tamanoKb} KB</span>
+          </div>
+          <button type="button" onclick="StudentView.eliminarArchivo(${idx})"
+            class="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors flex-shrink-0 ml-2">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+          </button>
+        `;
+        lista.appendChild(div);
+      });
+    },
+
+    eliminarArchivo(idx) {
+      this.archivosSeleccionados.splice(idx, 1);
+      this._renderizarListaArchivos();
+    },
+
+    // ── Panel Mis Reservas Devueltas ──
+    abrirPanelMisReservas() {
+      const panel = document.getElementById('panelMisReservas');
+      if (!panel) return;
+      panel.classList.remove('hidden');
+      panel.classList.add('animate-fadeIn');
+      this._cargarReservasDevueltas();
+    },
+
+    cerrarPanelMisReservas() {
+      document.getElementById('panelMisReservas')?.classList.add('hidden');
+    },
+
+    async _cargarReservasDevueltas() {
+      if (!AuthService.usuario) return;
+      try {
+        const res = await GasApi.ejecutar('obtenerReservasDevueltas', this.correoUsuario);
+        this._renderizarReservasDevueltas(res.reservas || []);
+
+        // Actualizar badge
+        const badge = document.getElementById('badgeReservasDevueltas');
+        const count = (res.reservas || []).length;
+        if (badge) {
+          if (count > 0) {
+            badge.textContent = count;
+            badge.classList.remove('hidden');
+            badge.classList.add('flex');
+          } else {
+            badge.classList.add('hidden');
+          }
+        }
+      } catch (e) {
+        console.error('[StudentView] Error al cargar reservas devueltas:', e);
+      }
+    },
+
+    _renderizarReservasDevueltas(reservas) {
+      const lista = document.getElementById('listaReservasDevueltas');
+      if (!lista) return;
+
+      if (reservas.length === 0) {
+        lista.innerHTML = `
+          <div class="text-center py-8">
+            <i class="fa-solid fa-check-circle text-3xl text-emerald-400 mb-2 block"></i>
+            <p class="text-sm font-semibold text-slate-600">¡Sin reservas por corregir!</p>
+            <p class="text-xs text-slate-400 mt-1">Todas tus solicitudes están al día.</p>
+          </div>`;
+        return;
+      }
+
+      lista.innerHTML = reservas.map(r => {
+        const [yyyy, mm, dd] = (r.fecha || '').split('-');
+        const fechaLegible = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : r.fecha;
+        return `
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 animate-fadeIn">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <span class="text-xs font-mono text-slate-500">${this._escapar(r.idReserva)}</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full badge-devuelta">Devuelta</span>
+                </div>
+                <p class="font-black text-slate-800 text-sm">${this._escapar(r.actividad || 'Sin nombre')}</p>
+                <p class="text-xs text-slate-600 mt-0.5">
+                  <i class="fa-solid fa-building mr-1 text-slate-400"></i>${this._escapar(r.coworking)} ·
+                  <i class="fa-solid fa-calendar ml-1 mr-1 text-slate-400"></i>${fechaLegible}
+                </p>
+                <div class="mt-2 p-2.5 bg-rose-50 border border-rose-100 rounded-lg">
+                  <p class="text-[10px] font-black text-rose-700 uppercase tracking-wider mb-0.5">Motivo del rechazo:</p>
+                  <p class="text-xs text-rose-800">${this._escapar(r.motivoRechazo || 'Sin motivo especificado')}</p>
+                </div>
+              </div>
+              <button onclick="StudentView.editarReservaDevuelta('${r.idReserva}')"
+                class="flex items-center gap-2 bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-sm flex-shrink-0 whitespace-nowrap">
+                <i class="fa-solid fa-pen-to-square"></i> Editar y Reenviar
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    },
+
+    async editarReservaDevuelta(idReserva) {
+      try {
+        const res = await GasApi.ejecutar('obtenerDetalleReserva', idReserva, this.correoUsuario);
+        if (!res.exito) {
+          this._mostrarToast('No se pudo cargar la reserva.', 'error');
+          return;
+        }
+
+        const r = res.reserva;
+        // Buscar el coworking y abrir modal
+        const botonesCoworking = document.querySelectorAll('[data-coworking]');
+        let botonCoworking = null;
+
+        botonesCoworking.forEach(btn => {
+          if (btn.dataset.coworking === r.coworking) botonCoworking = btn;
+        });
+
+        if (!botonCoworking) {
+          // Abrir modal manualmente con datos básicos
+          this._abrirModalConDatosDevueltos(r);
+          return;
+        }
+
+        ModalController.abrir(botonCoworking);
+        this._rellenarFormularioDevuelto(r);
+        this.cerrarPanelMisReservas();
+
+      } catch (e) {
+        this._mostrarToast('Error al cargar la reserva: ' + e.message, 'error');
+      }
+    },
+
+    _abrirModalConDatosDevueltos(r) {
+      // Establecer datos básicos del modal
+      document.getElementById('modalTitulo')?.setAttribute('textContent', r.coworking);
+      const inputCW = document.getElementById('inputCoworking');
+      if (inputCW) inputCW.value = r.coworking;
+
+      StudentView.resetear();
+      const rolFormulario = (r.rol === 'maestro' || r.rol === 'admin') ? 'administrativo' : 'estudiante';
+      StudentView.seleccionarRol(rolFormulario);
+      this._rellenarFormularioDevuelto(r);
+
+      const modal = document.getElementById('modalReserva');
+      if (modal) modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      this.cerrarPanelMisReservas();
+    },
+
+    _rellenarFormularioDevuelto(r) {
+      // Marcar ID de reserva devuelta
+      const inputId = document.getElementById('inputReservaDevueltaId');
+      if (inputId) inputId.value = r.idReserva;
+
+      // Mostrar banner de devolución
+      const banner = document.getElementById('bannerReservaDevuelta');
+      const textoMotivo = document.getElementById('textoMotivoDevolucion');
+      if (banner) banner.classList.remove('hidden');
+      if (textoMotivo) textoMotivo.textContent = `Motivo: ${r.motivoRechazo || 'No especificado'}`;
+
+      // Rellenar campos
+      const campos = {
+        'nombres':              r.nombres || r.nombreCompleto?.split(' ')[0] || '',
+        'apellidoPaterno':      r.apellidoPaterno || '',
+        'apellidoMaterno':      r.apellidoMaterno || '',
+        'codigo':               r.codigo || '',
+        'telefono':             r.telefono || '',
+        'extension':            r.extension !== 'N/A' ? (r.extension || '') : '',
+        'correo':               r.correo || '',
+        'actividad':            r.actividad || '',
+        'descripcionActividad': r.descripcion || ''
+      };
+
+      Object.entries(campos).forEach(([id, valor]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = valor;
+      });
+
+      // Agregar fecha
+      if (r.fecha) {
+        this.fechasSeleccionadas = [{ fecha: r.fecha, horaEntrada: r.horaInicio || '08:00', horaSalida: r.horaFin || '10:00' }];
+        this._renderizarEtiquetasFechas();
+      }
+    },
+
+    // ── Envío del formulario ──
+    async enviarReserva(evento) {
+      evento.preventDefault();
+
+      // Validar tipo de actividad
+      const tipoActividad = document.querySelector('input[name="tipoActividad"]:checked');
+      if (!tipoActividad) {
+        document.getElementById('errorTipoActividad')?.classList.remove('hidden');
+        document.getElementById('tipoActividadContainer')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      document.getElementById('errorTipoActividad')?.classList.add('hidden');
+
+      // Validar fechas
+      if (this.fechasSeleccionadas.length === 0) {
+        document.getElementById('errorFechas')?.classList.remove('hidden');
+        return;
+      }
+      document.getElementById('errorFechas')?.classList.add('hidden');
+
+      const btn    = document.getElementById('btnEnviar');
+      const msgDiv = document.getElementById('mensajeResultado');
+
+      const odsChecks = document.querySelectorAll('input[name="ods_check"]:checked');
+      const odsSeleccionados = Array.from(odsChecks).map(cb => cb.value);
+
+      // Construir array de fechas con horarios
+      let fechasConHorario = [];
+      if (this.usarMismoHorario) {
+        const horaEntradaGlobal = document.getElementById('horaEntrada')?.value || '08:00';
+        const horaSalidaGlobal  = document.getElementById('horaSalida')?.value  || '10:00';
+        fechasConHorario = this.fechasSeleccionadas.map(f => ({
+          fecha:       f.fecha,
+          horaEntrada: horaEntradaGlobal,
+          horaSalida:  horaSalidaGlobal
+        }));
+      } else {
+        fechasConHorario = this.fechasSeleccionadas.map((f, idx) => ({
+          fecha:       f.fecha,
+          horaEntrada: document.getElementById(`entrada_${idx}`)?.value || f.horaEntrada || '08:00',
+          horaSalida:  document.getElementById(`salida_${idx}`)?.value  || f.horaSalida  || '10:00'
+        }));
+      }
+
+      // Validar que salida > entrada en todos los casos
+      for (const fh of fechasConHorario) {
+        const minEntrada = this._horaAMinutos(fh.horaEntrada);
+        const minSalida  = this._horaAMinutos(fh.horaSalida);
+        if (minSalida <= minEntrada) {
+          const [yyyy, mm, dd] = fh.fecha.split('-');
+          this._mostrarMensaje(msgDiv, `La hora de salida debe ser posterior a la entrada para el ${dd}/${mm}/${yyyy}.`, 'error');
+          return;
+        }
+      }
+
+      const datos = {
+        rol:                  document.getElementById('inputRol')?.value || '',
+        coworking:            document.getElementById('inputCoworking')?.value || '',
+        nombres:              document.getElementById('nombres')?.value.trim() || '',
+        apellidoPaterno:      document.getElementById('apellidoPaterno')?.value.trim() || '',
+        apellidoMaterno:      document.getElementById('apellidoMaterno')?.value.trim() || '',
+        codigo:               document.getElementById('codigo')?.value.trim() || '',
+        telefono:             document.getElementById('telefono')?.value.trim() || '',
+        extension:            document.getElementById('extension')?.value.trim() || 'N/A',
+        correoResponsable:    document.getElementById('correoResponsable')?.value.trim() || '',
+        correo:               document.getElementById('correo')?.value.trim() || '',
+        actividad:            document.getElementById('actividad')?.value.trim() ||
+
+user avatar
+
+continua
+model avatar
+script.js (continuación)
+
+actividad:            document.getElementById('actividad')?.value.trim() || '',
+        tipoActividad:        tipoActividad.value,
+        descripcionActividad: document.getElementById('descripcionActividad')?.value.trim() || '',
+        fechasConHorario:     fechasConHorario,
+        // Compatibilidad legacy: primera fecha y horario
+        fechas:               fechasConHorario.map(f => f.fecha),
+        horaEntrada:          fechasConHorario[0]?.horaEntrada || '08:00',
+        horaSalida:           fechasConHorario[0]?.horaSalida  || '10:00',
+        ods:                  odsSeleccionados,
+        archivos:             this.archivosSeleccionados,
+        reservaDevueltaId:    document.getElementById('inputReservaDevueltaId')?.value || ''
+      };
+
+      btn.disabled  = true;
+      btn.innerHTML = 'Validando y registrando…';
+      this._ocultarMensaje(msgDiv);
+
+      try {
+        const resultado = await GasApi.ejecutar('registrarReserva', datos, this.correoUsuario);
+
+        if (resultado.exito) {
+          this._mostrarMensaje(msgDiv, resultado.mensaje, 'exito');
+          document.getElementById('formReserva')?.reset();
+          this.fechasSeleccionadas    = [];
+          this.archivosSeleccionados  = [];
+          this._renderizarEtiquetasFechas();
+          this._renderizarListaArchivos();
+          this._inicializarHorarioUI();
+          // Limpiar banner devuelta
+          document.getElementById('bannerReservaDevuelta')?.classList.add('hidden');
+          document.getElementById('inputReservaDevueltaId').value = '';
+          // Recargar reservas devueltas
+          setTimeout(() => { this._cargarReservasDevueltas(); }, 500);
+          setTimeout(() => ModalController.cerrar(), 3500);
+        } else {
+          this._mostrarMensaje(msgDiv, resultado.mensaje, 'error');
+          this._restaurarBoton(btn);
+        }
+      } catch (error) {
+        console.error('[StudentView] Error al enviar reserva:', error);
+        this._mostrarMensaje(msgDiv, 'Error de conexión: ' + (error.message || 'Inténtalo de nuevo.'), 'error');
+        this._restaurarBoton(btn);
+      }
+    },
+
+    _horaAMinutos(horaStr) {
+      const [h, m] = horaStr.split(':').map(Number);
+      return h * 60 + m;
+    },
+
+    _restaurarBoton(btn) {
+      if (!btn) return;
+      btn.disabled  = false;
+      btn.innerHTML = 'Confirmar mi reserva';
+    },
+
+    _mostrarMensaje(el, texto, tipo) {
+      if (!el) return;
+      const estilos = {
+        exito: 'bg-emerald-50 text-emerald-800 border border-emerald-200',
+        error: 'bg-rose-50 text-rose-800 border border-rose-200',
+        warn:  'bg-amber-50 text-amber-800 border border-amber-200'
+      };
+      el.className   = `mt-4 p-3 rounded-xl text-sm font-semibold text-center ${estilos[tipo] || estilos.error}`;
+      el.textContent = texto;
+      el.classList.remove('hidden');
+    },
+
+    _ocultarMensaje(el) {
+      if (el) el.classList.add('hidden');
+    },
+
+    _mostrarToast(texto, tipo = 'warn') {
+      const msgDiv = document.getElementById('mensajeResultado');
+      this._mostrarMensaje(msgDiv, texto, tipo);
+      setTimeout(() => this._ocultarMensaje(msgDiv), 3500);
+    },
+
+    _escapar(valor) {
+      return String(valor || '')
+        .replace(/&/g, '&')
+        .replace(//g, '>')
+        .replace(/"/g, '"')
+        .replace(/'/g, ''');
+    },
+
+    resetear() {
+      const form = document.getElementById('formReserva');
+      if (form) form.reset();
+
+      this.fechasSeleccionadas   = [];
+      this.archivosSeleccionados = [];
+      this._renderizarEtiquetasFechas();
+      this._renderizarListaArchivos();
+      this._inicializarHorarioUI();
+
+      document.querySelectorAll('input[name="ods_check"]').forEach(cb => { cb.checked = false; });
+      document.querySelectorAll('input[name="tipoActividad"]').forEach(r => { r.checked = false; });
+      document.getElementById('errorTipoActividad')?.classList.add('hidden');
+      document.getElementById('errorFechas')?.classList.add('hidden');
+      document.getElementById('bannerReservaDevuelta')?.classList.add('hidden');
+
+      const inputId = document.getElementById('inputReservaDevueltaId');
+      if (inputId) inputId.value = '';
+
+      this._ocultarMensaje(document.getElementById('mensajeResultado'));
+      this._restaurarBoton(document.getElementById('btnEnviar'));
+      this._poblarSelectoresGlobales();
+    }
+  };
+
+  // ──────────────────────────────────────────────────────────
+  // MÓDULO: ModalController
+  // ──────────────────────────────────────────────────────────
+  const ModalController = {
+    abrir(boton) {
+      if (!AuthService.usuario) {
+        AuthService.abrirModalAuth('login');
+        return;
+      }
+
+      const titulo    = boton.dataset.coworking || '';
+      const desc      = boton.dataset.desc      || '';
+      const capacidad = boton.dataset.cap        || '';
+      let   specs     = [];
+
+      try { specs = JSON.parse(boton.dataset.specs || '[]'); }
+      catch (e) { console.warn('[ModalController] Error al parsear specs:', e); }
+
+      this._setTexto('modalTitulo',      titulo);
+      this._setTexto('modalDescripcion', desc);
+      this._setTexto('modalCapacidad',   capacidad);
+
+      const listaEsp = document.getElementById('modalEspecificaciones');
+      if (listaEsp) {
+        listaEsp.innerHTML = specs.map(item => `
+
+             ${item}
+
+        `).join('');
+      }
+
+      const inputCW = document.getElementById('inputCoworking');
+      if (inputCW) inputCW.value = titulo;
+
+      StudentView.resetear();
+
+      const rolUsuario     = AuthService.usuario.rol;
+      const tipoFormulario = (rolUsuario === 'maestro' || rolUsuario === 'admin') ? 'administrativo' : 'estudiante';
+      StudentView.seleccionarRol(tipoFormulario);
+
+      const modal = document.getElementById('modalReserva');
+      if (modal) modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    },
+
+    cerrar() {
+      document.getElementById('modalReserva')?.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+      StudentView.resetear();
+    },
+
+    _setTexto(id, texto) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = texto;
+    }
+  };
+
+  // ──────────────────────────────────────────────────────────
+  // MÓDULO: AdminDashboard
+  // ──────────────────────────────────────────────────────────
+  const AdminDashboard = {
+    todasLasReservas: [],
+    todosLosUsuarios: [],
+    filtroActivo:     'todos',
+    _charts:          {},
+    _reservaEnModal:  null,
+    _calendarioInstance: null,
+
+    async inicializar() {
+      try {
+        const adminCorreo = AuthService.usuario?.correo || '';
+        const datos = await GasApi.ejecutar('obtenerDashboardAdmin', adminCorreo);
+
+        if (!datos.exito) {
+          this._mostrarErrorDashboard(datos.mensaje);
+          return;
+        }
+
+        this.todasLasReservas = datos.reservas || [];
+        this._renderizarMetricas(datos.metricas);
+        this._renderizarGraficas(datos.graficaEstados, datos.graficaEspacios);
+        this._renderizarTabla(this.todasLasReservas);
+        this.cargarUsuarios(adminCorreo);
+
+      } catch (error) {
+        console.error('[AdminDashboard] Error al inicializar:', error);
+        this._mostrarErrorDashboard('Error al cargar el dashboard: ' + (error.message || 'Inténtalo de nuevo.'));
+      }
+    },
+
+    // ── Tabs ──
+    cambiarTab(tab) {
+      const tabs = ['reservas', 'calendario', 'usuarios'];
+      const vistas = {
+        reservas:   'adminVistaReservas',
+        calendario: 'adminVistaCalendario',
+        usuarios:   'adminVistaUsuarios'
+      };
+      const botones = {
+        reservas:   'tabBtnReservas',
+        calendario: 'tabBtnCalendario',
+        usuarios:   'tabBtnUsuarios'
+      };
+
+      tabs.forEach(t => {
+        const vistaEl = document.getElementById(vistas[t]);
+        const btnEl   = document.getElementById(botones[t]);
+        if (t === tab) {
+          vistaEl?.classList.remove('hidden');
+          if (btnEl) btnEl.className = 'px-4 py-2 text-sm font-bold border-b-2 border-[#002f5c] text-[#002f5c] whitespace-nowrap';
+        } else {
+          vistaEl?.classList.add('hidden');
+          if (btnEl) btnEl.className = 'px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-colors whitespace-nowrap';
+        }
+      });
+
+      // Inicializar calendario si se abre su pestaña
+      if (tab === 'calendario') {
+        setTimeout(() => this._inicializarCalendario(), 100);
+      }
+    },
+
+    // ── Calendario Digital con FullCalendar ──
+    _inicializarCalendario() {
+      const contenedor = document.getElementById('contenedorCalendario');
+      if (!contenedor) return;
+
+      // Destruir instancia previa si existe
+      if (this._calendarioInstance) {
+        this._calendarioInstance.destroy();
+        this._calendarioInstance = null;
+      }
+
+      if (typeof FullCalendar === 'undefined') {
+        contenedor.innerHTML = `
+
+          FullCalendar no disponible. Verifica la conexión a internet.
+        `;
+        return;
+      }
+
+      const eventos = this._reservasAEventosCalendario(this.todasLasReservas);
+
+      this._calendarioInstance = new FullCalendar.Calendar(contenedor, {
+        initialView: 'dayGridMonth',
+        locale: 'es',
+        headerToolbar: {
+          left:   'prev,next today',
+          center: 'title',
+          right:  'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        buttonText: {
+          today:        'Hoy',
+          month:        'Mes',
+          week:         'Semana',
+          day:          'Día'
+        },
+        events: eventos,
+        eventClick: (info) => {
+          const idReserva = info.event.extendedProps.idReserva;
+          if (idReserva) {
+            this.cambiarTab('reservas');
+            setTimeout(() => this.abrirModal(idReserva), 300);
+          }
+        },
+        eventDidMount: (info) => {
+          // Tooltip básico con el nombre del evento
+          info.el.title = `${info.event.title}\n${info.event.extendedProps.solicitante}\n${info.event.extendedProps.horario}`;
+        },
+        height: 'auto',
+        eventTimeFormat: {
+          hour:   '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }
+      });
+
+      this._calendarioInstance.render();
+    },
+
+    _reservasAEventosCalendario(reservas) {
+      const colores = {
+        'Pendiente': { bg: '#f59e0b', border: '#d97706', text: '#fff' },
+        'Aceptada':  { bg: '#10b981', border: '#059669', text: '#fff' },
+        'Rechazada': { bg: '#ef4444', border: '#dc2626', text: '#fff' },
+        'Devuelta':  { bg: '#8b5cf6', border: '#7c3aed', text: '#fff' }
+      };
+
+      return reservas.map(r => {
+        const color  = colores[r.estado] || { bg: '#94a3b8', border: '#64748b', text: '#fff' };
+        const inicio = r.fecha && r.horaInicio ? `${r.fecha}T${r.horaInicio}` : r.fecha;
+        const fin    = r.fecha && r.horaFin    ? `${r.fecha}T${r.horaFin}`    : r.fecha;
+
+        return {
+          id:              r.idReserva,
+          title:           `${r.coworking.replace('Coworking ', 'CW')} · ${r.actividad || 'Sin nombre'}`,
+          start:           inicio,
+          end:             fin,
+          backgroundColor: color.bg,
+          borderColor:     color.border,
+          textColor:       color.text,
+          extendedProps: {
+            idReserva:   r.idReserva,
+            solicitante: r.nombreCompleto,
+            horario:     `${r.horaInicio} – ${r.horaFin}`,
+            estado:      r.estado,
+            coworking:   r.coworking
+          }
+        };
+      });
+    },
+
+    filtrarCalendario() {
+      if (!this._calendarioInstance) return;
+
+      const espacio = document.getElementById('filtroCalendarioEspacio')?.value || '';
+      const estado  = document.getElementById('filtroCalendarioEstado')?.value  || '';
+
+      let filtradas = [...this.todasLasReservas];
+      if (espacio) filtradas = filtradas.filter(r => r.coworking === espacio);
+      if (estado)  filtradas = filtradas.filter(r => r.estado    === estado);
+
+      const eventos = this._reservasAEventosCalendario(filtradas);
+
+      // Reemplazar eventos en el calendario
+      this._calendarioInstance.removeAllEvents();
+      eventos.forEach(e => this._calendarioInstance.addEvent(e));
+    },
+
+    // ── Usuarios ──
+    async cargarUsuarios(adminCorreo) {
+      try {
+        const res = await GasApi.ejecutar('obtenerListaUsuarios', adminCorreo);
+        if (res.exito) {
+          this.todosLosUsuarios = res.usuarios;
+          this._renderizarTablaUsuarios(this.todosLosUsuarios);
+        }
+      } catch (e) {
+        console.error('[AdminDashboard] Error al cargar usuarios:', e);
+      }
+    },
+
+    _renderizarTablaUsuarios(usuarios) {
+      const cuerpo = document.getElementById('cuerpoTablaUsuarios');
+      if (!cuerpo) return;
+
+      if (usuarios.length === 0) {
+        cuerpo.innerHTML = `No hay usuarios registrados.`;
+        return;
+      }
+
+      cuerpo.innerHTML = usuarios.map(u => {
+        const isAdmin   = u.rol === 'admin';
+        const isMaestro = u.rol === 'maestro';
+        let badgeClass  = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+        if (isAdmin)   badgeClass = 'bg-purple-50 text-purple-700 border border-purple-200';
+        else if (isMaestro) badgeClass = 'bg-blue-50 text-blue-700 border border-blue-200';
+
+        const nextRol      = isAdmin ? (u.correo.includes('@alumnos') ? 'alumno' : 'maestro') : 'admin';
+        const actionText   = isAdmin ? 'Quitar Admin' : 'Hacer Admin';
+        const actionColor  = isAdmin
+          ? 'text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200'
+          : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200';
+
+        return `
+
+            ${this._escapar(u.id)}
+            ${this._escapar(u.correo)}
+            ${this._escapar(u.codigo)}
+
+              ${u.rol}
+
+
+              <button>
+                ${actionText}
+              </button>
+
+
+        `;
+      }).join('');
+    },
+
+    async cambiarRolUsuario(idUsuario, nuevoRol) {
+      const adminCorreo = AuthService.usuario?.correo || '';
+      if (!confirm(`¿Confirmas cambiar el rol a "${nuevoRol.toUpperCase()}"?`)) return;
+      try {
+        const res = await GasApi.ejecutar('actualizarRolUsuario', idUsuario, nuevoRol, adminCorreo);
+        if (res.exito) {
+          alert('✅ Rol actualizado correctamente.');
+          this.cargarUsuarios(adminCorreo);
+        } else {
+          alert('❌ Error: ' + res.mensaje);
+        }
+      } catch (error) {
+        alert('Error de conexión al cambiar el rol.');
+      }
+    },
+
+    // ── Métricas ──
+    _renderizarMetricas(metricas) {
+      const contenedor = document.getElementById('tarjetasMetricas');
+      if (!contenedor) return;
+
+      const config = [
+        { label: 'Total Reservas',  valor: metricas.total,      icono: 'fa-calendar-days',  color: 'text-blue-600',    bg: 'bg-blue-50',    borde: 'border-blue-100' },
+        { label: 'Pendientes',      valor: metricas.pendientes,  icono: 'fa-hourglass-half', color: 'text-amber-600',   bg: 'bg-amber-50',   borde: 'border-amber-100' },
+        { label: 'Aceptadas',       valor: metricas.aceptadas,   icono: 'fa-circle-check',   color: 'text-emerald-600', bg: 'bg-emerald-50', borde: 'border-emerald-100' },
+        { label: 'Rechazadas',      valor: metricas.rechazadas,  icono: 'fa-circle-xmark',   color: 'text-red-600',     bg: 'bg-red-50',     borde: 'border-red-100' }
+      ];
+
+      contenedor.innerHTML = config.map(c => `
+
+
+            ${c.label}
+            ${c.valor}
+
+
+
+
+
+      `).join('');
+    },
+
+    // ── Gráficas ──
+    _renderizarGraficas(dataEstados, dataEspacios) {
+      Object.values(this._charts).forEach(c => { if (c) c.destroy(); });
+      this._charts = {};
+
+      const ctxEstados = document.getElementById('graficaEstados');
+      if (ctxEstados && typeof Chart !== 'undefined') {
+        this._charts.estados = new Chart(ctxEstados, {
+          type: 'doughnut',
+          data: {
+            labels:   dataEstados.labels,
+            datasets: [{
+              data:            dataEstados.datos,
+              backgroundColor: ['#f59e0b','#10b981','#ef4444'],
+              borderColor:     ['#fff','#fff','#fff'],
+              borderWidth:     3,
+              hoverOffset:     6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { font: { size: 11, weight: 'bold' }, padding: 16, usePointStyle: true }
+              },
+              tooltip: {
+                callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} reserva(s)` }
+              }
+            },
+            cutout: '65%'
+          }
+        });
+      }
+
+      const ctxEspacios = document.getElementById('graficaEspacios');
+      if (ctxEspacios && typeof Chart !== 'undefined') {
+        this._charts.espacios = new Chart(ctxEspacios, {
+          type: 'bar',
+          data: {
+            labels:   dataEspacios.labels,
+            datasets: [{
+              label:           'Reservas',
+              data:            dataEspacios.datos,
+              backgroundColor: [
+                'rgba(0,47,92,0.80)',
+                'rgba(234,170,0,0.80)',
+                'rgba(16,185,129,0.80)',
+                'rgba(99,102,241,0.80)'
+              ],
+              borderRadius:  8,
+              borderSkipped: false
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: ctx => ` ${ctx.raw} reserva(s)` } }
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+              x: { ticks: { font: { size: 10 }, maxRotation: 30 }, grid: { display: false } }
+            }
+          }
+        });
+      }
+    },
+
+    // ── Tabla de Reservas ──
+    _renderizarTabla(reservas) {
+      const spinner      = document.getElementById('spinnerTabla');
+      const contenedor   = document.getElementById('contenedorTabla');
+      const cuerpo       = document.getElementById('cuerpoTabla');
+      const mensajeVacio = document.getElementById('mensajeTablaVacia');
+
+      spinner?.classList.add('hidden');
+      contenedor?.classList.remove('hidden');
+
+      if (!cuerpo) return;
+
+      if (reservas.length === 0) {
+        cuerpo.innerHTML = '';
+        mensajeVacio?.classList.remove('hidden');
+        return;
+      }
+
+      mensajeVacio?.classList.add('hidden');
+
+      cuerpo.innerHTML = reservas.map(r => {
+        const badgeClase  = this._obtenerClaseBadge(r.estado);
+        const esPendiente = r.estado === 'Pendiente';
+        const esDevuelta  = r.estado === 'Devuelta';
+
+        const [yyyy, mm, dd] = (r.fecha || '').split('-');
+        const fechaLegible   = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : r.fecha;
+
+        let btnAccion = '';
+        if (esPendiente) {
+          btnAccion = `<button>
+            Revisar`;
+        } else if (esDevuelta) {
+          btnAccion = `<button>
+            Ver`;
+        } else {
+          btnAccion = `<button>
+            Detalle`;
+        }
+
+        return `
+
+            ${this._escapar(r.idReserva)}
+
+              ${this._escapar(r.nombreCompleto)}
+              ${this._escapar(r.correo)}
+
+            ${this._escapar(r.coworking)}
+            ${fechaLegible}
+            ${r.horaInicio} – ${r.horaFin}
+
+              ${r.estado}
+
+            ${btnAccion}
+
+        `;
+      }).join('');
+    },
+
+    filtrarPorEstado(estado) {
+      this.filtroActivo = estado;
+
+      document.querySelectorAll('.filtro-btn').forEach(btn => {
+        const activo = btn.dataset.filtro === estado;
+        btn.className = activo
+          ? 'filtro-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-colors bg-[#002f5c] text-white'
+          : 'filtro-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-colors bg-slate-100 text-slate-600';
+      });
+
+      const filtradas = estado === 'todos'
+        ? this.todasLasReservas
+        : this.todasLasReservas.filter(r => r.estado === estado);
+
+      this._renderizarTabla(filtradas);
+    },
+
+    // ── Modal de Detalle (profesional) ──
+    abrirModal(idReserva) {
+      const reserva = this.todasLasReservas.find(r => r.idReserva === idReserva);
+      if (!reserva) return;
+
+      this._reservaEnModal = reserva;
+
+      // Estado badge
+      const estadoEl = document.getElementById('modalAdminEstado');
+      if (estadoEl) {
+        estadoEl.className   = `text-xs font-bold px-3 py-1 rounded-full ${this._obtenerClaseBadge(reserva.estado)}`;
+        estadoEl.textContent = reserva.estado;
+      }
+
+      const [yyyy, mm, dd] = (reserva.fecha || '').split('-');
+      const fechaLegible   = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : reserva.fecha;
+
+      // ── Tarjeta Solicitante ──
+      const datosSolicitante = [
+        { icono: 'fa-user',        label: 'Nombre Completo', valor: reserva.nombreCompleto },
+        { icono: 'fa-envelope',    label: 'Correo',          valor: reserva.correo },
+        { icono: 'fa-id-badge',    label: 'Código',          valor: reserva.codigo },
+        { icono: 'fa-phone',       label: 'Teléfono',        valor: reserva.telefono },
+        { icono: 'fa-building',    label: 'Extensión',       valor: reserva.extension || 'N/A' },
+        { icono: 'fa-user-tag',    label: 'Rol',             valor: reserva.rol }
+      ];
+
+      const solicitanteEl = document.getElementById('modalAdminDatosSolicitante');
+      if (solicitanteEl) {
+        solicitanteEl.innerHTML = datosSolicitante.map(d => `
+
+
+               ${d.label}
+
+            ${this._escapar(d.valor)}
+
+        `).join('');
+      }
+
+      // ── Tarjeta Reserva ──
+      const datosReserva = [
+        { icono: 'fa-hashtag',      label: 'ID Reserva',   valor: reserva.idReserva },
+        { icono: 'fa-building-user',label: 'Espacio',      valor: reserva.coworking },
+        { icono: 'fa-calendar',     label: 'Fecha',        valor: fechaLegible },
+        { icono: 'fa-clock',        label: 'Horario',      valor: `${reserva.horaInicio} – ${reserva.horaFin}` },
+        { icono: 'fa-tag',          label: 'Tipo',         valor: reserva.tipoActividad || 'No especificado' },
+        { icono: 'fa-calendar-plus',label: 'Registrado',   valor: reserva.fechaRegistro }
+      ];
+
+      const reservaEl = document.getElementById('modalAdminDatosReserva');
+      if (reservaEl) {
+        reservaEl.innerHTML = datosReserva.map(d => `
+
+
+               ${d.label}
+
+            ${this._escapar(d.valor)}
+
+        `).join('');
+      }
+
+      // ODS y descripción
+      this._setTextoModal('modalAdminOds',  reserva.ods         || 'No especificado');
+      this._setTextoModal('modalAdminDesc', reserva.descripcion || 'Sin descripción');
+
+      // ── Archivos adjuntos ──
+      const secArchivos = document.getElementById('seccionArchivosAdmin');
+      const listaArch   = document.getElementById('listaArchivosAdmin');
+      if (reserva.archivosUrls && reserva.archivosUrls.length > 0) {
+        secArchivos?.classList.remove('hidden');
+        if (listaArch) {
+          listaArch.innerHTML = reserva.archivosUrls.map(a => `
+
+               ${this._escapar(a.nombre)}
+
+          `).join('');
+        }
+      } else {
+        secArchivos?.classList.add('hidden');
+      }
+
+      // Panel de rechazo: ocultar por defecto
+      document.getElementById('panelRechazo')?.classList.add('hidden');
+      const inputMotivo = document.getElementById('inputMotivoRechazo');
+      if (inputMotivo) inputMotivo.value = '';
+      const checkReenvio = document.getElementById('checkPermitirReenvio');
+      if (checkReenvio) checkReenvio.checked = false;
+
+      // Renderizar botones según estado
+      this._renderizarBotonesModal(reserva);
+
+      const modal = document.getElementById('modalDetalleAdmin');
+      if (modal) modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    },
+
+    _renderizarBotonesModal(reserva) {
+      const accionesEl = document.getElementById('modalAdminAcciones');
+      if (!accionesEl) return;
+
+      if (reserva.estado === 'Pendiente') {
+        accionesEl.innerHTML = `
+          <button>
+             Rechazar
+
+          <button>
+             Aprobar
+
+        `;
+      } else if (reserva.estado === 'Aceptada') {
+        accionesEl.innerHTML = `
+
+             Reserva aprobada. No puede modificarse.
+          `;
+      } else if (reserva.estado === 'Devuelta') {
+        accionesEl.innerHTML = `
+
+             Devuelta para edición. Esperando reenvío del usuario.
+          `;
+      } else {
+        accionesEl.innerHTML = `
+
+             Reserva rechazada. No puede modificarse.
+          `;
+      }
+    },
+
+    mostrarPanelRechazo() {
+      document.getElementById('panelRechazo')?.classList.remove('hidden');
+      document.getElementById('panelRechazo')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // Ocultar botones de acción mientras se muestra el panel
+      const accionesEl = document.getElementById('modalAdminAcciones');
+      if (accionesEl) accionesEl.classList.add('hidden');
+    },
+
+    cancelarRechazo() {
+      document.getElementById('panelRechazo')?.classList.add('hidden');
+      const accionesEl = document.getElementById('modalAdminAcciones');
+      if (accionesEl) accionesEl.classList.remove('hidden');
+      if (this._reservaEnModal) this._renderizarBotonesModal(this._reservaEnModal);
+    },
+
+    async confirmarRechazo() {
+      const motivo = document.getElementById('inputMotivoRechazo')?.value.trim();
+      if (!motivo) {
+        document.getElementById('inputMotivoRechazo')?.focus();
+        document.getElementById('inputMotivoRechazo')?.classList.add('ring-2','ring-rose-400');
+        setTimeout(() => document.getElementById('inputMotivoRechazo')?.classList.remove('ring-2','ring-rose-400'), 2000);
+        return;
+      }
+
+      const permitirReenvio = document.getElementById('checkPermitirReenvio')?.checked || false;
+      const nuevoEstado     = permitirReenvio ? 'Devuelta' : 'Rechazada';
+      const idReserva       = this._reservaEnModal?.idReserva;
+
+      if (!idReserva) return;
+
+      // Mostrar cargando en el panel
+      const panelRechazo = document.getElementById('panelRechazo');
+      if (panelRechazo) {
+        panelRechazo.innerHTML = `
+
+             Procesando…
+          `;
+      }
+
+      await this.cambiarEstado(idReserva, nuevoEstado, motivo);
+    },
+
+    cerrarModal() {
+      document.getElementById('modalDetalleAdmin')?.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+      this._reservaEnModal = null;
+    },
+
+    async cambiarEstado(idReserva, nuevoEstado, motivoRechazo = '') {
+      const accionesEl  = document.getElementById('modalAdminAcciones');
+      const adminCorreo = AuthService.usuario?.correo || '';
+
+      if (accionesEl && !motivoRechazo) {
+        accionesEl.innerHTML = `
+
+             Procesando…
+          `;
+      }
+
+      try {
+        const resultado = await GasApi.ejecutar(
+          'actualizarEstadoReserva',
+          idReserva,
+          nuevoEstado,
+          adminCorreo,
+          motivoRechazo
+        );
+
+        if (resultado.exito) {
+          // Actualizar en memoria
+          const idx = this.todasLasReservas.findIndex(r => r.idReserva === idReserva);
+          if (idx !== -1) {
+            this.todasLasReservas[idx].estado = nuevoEstado;
+            if (motivoRechazo) this.todasLasReservas[idx].motivoRechazo = motivoRechazo;
+          }
+
+          // Actualizar badge del estado en el modal
+          const estadoEl = document.getElementById('modalAdminEstado');
+          if (estadoEl) {
+            estadoEl.className   = `text-xs font-bold px-3 py-1 rounded-full ${this._obtenerClaseBadge(nuevoEstado)}`;
+            estadoEl.textContent = nuevoEstado;
+          }
+
+          if (accionesEl) {
+            accionesEl.classList.remove('hidden');
+            accionesEl.innerHTML = `
+
+                 ${resultado.mensaje}
+              `;
+          }
+
+          // Ocultar panel de rechazo si estaba visible
+          document.getElementById('panelRechazo')?.classList.add('hidden');
+
+          setTimeout(() => {
+            this.cerrarModal();
+            this.filtrarPorEstado(this.filtroActivo);
+          }, 2000);
+
+        } else {
+          if (accionesEl) {
+            accionesEl.classList.remove('hidden');
+            accionesEl.innerHTML = `
+
+                 ${resultado.mensaje}
+              `;
+          }
+          if (this._reservaEnModal) {
+            setTimeout(() => {
+              accionesEl?.classList.remove('hidden');
+              this._renderizarBotonesModal(this._reservaEnModal);
+              document.getElementById('panelRechazo')?.classList.add('hidden');
+            }, 3000);
+          }
+        }
+      } catch (error) {
+        if (accionesEl) {
+          accionesEl.classList.remove('hidden');
+          accionesEl.innerHTML = `
+
+              Error de conexión: ${error.message || 'Inténtalo de nuevo.'}
+            `;
+        }
+        if (this._reservaEnModal) {
+          setTimeout(() => {
+            accionesEl?.classList.remove('hidden');
+            this._renderizarBotonesModal(this._reservaEnModal);
+            document.getElementById('panelRechazo')?.classList.add('hidden');
+          }, 3000);
+        }
+      }
+    },
+
+    // ── Buscador ──
+    async buscar() {
+      const inputEl     = document.getElementById('inputBusqueda');
+      const resultadoEl = document.getElementById('resultadoBusqueda');
+      const query       = inputEl?.value.trim() || '';
+      const adminCorreo = AuthService.usuario?.correo || '';
+
+      if (!query) {
+        this._mostrarResultadoBusqueda(resultadoEl,
+          'Escribe un correo para buscar.');
+        return;
+      }
+
+      this._mostrarResultadoBusqueda(resultadoEl,
+        `
+           Buscando reservas…
+        `);
+
+      try {
+        const resultado = await GasApi.ejecutar('buscarReservasPorCorreo', query, adminCorreo);
+
+        if (!resultado.exito) {
+          this._mostrarResultadoBusqueda(resultadoEl,
+            `${resultado.mensaje}`);
+          return;
+        }
+
+        if (resultado.reservas.length === 0) {
+          this._mostrarResultadoBusqueda(resultadoEl,
+            `${resultado.mensaje}`);
+          return;
+        }
+
+        const html = `
+
+             ${resultado.mensaje}
+
+
+
+                ${resultado.reservas.map(r => {
+                  const [yyyy, mm, dd] = (r.fecha || '').split('-');
+                  const fecha = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : r.fecha;
+                  return `
+
+                  `;
+                }).join('')}
+
+
+
+                  ID
+                  Espacio
+                  Fecha
+                  Horario
+                  Estado
+
+
+
+                      ${this._escapar(r.idReserva)}
+                      ${this._escapar(r.coworking)}
+                      ${fecha}
+                      ${r.horaInicio} – ${r.horaFin}
+
+                        ${r.estado}
+
+
+
+
+        `;
+        this._mostrarResultadoBusqueda(resultadoEl, html);
+
+      } catch (error) {
+        this._mostrarResultadoBusqueda(resultadoEl,
+          `
+            Error de conexión: ${error.message || 'Inténtalo de nuevo.'}
+          `);
+      }
+    },
+
+    limpiarBusqueda() {
+      const input     = document.getElementById('inputBusqueda');
+      const resultado = document.getElementById('resultadoBusqueda');
+      if (input)     input.value = '';
+      if (resultado) { resultado.classList.add('hidden'); resultado.innerHTML = ''; }
+    },
+
+    _mostrarResultadoBusqueda(el, html) {
+      if (!el) return;
+      el.innerHTML = html;
+      el.classList.remove('hidden');
+    },
+
+    async recargar() {
+      const spinner    = document.getElementById('spinnerTabla');
+      const contenedor = document.getElementById('contenedorTabla');
+      spinner?.classList.remove('hidden');
+      contenedor?.classList.add('hidden');
+      this.todasLasReservas = [];
+      this.filtroActivo     = 'todos';
+      await this.inicializar();
+    },
+
+    _mostrarErrorDashboard(mensaje) {
+      const spinner    = document.getElementById('spinnerTabla');
+      const contenedor = document.getElementById('contenedorTabla');
+      spinner?.classList.add('hidden');
+      if (contenedor) {
+        contenedor.classList.remove('hidden');
+        contenedor.innerHTML = `
+
+
+            ${mensaje}
+            <button>
+               Reintentar
+
+
+        `;
+      }
+    },
+
+    _obtenerClaseBadge(estado) {
+      const clases = {
+        'Pendiente': 'badge-pendiente',
+        'Aceptada':  'badge-aceptada',
+        'Rechazada': 'badge-rechazada',
+        'Devuelta':  'badge-devuelta'
+      };
+      return clases[estado] || 'bg-slate-100 text-slate-600 border border-slate-200';
+    },
+
+    _escapar(valor) {
+      return String(valor || '')
+        .replace(/&/g, '&')
+        .replace(//g, '>')
+        .replace(/"/g, '"')
+        .replace(/'/g, ''');
+    },
+
+    _escId(id) {
+      return String(id).replace(/'/g, "\'");
+    },
+
+    _setTextoModal(id, texto) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = texto;
+    }
+  };
+
+  // ── Exponer módulos globalmente ──
+  global.GasApi          = GasApi;
+  global.AuthService     = AuthService;
+  global.StudentView     = StudentView;
+  global.ModalController = ModalController;
+  global.AdminDashboard  = AdminDashboard;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    AuthService.inicializar();
+  });
+
+})(window);
+
+code.gs
+
+/**
+ * ============================================================
+ * CUCEI COWORKING SYSTEM - Backend Principal v2.0
+ * Code.gs
+ * ============================================================
+ */
+
+// ─────────────────────────────────────────────────────────────
+// CONFIGURACIÓN GLOBAL
+// ─────────────────────────────────────────────────────────────
+const CONFIG = {
+  SHEET_USUARIOS:  'usuarios',
+  SHEET_RESERVAS:  'capacidad',
+  SHEET_LOGS:      'logs',
+  SHEET_CONFIG:    'Configuracion',
+  SHEET_REGISTROS: 'Registros',
+
+  DOMINIOS_ALUMNO:  ['@alumnos.udg.mx'],
+  DOMINIOS_MAESTRO: ['@academicos.udg.mx', '@cucei.udg.mx', '@administrativos.udg.mx'],
+
+  ESTADOS: {
+    PENDIENTE: 'Pendiente',
+    ACEPTADA:  'Aceptada',
+    RECHAZADA: 'Rechazada',
+    DEVUELTA:  'Devuelta'
+  },
+
+  HORA_APERTURA: '08:00',
+  HORA_CIERRE:   '20:00',
+
+  // ── Correos fijos de coordinadores del espacio ──
+  CORREO_COORDINADOR_1: 'coordinador.coworking@cucei.udg.mx',
+  CORREO_COORDINADOR_2: 'jefe.coworking@cucei.udg.mx',
+
+  // ── Correo del administrador principal para notificaciones ──
+  CORREO_ADMIN_NOTIFICACIONES: 'admin.coworkings@cucei.udg.mx',
+
+  // ── Carpeta de Google Drive para archivos adjuntos ──
+  DRIVE_FOLDER_NAME: 'CoworkingCUCEI_Archivos',
+
+  // ── Branding para correos ──
+  LOGO_URL: 'https://www.udg.mx/sites/default/files/logo-udg.png',
+  COLOR_PRIMARIO: '#002f5c',
+  COLOR_ACENTO:   '#eaaa00',
+
+  // ── Columnas de la hoja de reservas (índice base 0) ──
+  COL: {
+    ID_RESERVA:        0,
+    CORREO:            1,
+    FECHA:             2,
+    HORA_INICIO:       3,
+    HORA_FIN:          4,
+    ESTADO:            5,
+    COWORKING:         6,
+    NOMBRE_COMPLETO:   7,
+    CODIGO:            8,
+    TELEFONO:          9,
+    EXTENSION:         10,
+    ROL:               11,
+    ACTIVIDAD:         12,
+    DESCRIPCION:       13,
+    ODS:               14,
+    FECHA_REGISTRO:    15,
+    MOTIVO_RECHAZO:    16,
+    ARCHIVOS_URLS:     17,
+    TIPO_ACTIVIDAD:    18,
+    CORREO_RESPONSABLE:19
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// PUNTO DE ENTRADA
+// ─────────────────────────────────────────────────────────────
+function doGet() {
+  try {
+    inicializarHojas_();
+    return HtmlService.createTemplateFromFile('index')
+      .evaluate()
+      .setTitle('Coworkings CUCEI - Reservas')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+  } catch (error) {
+    registrarLog_('SISTEMA', 'ERROR_DOGet', error.toString());
+    return HtmlService.createHtmlOutput(
+      '' +
+      'Error al cargar' +
+      '' + error.toString() + ''
+    );
+  }
+}
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+// ─────────────────────────────────────────────────────────────
+// AUTENTICACIÓN
+// ─────────────────────────────────────────────────────────────
+
+function hashPassword_(password) {
+  const rawHash = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256, password
+  );
+  let txtHash = '';
+  for (let i = 0; i < rawHash.length; i++) {
+    let v = rawHash[i];
+    if (v < 0) v += 256;
+    txtHash += (v < 16 ? '0' : '') + v.toString(16);
+  }
+  return txtHash;
+}
+
+function determinarRolUsuario_(correo) {
+  const c = correo.toLowerCase();
+  if (CONFIG.DOMINIOS_MAESTRO.some(d => c.endsWith(d))) return 'maestro';
+  if (CONFIG.DOMINIOS_ALUMNO.some(d => c.endsWith(d)))  return 'alumno';
+  return 'denegado';
+}
+
+function registrarUsuarioCustom(correo, codigo, contrasenia) {
+  try {
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
+    const data  = sheet.getDataRange().getValues();
+    const cL    = String(correo).trim().toLowerCase();
+    const coL   = String(codigo).trim().toLowerCase();
+
+    const rol = determinarRolUsuario_(cL);
+    if (rol === 'denegado') {
+      return {
+        exito: false,
+        mensaje: 'El correo no pertenece a un dominio autorizado (@alumnos, @academicos, @cucei, @administrativos).'
+      };
+    }
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1]).toLowerCase() === cL)  return { exito: false, mensaje: 'El correo ya está registrado.' };
+      if (String(data[i][2]).toLowerCase() === coL) return { exito: false, mensaje: 'El código ya está registrado.' };
+    }
+
+    const passHash = hashPassword_(contrasenia);
+    const nuevoId  = `USR-${Date.now()}`;
+    sheet.appendRow([nuevoId, cL, coL, passHash, rol, '', new Date()]);
+    registrarLog_(cL, 'REGISTRO_USUARIO', `Rol asignado: ${rol}`);
+
+    return { exito: true, mensaje: 'Registro exitoso.' };
+  } catch (e) {
+    return { exito: false, mensaje: 'Error interno: ' + e.toString() };
+  }
+}
+
+function loginUsuarioCustom(identificador, contrasenia) {
+  try {
+    const ss       = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet    = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
+    const data     = sheet.getDataRange().getValues();
+    const idLower  = String(identificador).trim().toLowerCase();
+    const passHash = hashPassword_(contrasenia);
+
+    for (let i = 1; i < data.length; i++) {
+      const correo = String(data[i][1]).toLowerCase();
+      const codigo = String(data[i][2]).toLowerCase();
+      const hash   = String(data[i][3]);
+
+      if (correo === idLower || codigo === idLower) {
+        if (hash === passHash) {
+          return {
+            exito: true,
+            usuario: {
+              accesoConcedido: true,
+              correo:          data[i][1],
+              codigo:          data[i][2],
+              rol:             data[i][4],
+              nombre:          data[i][5] || ''
+            }
+          };
+        }
+        return { exito: false, mensaje: 'Contraseña incorrecta.' };
+      }
+    }
+    return { exito: false, mensaje: 'Usuario no encontrado.' };
+  } catch (e) {
+    return { exito: false, mensaje: 'Error interno: ' + e.toString() };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// GESTIÓN DE USUARIOS
+// ─────────────────────────────────────────────────────────────
+
+function obtenerListaUsuarios(adminCorreo) {
+  try {
+    if (!esAdmin_(adminCorreo)) return { exito: false, mensaje: 'Permisos insuficientes.' };
+
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
+    const data  = sheet.getDataRange().getValues();
+    const usuarios = [];
+
+    for (let i = 1; i < data.length; i++) {
+      if (!data[i][0]) continue;
+      usuarios.push({
+        id:     data[i][0],
+        correo: data[i][1],
+        codigo: data[i][2],
+        rol:    data[i][4]
+      });
+    }
+    return { exito: true, usuarios };
+  } catch (e) {
+    return { exito: false, mensaje: e.toString() };
+  }
+}
+
+function actualizarRolUsuario(idUsuario, nuevoRol, adminCorreo) {
+  try {
+    if (!esAdmin_(adminCorreo)) return { exito: false, mensaje: 'Permisos insuficientes.' };
+
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
+    const data  = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === String(idUsuario)) {
+        sheet.getRange(i + 1, 5).setValue(nuevoRol);
+        registrarLog_(adminCorreo, 'CAMBIO_ROL_USUARIO',
+          `User ID: ${idUsuario} → ${nuevoRol}`);
+        return { exito: true, mensaje: 'Rol actualizado exitosamente.' };
+      }
+    }
+    return { exito: false, mensaje: 'Usuario no encontrado.' };
+  } catch (e) {
+    return { exito: false, mensaje: e.toString() };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// RESERVAS
+// ─────────────────────────────────────────────────────────────
+
+function registrarReserva(datos, sesionCorreo) {
+  try {
+    // Validación básica
+    const validacion = validarDatosReserva_(datos);
+    if (!validacion.valido) return { exito: false, mensaje: validacion.mensaje };
+
+    const ss             = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetReservas  = obtenerOCrearHoja_(ss, CONFIG.SHEET_RESERVAS);
+    const nombreCompleto = `${datos.nombres} ${datos.apellidoPaterno} ${datos.apellidoMaterno}`.trim();
+    const odsTexto       = (datos.ods && datos.ods.length > 0)
+      ? datos.ods.join(', ')
+      : 'Ninguno seleccionado';
+
+    const reservasCreadas = [];
+    const fechasConHorario = datos.fechasConHorario || datos.fechas.map(f => ({
+      fecha:       f,
+      horaEntrada: datos.horaEntrada,
+      horaSalida:  datos.horaSalida
+    }));
+
+    // Si es reenvío de devuelta, marcar la anterior como reemplazada
+    if (datos.reservaDevueltaId) {
+      marcarReservaComoReemplazada_(sheetReservas, datos.reservaDevueltaId);
+    }
+
+    // Subir archivos a Drive y obtener URLs
+    let archivosUrls = [];
+    if (datos.archivos && datos.archivos.length > 0) {
+      archivosUrls = subirArchivosADrive_(datos.archivos, datos.correo);
+    }
+    const archivosStr = archivosUrls.length > 0
+      ? JSON.stringify(archivosUrls)
+      : '';
+
+    // Crear una reserva por cada fecha/horario
+    for (const fh of fechasConHorario) {
+      const colision = verificarColision_(
+        sheetReservas, datos.coworking, fh.fecha, fh.horaEntrada, fh.horaSalida
+      );
+      if (colision.hayColision) {
+        return {
+          exito: false,
+          mensaje: `Conflicto de horario para el ${formatearFechaLegible_(fh.fecha)}: ${colision.mensaje}`
+        };
+      }
+
+      const idReserva = generarIdReserva_();
+      sheetReservas.appendRow([
+        idReserva,                        // 0  ID_Reserva
+        datos.correo,                     // 1  Correo
+        fh.fecha,                         // 2  Fecha
+        fh.horaEntrada,                   // 3  Hora_Inicio
+        fh.horaSalida,                    // 4  Hora_Fin
+        CONFIG.ESTADOS.PENDIENTE,         // 5  Estado
+        datos.coworking,                  // 6  Espacio
+        nombreCompleto,                   // 7  Nombre_Completo
+        datos.codigo,                     // 8  Codigo
+        datos.telefono,                   // 9  Telefono
+        datos.extension || 'N/A',         // 10 Extension
+        datos.rol,                        // 11 Rol
+        datos.actividad,                  // 12 Actividad
+        datos.descripcionActividad,       // 13 Descripcion
+        odsTexto,                         // 14 ODS
+        new Date(),                       // 15 Fecha_Registro
+        '',                               // 16 Motivo_Rechazo
+        archivosStr,                      // 17 Archivos_URLs
+        datos.tipoActividad || '',        // 18 Tipo_Actividad
+        datos.correoResponsable || ''     // 19 Correo_Responsable
+      ]);
+      reservasCreadas.push(idReserva);
+    }
+
+    registrarLog_(sesionCorreo, 'RESERVA_CREADA',
+      `IDs: ${reservasCreadas.join(', ')} | Coworking: ${datos.coworking}`);
+
+    // Enviar correos
+    enviarCorreoConfirmacion_(datos, nombreCompleto, odsTexto, reservasCreadas, fechasConHorario);
+    notificarNuevaReservaAdmin_(datos, nombreCompleto, reservasCreadas, fechasConHorario);
+
+    try { procesarRegistroLegacy_(datos, nombreCompleto, odsTexto, fechasConHorario); } catch (e) { /* ignore */ }
+
+    return {
+      exito:   true,
+      mensaje: `¡Reserva creada con éxito! ID(s): ${reservasCreadas.join(', ')}. Estado: En espera de aprobación.`
+    };
+  } catch (error) {
+    registrarLog_('SISTEMA', 'ERROR_RESERVA', error.toString());
+    return { exito: false, mensaje: 'Error al procesar reserva: ' + error.toString() };
+  }
+}
+
+function marcarReservaComoReemplazada_(sheet, idReservaDevuelta) {
+  try {
+    const ultimaFila = sheet.getLastRow();
+    if (ultimaFila <= 1) return;
+    const datos = sheet.getRange(2, 1, ultimaFila - 1, 1).getValues();
+    for (let i = 0; i < datos.length; i++) {
+      if (String(datos[i][0]).trim() === String(idReservaDevuelta).trim()) {
+        sheet.getRange(i + 2, CONFIG.COL.ESTADO + 1).setValue('Reemplazada');
+        break;
+      }
+    }
+  } catch (e) {
+    registrarLog_('SISTEMA', 'ERROR_MARCAR_REEMPLAZADA', e.toString());
+  }
+}
+
+function verificarColision_(sheet, coworking, fecha, horaInicio, horaFin) {
+  const ultimaFila = sheet.getLastRow();
+  if (ultimaFila <= 1) return { hayColision: false };
+
+  const registros  = sheet.getRange(2, 1, ultimaFila - 1, 7).getValues();
+  const tz         = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+  const inicioNuevo = convertirHoraAMinutos_(horaInicio);
+  const finNuevo    = convertirHoraAMinutos_(horaFin);
+
+  for (const fila of registros) {
+    const [, , fechaEx, hiEx, hfEx, estadoEx, cwEx] = fila;
+
+    if (estadoEx !== CONFIG.ESTADOS.PENDIENTE && estadoEx !== CONFIG.ESTADOS.ACEPTADA) continue;
+    if (String(cwEx).trim().toLowerCase() !== coworking.trim().toLowerCase()) continue;
+
+    let fechaNorm;
+    try {
+      fechaNorm = fechaEx instanceof Date
+        ? Utilities.formatDate(fechaEx, tz, 'yyyy-MM-dd')
+        : String(fechaEx).trim();
+    } catch (e) { continue; }
+
+    if (fechaNorm !== fecha) continue;
+
+    const inicioEx = convertirHoraAMinutos_(String(hiEx).substring(0, 5));
+    const finEx    = convertirHoraAMinutos_(String(hfEx).substring(0, 5));
+
+    if (inicioNuevo < finEx && finNuevo > inicioEx) {
+      return { hayColision: true, mensaje: 'Superposición de horario con otra reserva existente.' };
+    }
+  }
+  return { hayColision: false };
+}
+
+function obtenerDashboardAdmin(adminCorreo) {
+  try {
+    if (!esAdmin_(adminCorreo)) {
+      return { exito: false, mensaje: 'Permisos insuficientes.' };
+    }
+
+    const ss            = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetReservas = obtenerOCrearHoja_(ss, CONFIG.SHEET_RESERVAS);
+    const ultimaFila    = sheetReservas.getLastRow();
+
+    if (ultimaFila <= 1) {
+      return {
+        exito: true,
+        reservas: [],
+        metricas: { total: 0, pendientes: 0, aceptadas: 0, rechazadas: 0 },
+        graficaEstados:  { labels: ['Pendiente','Aceptada','Rechazada'], datos: [0,0,0] },
+        graficaEspacios: { labels: [], datos: [] }
+      };
+    }
+
+    // Leer 20 columnas para incluir nuevos campos
+    const numCols = 20;
+    const datos   = sheetReservas.getRange(2, 1, ultimaFila - 1, numCols).getValues();
+    const tz      = ss.getSpreadsheetTimeZone();
+    const reservas    = [];
+    let pendientes = 0, aceptadas = 0, rechazadas = 0;
+    const espaciosConteo = {};
+
+    for (const fila of datos) {
+      const idReserva = fila[CONFIG.COL.ID_RESERVA];
+      if (!idReserva) continue;
+
+      const estado    = String(fila[CONFIG.COL.ESTADO]);
+      const coworking = String(fila[CONFIG.COL.COWORKING]).trim();
+      let fechaStr    = fila[CONFIG.COL.FECHA] instanceof Date
+        ? Utilities.formatDate(fila[CONFIG.COL.FECHA], tz, 'yyyy-MM-dd')
+        : String(fila[CONFIG.COL.FECHA]).trim();
+
+      switch (estado) {
+        case CONFIG.ESTADOS.PENDIENTE:  pendientes++;  break;
+        case CONFIG.ESTADOS.ACEPTADA:   aceptadas++;   break;
+        case CONFIG.ESTADOS.RECHAZADA:  rechazadas++;  break;
+      }
+
+      espaciosConteo[coworking] = (espaciosConteo[coworking] || 0) + 1;
+
+      // Parsear archivos URLs
+      let archivosUrls = [];
+      try {
+        const archStr = String(fila[CONFIG.COL.ARCHIVOS_URLS] || '');
+        if (archStr && archStr !== '') archivosUrls = JSON.parse(archStr);
+      } catch (e) { /* ignore */ }
+
+      reservas.push({
+        idReserva:         String(idReserva),
+        correo:            String(fila[CONFIG.COL.CORREO]),
+        fecha:             fechaStr,
+        horaInicio:        formatearHoraSegura_(fila[CONFIG.COL.HORA_INICIO]),
+        horaFin:           formatearHoraSegura_(fila[CONFIG.COL.HORA_FIN]),
+        estado:            estado,
+        coworking:         coworking,
+        nombreCompleto:    String(fila[CONFIG.COL.NOMBRE_COMPLETO]),
+        codigo:            String(fila[CONFIG.COL.CODIGO]),
+        telefono:          String(fila[CONFIG.COL.TELEFONO]),
+        extension:         String(fila[CONFIG.COL.EXTENSION]),
+        rol:               String(fila[CONFIG.COL.ROL]),
+        actividad:         String(fila[CONFIG.COL.ACTIVIDAD]),
+        descripcion:       String(fila[CONFIG.COL.DESCRIPCION]),
+        ods:               String(fila[CONFIG.COL.ODS]),
+        fechaRegistro:     fila[CONFIG.COL.FECHA_REGISTRO] instanceof Date
+          ? Utilities.formatDate(fila[CONFIG.COL.FECHA_REGISTRO], tz, 'dd/MM/yyyy HH:mm')
+          : String(fila[CONFIG.COL.FECHA_REGISTRO]),
+        motivoRechazo:     String(fila[CONFIG.COL.MOTIVO_RECHAZO] || ''),
+        archivosUrls:      archivosUrls,
+        tipoActividad:     String(fila[CONFIG.COL.TIPO_ACTIVIDAD]   || ''),
+        correoResponsable: String(fila[CONFIG.COL.CORREO_RESPONSABLE] || '')
+      });
+    }
+
+    reservas.sort((a, b) => {
+      const p = { 'Pendiente': 0, 'Devuelta': 1, 'Aceptada': 2, 'Rechazada': 3 };
+      if ((p[a.estado] ?? 4) !== (p[b.estado] ?? 4)) return (p[a.estado] ?? 4) - (p[b.estado] ?? 4);
+      return b.fecha.localeCompare(a.fecha);
+    });
+
+    registrarLog_(adminCorreo, 'DASHBOARD_CONSULTADO', `Total: ${reservas.length}`);
+
+    return {
+      exito:   true,
+      reservas,
+      metricas: { total: reservas.length, pendientes, aceptadas, rechazadas },
+      graficaEstados:  {
+        labels: ['Pendiente', 'Aceptada', 'Rechazada'],
+        datos:  [pendientes, aceptadas, rechazadas]
+      },
+      graficaEspacios: {
+        labels: Object.keys(espaciosConteo),
+        datos:  Object.values(espaciosConteo)
+      }
+    };
+  } catch (error) {
+    return { exito: false, mensaje: error.toString() };
+  }
+}
+
+function actualizarEstadoReserva(idReserva, nuevoEstado, adminCorreo, motivoRechazo) {
+  try {
+    if (!esAdmin_(adminCorreo)) return { exito: false, mensaje: 'Permisos insuficientes.' };
+
+    const ss            = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetReservas = obtenerOCrearHoja_(ss, CONFIG.SHEET_RESERVAS);
+    const ultimaFila    = sheetReservas.getLastRow();
+    if (ultimaFila <= 1) return { exito: false, mensaje: 'No hay reservas.' };
+
+    const numCols = 20;
+    const datos   = sheetReservas.getRange(2, 1, ultimaFila - 1, numCols).getValues();
+
+    for (let i = 0; i < datos.length; i++) {
+      if (String(datos[i][CONFIG.COL.ID_RESERVA]).trim() !== String(idReserva).trim()) continue;
+
+      const estadoActual = datos[i][CONFIG.COL.ESTADO];
+
+      // Reservas aceptadas no se pueden cambiar
+      if (estadoActual === CONFIG.ESTADOS.ACEPTADA) {
+        return { exito: false, mensaje: '🔒 Esta reserva ya fue Aceptada y no puede modificarse.' };
+      }
+
+      const fila = i + 2; // +1 encabezado, +1 base 1
+
+      // Actualizar estado
+      sheetReservas.getRange(fila, CONFIG.COL.ESTADO + 1).setValue(nuevoEstado);
+
+      // Guardar motivo de rechazo si aplica
+      if (motivoRechazo && (nuevoEstado === CONFIG.ESTADOS.RECHAZADA || nuevoEstado === CONFIG.ESTADOS.DEVUELTA)) {
+        sheetReservas.getRange(fila, CONFIG.COL.MOTIVO_RECHAZO + 1).setValue(motivoRechazo);
+      }
+
+      registrarLog_(adminCorreo,
+        `RESERVA_${nuevoEstado.toUpperCase()}`,
+        `ID: ${idReserva} | Admin: ${adminCorreo}`
+      );
+
+      // Enviar notificación al usuario
+      const correoUsuario = String(datos[i][CONFIG.COL.CORREO]);
+      enviarNotificacionCambioEstado_(correoUsuario, idReserva, nuevoEstado, datos[i], motivoRechazo);
+
+      // Crear evento en Calendar si fue aceptada
+      if (nuevoEstado === CONFIG.ESTADOS.ACEPTADA) {
+        crearEventoCalendario_(datos[i], adminCorreo);
+      }
+
+      return {
+        exito:   true,
+        mensaje: `✅ Reserva actualizada a "${nuevoEstado}" correctamente.`
+      };
+    }
+
+    return { exito: false, mensaje: 'Reserva no encontrada.' };
+  } catch (error) {
+    return { exito: false, mensaje: error.toString() };
+  }
+}
+
+function buscarReservasPorCorreo(correoBusqueda, adminCorreo) {
+  try {
+    if (!esAdmin_(adminCorreo)) return { exito: false, mensaje: 'Permisos insuficientes.' };
+
+    const ss            = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetReservas = obtenerOCrearHoja_(ss, CONFIG.SHEET_RESERVAS);
+    const ultimaFila    = sheetReservas.getLastRow();
+    if (ultimaFila <= 1) return { exito: true, reservas: [], mensaje: 'No hay reservas.' };
+
+    const datos      = sheetReservas.getRange(2, 1, ultimaFila - 1, 16).getValues();
+    const tz         = ss.getSpreadsheetTimeZone();
+    const resultados = [];
+    const busqueda   = correoBusqueda.trim().toLowerCase();
+
+    for (const fila of datos) {
+      if (!String(fila[1]).toLowerCase().includes(busqueda)) continue;
+      let fStr = fila[2] instanceof Date
+        ? Utilities.formatDate(fila[2], tz, 'yyyy-MM-dd')
+        : String(fila[2]).trim();
+      resultados.push({
+        idReserva:  String(fila[0]),
+        correo:     String(fila[1]),
+        fecha:      fStr,
+        horaInicio: formatearHoraSegura_(fila[3]),
+        horaFin:    formatearHoraSegura_(fila[4]),
+        estado:     String(fila[5]),
+        coworking:  String(fila[6])
+      });
+    }
+
+    registrarLog_(adminCorreo, 'BUSQUEDA_REALIZADA', `"${correoBusqueda}"`);
+    return {
+      exito:    true,
+      reservas: resultados,
+      mensaje:  resultados.length > 0
+        ? `Se encontraron ${resultados.length} reserva(s).`
+        : 'No se encontraron reservas para ese correo.'
+    };
+  } catch (error) {
+    return { exito: false, mensaje: error.toString() };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// RESERVAS DEVUELTAS (para usuario)
+// ─────────────────────────────────────────────────────────────
+
+function obtenerReservasDevueltas(correoUsuario) {
+  try {
+    const ss            = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetReservas = obtenerOCrearHoja_(ss, CONFIG.SHEET_RESERVAS);
+    const ultimaFila    = sheetReservas.getLastRow();
+    if (ultimaFila <= 1) return { exito: true, reservas: [] };
+
+    const numCols = 20;
+    const datos   = sheetReservas.getRange(2, 1, ultimaFila - 1, numCols).getValues();
+    const tz      = ss.getSpreadsheetTimeZone();
+    const reservas = [];
+
+    for (const fila of datos) {
+      if (String(fila[CONFIG.COL.CORREO]).toLowerCase() !== correoUsuario.toLowerCase()) continue;
+      if (String(fila[CONFIG.COL.ESTADO]) !== CONFIG.ESTADOS.DEVUELTA) continue;
+      if (!fila[CONFIG.COL.ID_RESERVA]) continue;
+
+      let fechaStr = fila[CONFIG.COL.FECHA] instanceof Date
+        ? Utilities.formatDate(fila[CONFIG.COL.FECHA], tz, 'yyyy-MM-dd')
+        : String(fila[CONFIG.COL.FECHA]).trim();
+
+      reservas.push({
+        idReserva:     String(fila[CONFIG.COL.ID_RESERVA]),
+        correo:        String(fila[CONFIG.COL.CORREO]),
+        fecha:         fechaStr,
+        horaInicio:    formatearHoraSegura_(fila[CONFIG.COL.HORA_INICIO]),
+        horaFin:       formatearHoraSegura_(fila[CONFIG.COL.HORA_FIN]),
+        estado:        String(fila[CONFIG.COL.ESTADO]),
+        coworking:     String(fila[CONFIG.COL.COWORKING]),
+        actividad:     String(fila[CONFIG.COL.ACTIVIDAD]),
+        motivoRechazo: String(fila[CONFIG.COL.MOTIVO_RECHAZO] || '')
+      });
+    }
+
+    return { exito: true, reservas };
+  } catch (e) {
+    return { exito: false, mensaje: e.toString(), reservas: [] };
+  }
+}
+
+function obtenerDetalleReserva(idReserva, correoUsuario) {
+  try {
+    const ss            = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetReservas = obtenerOCrearHoja_(ss, CONFIG.SHEET_RESERVAS);
+    const ultimaFila    = sheetReservas.getLastRow();
+    if (ultimaFila <= 1) return { exito: false, mensaje: 'No hay reservas.' };
+
+    const numCols = 20;
+    const datos   = sheetReservas.getRange(2, 1, ultimaFila - 1, numCols).getValues();
+    const tz      = ss.getSpreadsheetTimeZone();
+
+    for (const fila of datos) {
+      if (String(fila[CONFIG.COL.ID_RESERVA]).trim() !== String(idReserva).trim()) continue;
+      // Verificar que el correo coincide (seguridad básica)
+      if (String(fila[CONFIG.COL.CORREO]).toLowerCase() !== correoUsuario.toLowerCase()) {
+        return { exito: false, mensaje: 'No tienes permiso para ver esta reserva.' };
+      }
+
+      let fechaStr = fila[CONFIG.COL.FECHA] instanceof Date
+        ? Utilities.formatDate(fila[CONFIG.COL.FECHA], tz, 'yyyy-MM-dd')
+        : String(fila[CONFIG.COL.FECHA]).trim();
+
+      // Separar nombre completo
+      const partes = String(fila[CONFIG.COL.NOMBRE_COMPLETO]).split(' ');
+
+      return {
+        exito: true,
+        reserva: {
+          idReserva:         String(fila[CONFIG.COL.ID_RESERVA]),
+          correo:            String(fila[CONFIG.COL.CORREO]),
+          fecha:             fechaStr,
+          horaInicio:        formatearHoraSegura_(fila[CONFIG.COL.HORA_INICIO]),
+          horaFin:           formatearHoraSegura_(fila[CONFIG.COL.HORA_FIN]),
+          estado:            String(fila[CONFIG.COL.ESTADO]),
+          coworking:         String(fila[CONFIG.COL.COWORKING]),
+          nombreCompleto:    String(fila[CONFIG.COL.NOMBRE_COMPLETO]),
+          nombres:           partes[0] || '',
+          apellidoPaterno:   partes[1] || '',
+          apellidoMaterno:   partes[2] || '',
+          codigo:            String(fila[CONFIG.COL.CODIGO]),
+          telefono:          String(fila[CONFIG.COL.TELEFONO]),
+          extension:         String(fila[CONFIG.COL.EXTENSION]),
+          rol:               String(fila[CONFIG.COL.ROL]),
+          actividad:         String(fila[CONFIG.COL.ACTIVIDAD]),
+          descripcion:       String(fila[CONFIG.COL.DESCRIPCION]),
+          ods:               String(fila[CONFIG.COL.ODS]),
+          motivoRechazo:     String(fila[CONFIG.COL.MOTIVO_RECHAZO]     || ''),
+          tipoActividad:     String(fila[CONFIG.COL.TIPO_ACTIVIDAD]     || ''),
+          correoResponsable: String(fila[CONFIG.COL.CORREO_RESPONSABLE] || '')
+        }
+      };
+    }
+    return { exito: false, mensaje: 'Reserva no encontrada.' };
+  } catch (e) {
+    return { exito: false, mensaje: e.toString() };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// GOOGLE DRIVE – Subida de archivos
+// ─────────────────────────────────────────────────────────────
+
+function subirArchivosADrive_(archivos, correoUsuario) {
+  const urls = [];
+  try {
+    const folder = obtenerOCrearCarpetaDrive_();
+    const subFolder = obtenerOCrearSubcarpeta_(folder, correoUsuario);
+
+    for (const archivo of archivos) {
+      try {
+        if (!archivo.base64 || !archivo.nombre) continue;
+
+        const blob = Utilities.newBlob(
+          Utilities.base64Decode(archivo.base64),
+          archivo.tipo || 'application/octet-stream',
+          archivo.nombre
+        );
+
+        const driveFile = subFolder.createFile(blob);
+        driveFile.setSharing(
+          DriveApp.Access.ANYONE_WITH_LINK,
+          DriveApp.Permission.VIEW
+        );
+
+        urls.push({
+          nombre: archivo.nombre,
+          url:    driveFile.getUrl(),
+          id:     driveFile.getId()
+        });
+      } catch (eArch) {
+        registrarLog_('SISTEMA', 'ERROR_SUBIDA_ARCHIVO',
+          `Archivo: ${archivo.nombre} | Error: ${eArch.toString()}`);
+      }
+    }
+  } catch (e) {
+    registrarLog_('SISTEMA', 'ERROR_DRIVE', e.toString());
+  }
+  return urls;
+}
+
+function obtenerOCrearCarpetaDrive_() {
+  const carpetas = DriveApp.getFoldersByName(CONFIG.DRIVE_FOLDER_NAME);
+  return carpetas.hasNext()
+    ? carpetas.next()
+    : DriveApp.createFolder(CONFIG.DRIVE_FOLDER_NAME);
+}
+
+function obtenerOCrearSubcarpeta_(padre, nombre) {
+  const nombreLimpio = String(nombre).replace(/[^a-zA-Z0-9@._-]/g, '_');
+  const subs = padre.getFoldersByName(nombreLimpio);
+  return subs.hasNext()
+    ? subs.next()
+    : padre.createFolder(nombreLimpio);
+}
+
+// ─────────────────────────────────────────────────────────────
+// GOOGLE CALENDAR
+// ─────────────────────────────────────────────────────────────
+
+function crearEventoCalendario_(filaReserva, adminCorreo) {
+  try {
+    const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+
+    let fStr = filaReserva[CONFIG.COL.FECHA] instanceof Date
+      ? Utilities.formatDate(filaReserva[CONFIG.COL.FECHA], tz, 'yyyy-MM-dd')
+      : String(filaReserva[CONFIG.COL.FECHA]).trim();
+
+    // Normalizar formato de fecha
+    if (fStr.includes('/')) {
+      const partes = fStr.split('/');
+      fStr = `${partes[2]}-${partes[1].padStart(2,'0')}-${partes[0].padStart(2,'0')}`;
+    }
+
+    const horaInicio = formatearHoraSegura_(filaReserva[CONFIG.COL.HORA_INICIO]);
+    const horaFin    = formatearHoraSegura_(filaReserva[CONFIG.COL.HORA_FIN]);
+    const inicio     = new Date(`${fStr}T${horaInicio}:00`);
+    const fin        = new Date(`${fStr}T${horaFin}:00`);
+
+    if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
+      registrarLog_('SISTEMA', 'ERROR_CALENDAR', `Fechas inválidas: ${fStr} ${horaInicio}-${horaFin}`);
+      return;
+    }
+
+    const correoSolicitante = String(filaReserva[CONFIG.COL.CORREO]);
+    const nombre            = String(filaReserva[CONFIG.COL.NOMBRE_COMPLETO]);
+    const coworking         = String(filaReserva[CONFIG.COL.COWORKING]);
+    const actividad         = String(filaReserva[CONFIG.COL.ACTIVIDAD]);
+    const descripcion       = String(filaReserva[CONFIG.COL.DESCRIPCION]);
+    const correoResponsable = String(filaReserva[CONFIG.COL.CORREO_RESPONSABLE] || '');
+
+    // Construir lista de invitados
+    const invitados = [correoSolicitante];
+    if (adminCorreo && adminCorreo !== correoSolicitante) invitados.push(adminCorreo);
+    if (CONFIG.CORREO_COORDINADOR_1) invitados.push(CONFIG.CORREO_COORDINADOR_1);
+    if (CONFIG.CORREO_COORDINADOR_2) invitados.push(CONFIG.CORREO_COORDINADOR_2);
+    if (correoResponsable && !invitados.includes(correoResponsable)) {
+      invitados.push(correoResponsable);
+    }
+
+    const titulo      = `✅ Reserva Confirmada: ${coworking} – ${actividad}`;
+    const descripEvento = `Reserva confirmada en ${coworking}.\n\nSolicitante: ${nombre}\nCorreo: ${correoSolicitante}\nActividad: ${actividad}\n\n${descripcion}`;
+
+    CalendarApp.getDefaultCalendar().createEvent(titulo, inicio, fin, {
+      description:  descripEvento,
+      guests:       invitados.join(','),
+      sendInvites:  true
+    });
+
+    registrarLog_('SISTEMA', 'CALENDAR_CREADO',
+      `Evento en ${coworking} para ${correoSolicitante} | Invitados: ${invitados.join(', ')}`);
+
+  } catch (e) {
+    registrarLog_('SISTEMA', 'ERROR_CALENDAR', e.toString());
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// CORREOS CON PLANTILLAS CORPORATIVAS
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Genera la plantilla HTML corporativa base para todos los correos.
+ */
+function generarPlantillaCorporativa_(opciones) {
+  const {
+    titulo,
+    subtitulo,
+    nombreUsuario,
+    estado,
+    estadoColor,
+    estadoIcono,
+    detalles,
+    mensajePrincipal,
+    mensajeAdicional,
+    cta,
+    ctaUrl,
+    mostrarPie
+  } = opciones;
+
+  const filasDetalles = (detalles || []).map(d => `
+
+
+        ${d.etiqueta}
+
+
+        ${d.valor || '—'}
+
+
+  `).join('');
+
+  const ctaHtml = (cta && ctaUrl) ? `
+
+
+
+          ${cta}
+
+
+
+  ` : '';
+
+  const mensajeAdicionalHtml = mensajeAdicional ? `
+
+
+        ${mensajeAdicional}
+
+
+  ` : '';
+
+  return `
+
+
+<meta><meta>
+<title>${titulo}</title>
+
+
+
+
+
+
+
+
+
+
+
+
+              Sistema de Coworkings CUCEI
+
+
+              Universidad de Guadalajara · CUCEI
+
+
+
+
+
+
+
+
+              ${estadoIcono || '●'}   ${estado}
+
+
+
+
+
+
+
+
+
+            ${titulo}
+            ${subtitulo}
+
+              Hola, ${nombreUsuario || 'Usuario'}. ${mensajePrincipal}
+
+
+
+            ${filasDetalles ? `
+
+              ${filasDetalles}
+            ` : ''}
+
+
+            ${mensajeAdicionalHtml}
+
+
+            ${ctaHtml}
+
+
+
+              Este correo fue generado automáticamente por el sistema de reservas CUCEI.
+              Por favor, no responda a este mensaje directamente.
+
+
+
+
+
+
+
+
+              © ${new Date().getFullYear()} Coordinación de Ingeniería en Computación · CUCEI
+              Universidad de Guadalajara · Guadalajara, Jalisco, México
+
+
+
+
+
+
+
+
+
+
+  `.trim();
+}
+
+/** Correo de confirmación al usuario cuando crea una reserva */
+function enviarCorreoConfirmacion_(datos, nombreCompleto, odsTexto, idsReservas, fechasConHorario) {
+  try {
+    const fechasStr = (fechasConHorario || []).map(fh => {
+      const [y, m, d] = fh.fecha.split('-');
+      return `${d}/${m}/${y} (${fh.horaEntrada}–${fh.horaSalida})`;
+    }).join(', ');
+
+    const html = generarPlantillaCorporativa_({
+      titulo:           '¡Solicitud Recibida!',
+      subtitulo:        'Tu solicitud de reserva ha sido registrada exitosamente',
+      nombreUsuario:    datos.nombres,
+      estado:           'En Espera de Aprobación',
+      estadoColor:      '#f59e0b',
+      estadoIcono:      '⏳',
+      mensajePrincipal: 'Tu solicitud de reserva ha sido recibida y está siendo revisada por el equipo de administración. Te notificaremos cuando sea aprobada o rechazada.',
+      detalles: [
+        { etiqueta: 'ID(s) de Reserva',   valor: idsReservas.join(', ') },
+        { etiqueta: 'Espacio Solicitado', valor: datos.coworking },
+        { etiqueta: 'Tipo de Actividad',  valor: datos.tipoActividad || '—' },
+        { etiqueta: 'Nombre del Evento',  valor: datos.actividad },
+        { etiqueta: 'Fechas y Horarios',  valor: fechasStr },
+        { etiqueta: 'ODS Vinculados',     valor: odsTexto }
+      ]
+    });
+
+    MailApp.sendEmail({
+      to:       datos.correo,
+      subject:  `📋 Solicitud Recibida – ${datos.coworking} | ${datos.actividad}`,
+      htmlBody: html
+    });
+  } catch (e) {
+    registrarLog_('SISTEMA', 'ERROR_CORREO_CONFIRMACION', e.toString());
+  }
+}
+
+/** Notificación al administrador sobre nueva reserva pendiente */
+function notificarNuevaReservaAdmin_(datos, nombreCompleto, idsReservas, fechasConHorario) {
+  try {
+    // Obtener correo del admin desde la hoja de usuarios
+    const ss       = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet    = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
+    const userData = sheet.getDataRange().getValues();
+    const admins   = [];
+
+    for (let i = 1; i < userData.length; i++) {
+      if (String(userData[i][4]) === 'admin') {
+        admins.push(String(userData[i][1]));
+      }
+    }
+
+    // También incluir el correo configurado globalmente
+    if (CONFIG.CORREO_ADMIN_NOTIFICACIONES) admins.push(CONFIG.CORREO_ADMIN_NOTIFICACIONES);
+
+    const destinatariosUnicos = [...new Set(admins)].filter(c => c && c.includes('@'));
+    if (destinatariosUnicos.length === 0) return;
+
+    const fechasStr = (fechasConHorario || []).map(fh => {
+      const [y, m, d] = fh.fecha.split('-');
+      return `${d}/${m}/${y} (${fh.horaEntrada}–${fh.horaSalida})`;
+    }).join(', ');
+
+    const html = generarPlantillaCorporativa_({
+      titulo:           'Nueva Solicitud Pendiente',
+      subtitulo:        'Se ha recibido una nueva solicitud de reserva que requiere tu revisión',
+      nombreUsuario:    'Administrador',
+      estado:           'Acción Requerida',
+      estadoColor:      '#002f5c',
+      estadoIcono:      '🔔',
+      mensajePrincipal: `Se ha registrado una nueva solicitud de reserva que requiere tu aprobación o rechazo.`,
+      detalles: [
+        { etiqueta: 'ID(s)',           valor: idsReservas.join(', ') },
+        { etiqueta: 'Solicitante',     valor: nombreCompleto },
+        { etiqueta: 'Correo',          valor: datos.correo },
+        { etiqueta: 'Espacio',         valor: datos.coworking },
+        { etiqueta: 'Tipo Actividad',  valor: datos.tipoActividad || '—' },
+        { etiqueta: 'Evento',          valor: datos.actividad },
+        { etiqueta: 'Fechas',          valor: fechasStr }
+      ]
+    });
+
+    MailApp.sendEmail({
+      to:       destinatariosUnicos.join(','),
+      subject:  `🔔 Nueva Solicitud Pendiente – ${datos.coworking} | ${nombreCompleto}`,
+      htmlBody: html
+    });
+  } catch (e) {
+    registrarLog_('SISTEMA', 'ERROR_NOTIF_ADMIN', e.toString());
+  }
+}
+
+/** Notificación al usuario sobre el cambio de estado de su reserva */
+function enviarNotificacionCambioEstado_(correoUsuario, idReserva, nuevoEstado, filaReserva, motivoRechazo) {
+  try {
+    const esAprobada = nuevoEstado === CONFIG.ESTADOS.ACEPTADA;
+    const esDevuelta = nuevoEstado === CONFIG.ESTADOS.DEVUELTA;
+    const coworking  = String(filaReserva[CONFIG.COL.COWORKING]);
+    const nombre     = String(filaReserva[CONFIG.COL.NOMBRE_COMPLETO]).split(' ')[0];
+    const actividad  = String(filaReserva[CONFIG.COL.ACTIVIDAD]);
+
+    let estadoColor  = '#ef4444';
+    let estadoIcono  = '❌';
+    let titulo       = 'Solicitud Rechazada';
+    let subtitulo    = 'Tu solicitud de reserva no fue aprobada';
+    let mensajePpal  = `Lamentamos informarte que tu solicitud de reserva en ${coworking} ha sido rechazada.`;
+    let mensajeAdc   = null;
+
+    if (esAprobada) {
+      estadoColor  = '#10b981';
+      estadoIcono  = '✅';
+      titulo       = '¡Reserva Aprobada!';
+      subtitulo    = 'Tu solicitud de reserva ha sido confirmada';
+      mensajePpal  = `¡Excelente noticia! Tu solicitud de reserva en ${coworking} ha sido aprobada. Revisa tu calendario para ver el evento creado.`;
+    } else if (esDevuelta) {
+      estadoColor  = '#8b5cf6';
+      estadoIcono  = '↩️';
+      titulo       = 'Solicitud Devuelta para Edición';
+      subtitulo    = 'El administrador ha devuelto tu solicitud para que la corrijas';
+      mensajePpal  = `Tu solicitud de reserva en ${coworking} ha sido devuelta. Por favor, revisa el motivo e ingresa al sistema para corregirla y reenviarla.`;
+    }
+
+    if (motivoRechazo) {
+      mensajeAdc = `Motivo: ${motivoRechazo}`;
+    }
+
+    let fechaStr = '';
+    try {
+      const tz  = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+      const fRaw = filaReserva[CONFIG.COL.FECHA];
+      const fS   = fRaw instanceof Date
+        ? Utilities.formatDate(fRaw, tz, 'yyyy-MM-dd')
+        : String(fRaw).trim();
+      const [y, m, d] = fS.split('-');
+      fechaStr = `${d}/${m}/${y}`;
+    } catch (e) { /* ignore */ }
+
+    const html = generarPlantillaCorporativa_({
+      titulo,
+      subtitulo,
+      nombreUsuario:    nombre,
+      estado:           nuevoEstado,
+      estadoColor,
+      estadoIcono,
+      mensajePrincipal: mensajePpal,
+      mensajeAdicional: mensajeAdc,
+      detalles: [
+        { etiqueta: 'ID Reserva',  valor: idReserva },
+        { etiqueta: 'Espacio',     valor: coworking },
+        { etiqueta: 'Actividad',   valor: actividad },
+        { etiqueta: 'Fecha',       valor: fechaStr },
+        { etiqueta: 'Horario',     valor: `${formatearHoraSegura_(filaReserva[CONFIG.COL.HORA_INICIO])} – ${formatearHoraSegura_(filaReserva[CONFIG.COL.HORA_FIN])}` }
+      ]
+    });
+
+    const asunto = esAprobada
+      ? `✅ Reserva Aprobada – ${coworking}`
+      : esDevuelta
+        ? `↩️ Solicitud Devuelta para Edición – ${coworking}`
+        : `❌ Solicitud Rechazada – ${coworking}`;
+
+    MailApp.sendEmail({ to: correoUsuario, subject: asunto, htmlBody: html });
+  } catch (e) {
+    registrarLog_('SISTEMA', 'ERROR_CORREO_ESTADO', e.toString());
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// LOGS Y UTILIDADES
+// ─────────────────────────────────────────────────────────────
+
+function registrarLog_(usuario, accion, detalles) {
+  try {
+    const sheet = obtenerOCrearHoja_(SpreadsheetApp.getActiveSpreadsheet(), CONFIG.SHEET_LOGS);
+    sheet.appendRow([
+      new Date(),
+      String(usuario),
+      String(accion),
+      String(detalles).substring(0, 500)
+    ]);
+  } catch (e) { /* Silencioso */ }
+}
+
+function inicializarHojas_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Hoja Usuarios
+  const hU = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
+  if (hU.getLastRow() === 0) {
+    hU.appendRow(['ID','Correo','Codigo','PasswordHash','Rol','Nombre','Fecha_Registro']);
+    hU.getRange(1,1,1,7)
+      .setFontWeight('bold')
+      .setBackground(CONFIG.COLOR_PRIMARIO)
+      .setFontColor('#ffffff');
+  }
+
+  // Hoja Reservas (20 columnas)
+  const hR = obtenerOCrearHoja_(ss, CONFIG.SHEET_RESERVAS);
+  if (hR.getLastRow() === 0) {
+    hR.appendRow([
+      'ID_Reserva','Correo','Fecha','Hora_Inicio','Hora_Fin','Estado',
+      'Espacio_Aula','Nombre_Completo','Codigo','Telefono','Extension',
+      'Rol','Actividad','Descripcion','ODS','Fecha_Registro',
+      'Motivo_Rechazo','Archivos_URLs','Tipo_Actividad','Correo_Responsable'
+    ]);
+    hR.getRange(1,1,1,20)
+      .setFontWeight('bold')
+      .setBackground(CONFIG.COLOR_PRIMARIO)
+      .setFontColor('#ffffff');
+  }
+
+  // Hoja Logs
+  const hL = obtenerOCrearHoja_(ss, CONFIG.SHEET_LOGS);
+  if (hL.getLastRow() === 0) {
+    hL.appendRow(['Timestamp','Usuario','Accion','Detalles']);
+  }
+}
+
+function obtenerOCrearHoja_(ss, nombre) {
+  return ss.getSheetByName(nombre) || ss.insertSheet(nombre);
+}
+
+function generarIdReserva_() {
+  return `RES-${Utilities.formatDate(new Date(),'America/Mexico_City','yyyyMMdd')}-${Math.random().toString(36).substring(2,7).toUpperCase()}`;
+}
+
+function convertirHoraAMinutos_(horaStr) {
+  const p = String(horaStr).split(':');
+  return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+}
+
+function convertirMinutosAHoraString_(m) {
+  return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+}
+
+function formatearFechaLegible_(fStr) {
+  const p = String(fStr).split('-');
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fStr;
+}
+
+function validarDatosReserva_(datos) {
+  const requeridos = ['correo','nombres','apellidoPaterno','coworking'];
+  for (const c of requeridos) {
+    if (!datos[c] || String(datos[c]).trim() === '') {
+      return { valido: false, mensaje: `El campo "${c}" es obligatorio.` };
+    }
+  }
+  const fch = datos.fechasConHorario || [];
+  if (fch.length === 0 && (!datos.fechas || datos.fechas.length === 0)) {
+    return { valido: false, mensaje: 'Selecciona al menos una fecha.' };
+  }
+  if (!datos.tipoActividad) {
+    return { valido: false, mensaje: 'Selecciona un tipo de actividad.' };
+  }
+  return { valido: true };
+}
+
+function procesarRegistroLegacy_(datos, nombreCompleto, odsTexto, fechasConHorario) {
+  const ss              = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetRegistros  = ss.getSheetByName('Registros');
+  if (!sheetRegistros) return;
+
+  for (const fh of (fechasConHorario || [])) {
+    const hSlots = [];
+    for (let m = convertirHoraAMinutos_(fh.horaEntrada); m < convertirHoraAMinutos_(fh.horaSalida); m += 30) {
+      hSlots.push(convertirMinutosAHoraString_(m));
+    }
+    for (const slot of hSlots) {
+      sheetRegistros.appendRow([
+        new Date(), datos.correo, datos.nombres, datos.apellidoPaterno,
+        datos.apellidoMaterno, datos.codigo, datos.telefono, datos.rol,
+        datos.extension, datos.actividad, datos.descripcionActividad,
+        datos.coworking, fh.fecha, slot, odsTexto, ''
+      ]);
+    }
+  }
+}
+
+function esAdmin_(correo) {
+  try {
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
+    const data  = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (
+        String(data[i][1]).toLowerCase() === String(correo).toLowerCase() &&
+        String(data[i][4]) === 'admin'
+      ) return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
+function formatearHoraSegura_(valor) {
+  if (!valor) return '00:00';
+  if (valor instanceof Date) {
+    return Utilities.formatDate(
+      valor,
+      SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(),
+      'HH:mm'
+    );
+  }
+  const str   = String(valor).trim();
+  const match = str.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+  if (match) {
+    let h = parseInt(match[1], 10);
+    if (match[3]?.toUpperCase() === 'PM' && h < 12) h += 12;
+    if (match[3]?.toUpperCase() === 'AM' && h === 12) h = 0;
+    return `${String(h).padStart(2,'0')}:${match[2]}`;
+  }
+  return str.substring(0, 5);
+}
+
+user avatar
+
+continua
+model avatar
+
+El código está completo en los tres bloques anteriores. Aquí está el resumen de todo lo implementado y las instrucciones de despliegue:
+Resumen de Implementación
+Cambios en index.html
+Sección	Qué se agregó
+Modal Reserva	Banner de reserva devuelta, campo Tipo Actividad (radio cards), campo Responsable (maestros), zona de carga de archivos, checkbox "mismo horario"
+Panel Mis Reservas	Sección desplegable con motivo de rechazo y botón "Editar y Reenviar"
+Modal Admin	Dos tarjetas separadas (Solicitante / Reserva), sección archivos adjuntos, panel de rechazo con textarea + checkbox devolución
+Admin Tabs	Nueva pestaña "Calendario Digital" con filtros por espacio y estado
+Header	Botón "Mis Reservas" con badge contador para alumnos/maestros
+Cambios en script.js
+Módulo	Qué se agregó
+StudentView	toggleMismoHorario(), horarios por fecha individuales, procesamiento Base64 de archivos, drag & drop, panel reservas devueltas, editarReservaDevuelta(), validación tipo actividad
+AdminDashboard	_inicializarCalendario() con FullCalendar, filtrarCalendario(), mostrarPanelRechazo(), cancelarRechazo(), confirmarRechazo(), modal profesional con dos tarjetas
+ModalController	Specs renderizadas como badges en el header del modal
+Cambios en code.gs
+Función	Qué se agregó
+registrarReserva	Soporte fechasConHorario, subida a Drive, tipoActividad, correoResponsable, reenvío de devueltas
+actualizarEstadoReserva	Parámetro motivoRechazo, estado Devuelta, guarda motivo en columna 17
+crearEventoCalendario_	Invitados: solicitante + admin + 2 coordinadores fijos + responsable, sendInvites: true
+generarPlantillaCorporativa_	Plantilla HTML corporativa única reutilizable para todos los correos
+notificarNuevaReservaAdmin_	Nuevo: correo al admin cuando llega reserva nueva
+obtenerReservasDevueltas	Nuevo: devuelve reservas con estado "Devuelta" del usuario
+obtenerDetalleReserva	Nuevo: devuelve todos los datos de una reserva para prellenar formulario
+subirArchivosADrive_	Nuevo: crea carpeta/subcarpeta en Drive, sube blobs Base64
+CONFIG.COL	Mapa de índices de columnas para mantenimiento fácil
+Instrucciones de Despliegue
+1. Google Sheets — Agregar columnas nuevas
+
+Si ya tienes datos en la hoja capacidad, agrega manualmente estas columnas al final (si no existen):
+
+Columna Q (17): Motivo_Rechazo
+Columna R (18): Archivos_URLs
+Columna S (19): Tipo_Actividad
+Columna T (20): Correo_Responsable
+
+2. Apps Script — Configurar variables globales
+
+En code.gs, edita estas constantes según tu institución:
+
+CORREO_COORDINADOR_1: 'tu.coordinador@cucei.udg.mx',
+CORREO_COORDINADOR_2: 'otro.coordinador@cucei.udg.mx',
+CORREO_ADMIN_NOTIFICACIONES: 'tu.admin@cucei.udg.mx',
+LOGO_URL: 'https://URL-REAL-DEL-LOGO-UDG',
+
+3. Permisos requeridos en Apps Script
+
+Al ejecutar por primera vez, acepta estos scopes:
+
+- https://www.googleapis.com/auth/spreadsheets
+- https://www.googleapis.com/auth/drive
+- https://www.googleapis.com/auth/calendar
+- https://www.googleapis.com/auth/mail.send
+
+4. Estructura final de archivos en Apps Script
+
+📁 Proyecto Apps Script
+├── 📄 Code.gs        ← Backend principal
+├── 📄 index.html     ← Frontend completo
+└── 📄 script.html    ← (include del JS, nombrar como "script")
+
+    Nota sobre script.html: El archivo de JavaScript debe guardarse en Apps Script como script.html (sin extensión .js) y el include('script') al final del index.html lo inyecta automáticamente.
+
+5. Verificar FullCalendar CDN
+
+El calendario requiere conexión a internet para cargar desde jsDelivr. Si el ambiente es restringido, descarga y sirve los archivos localmente o usa el bundle de Apps Script.

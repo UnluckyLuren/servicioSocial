@@ -1,0 +1,1869 @@
+<script>
+/**
+ * ============================================================
+ * CUCEI COWORKING SYSTEM – Controlador Frontend v2.0
+ * script.html (se inyecta en index.html)
+ * ============================================================
+ */
+
+(function (global) {
+  'use strict';
+
+  // ──────────────────────────────────────────────────────────
+  // MÓDULO: GasApi
+  // ──────────────────────────────────────────────────────────
+  const GasApi = {
+    ejecutar(nombreFuncion, ...args) {
+      return new Promise((resolve, reject) => {
+        if (typeof google === 'undefined' || !google.script) {
+          reject(new Error('google.script.run no está disponible.'));
+          return;
+        }
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject)
+          [nombreFuncion](...args);
+      });
+    }
+  };
+
+  // ──────────────────────────────────────────────────────────
+  // MÓDULO: AuthService
+  // ──────────────────────────────────────────────────────────
+  const AuthService = {
+    usuario: null,
+
+    async inicializar() {
+      try {
+        const sesionGuardada = localStorage.getItem('coworking_sesion');
+        if (sesionGuardada) {
+          this.usuario = JSON.parse(sesionGuardada);
+          this._renderizarVista(this.usuario);
+        } else {
+          this.usuario = null;
+          this._renderizarVistaPublica();
+        }
+      } catch (error) {
+        console.error('[AuthService] Error al inicializar:', error);
+        this._renderizarVistaPublica();
+      } finally {
+        const pantallaGlobal = document.getElementById('pantallaGlobalCarga');
+        if (pantallaGlobal) pantallaGlobal.classList.add('hidden');
+      }
+    },
+
+    _renderizarVistaPublica() {
+      document.getElementById('headerPrincipal')?.classList.remove('hidden');
+      document.getElementById('headerAuthButtons')?.classList.remove('hidden');
+      document.getElementById('headerUsuarioLogueado')?.classList.add('hidden');
+      document.getElementById('vistaAdmin')?.classList.add('hidden');
+      document.getElementById('vistaAlumno')?.classList.remove('hidden');
+    },
+
+    _renderizarVista(info) {
+      document.getElementById('headerPrincipal')?.classList.remove('hidden');
+
+      if (!info.accesoConcedido) {
+        this._mostrarVistaDenegada(info.mensaje || 'Acceso no autorizado.');
+        return;
+      }
+
+      document.getElementById('headerAuthButtons')?.classList.add('hidden');
+      const headerUser = document.getElementById('headerUsuarioLogueado');
+      if (headerUser) {
+        headerUser.classList.remove('hidden');
+        headerUser.classList.add('flex');
+      }
+
+      this._actualizarHeader(info);
+
+      if (info.rol === 'admin') {
+        document.getElementById('vistaAlumno')?.classList.add('hidden');
+        document.getElementById('vistaAdmin')?.classList.remove('hidden');
+        document.getElementById('btnMisReservas')?.classList.add('hidden');
+        AdminDashboard.inicializar();
+      } else {
+        document.getElementById('vistaAdmin')?.classList.add('hidden');
+        document.getElementById('vistaAlumno')?.classList.remove('hidden');
+        // Mostrar botón Mis Reservas
+        const btnMis = document.getElementById('btnMisReservas');
+        if (btnMis) {
+          btnMis.classList.remove('hidden');
+          btnMis.classList.add('flex');
+        }
+        StudentView.inicializar(info);
+      }
+    },
+
+    _actualizarHeader(info) {
+      const correoWrapper = document.getElementById('headerCorreoUsuario');
+      const correoTexto   = document.getElementById('textoCorreoHeader');
+      const badgeRol      = document.getElementById('headerBadgeRol');
+
+      if (info.correo && correoTexto) {
+        correoTexto.textContent = info.correo;
+        correoWrapper?.classList.remove('hidden');
+        correoWrapper?.classList.add('flex');
+      }
+
+      if (badgeRol) {
+        badgeRol.classList.remove('hidden');
+        const rolClases = {
+          admin:   'text-xs font-bold px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30',
+          maestro: 'text-xs font-bold px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-500/30',
+          alumno:  'text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'
+        };
+        badgeRol.className = rolClases[info.rol] || rolClases.alumno;
+        badgeRol.textContent = info.rol.charAt(0).toUpperCase() + info.rol.slice(1);
+      }
+    },
+
+    cerrarSesion() {
+      localStorage.removeItem('coworking_sesion');
+      this.usuario = null;
+      location.reload();
+    },
+
+    _mostrarVistaDenegada(mensaje) {
+      const msgEl = document.getElementById('mensajeDenegado');
+      if (msgEl) msgEl.textContent = mensaje;
+      document.getElementById('vistaDenegada')?.classList.remove('hidden');
+      document.getElementById('vistaAlumno')?.classList.add('hidden');
+      document.getElementById('vistaAdmin')?.classList.add('hidden');
+      document.getElementById('headerAuthButtons')?.classList.remove('hidden');
+      document.getElementById('headerUsuarioLogueado')?.classList.add('hidden');
+    },
+
+    abrirModalAuth(modo = 'login') {
+      this.setAuthMode(modo);
+      document.getElementById('modalAuth')?.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      this._ocultarMensajeAuth();
+    },
+
+    cerrarModalAuth() {
+      document.getElementById('modalAuth')?.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+      document.getElementById('formLogin')?.reset();
+      document.getElementById('formRegister')?.reset();
+    },
+
+    setAuthMode(modo) {
+      const formLogin = document.getElementById('formLogin');
+      const formReg   = document.getElementById('formRegister');
+      const btnLogin  = document.getElementById('btnTabLogin');
+      const btnReg    = document.getElementById('btnTabRegister');
+
+      this._ocultarMensajeAuth();
+
+      if (modo === 'login') {
+        formLogin?.classList.remove('hidden');
+        formReg?.classList.add('hidden');
+        if (btnLogin) btnLogin.className = 'flex-1 text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c]';
+        if (btnReg)   btnReg.className   = 'flex-1 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700';
+      } else {
+        formLogin?.classList.add('hidden');
+        formReg?.classList.remove('hidden');
+        if (btnReg)   btnReg.className   = 'flex-1 text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c]';
+        if (btnLogin) btnLogin.className = 'flex-1 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700';
+      }
+    },
+
+    async procesarLogin(evento) {
+      evento.preventDefault();
+      const id   = document.getElementById('loginId').value.trim();
+      const pass = document.getElementById('loginPass').value.trim();
+      const btn  = document.getElementById('btnLoginSubmit');
+
+      this._mostrarCargandoAuth(btn, true, 'Iniciando...');
+      this._ocultarMensajeAuth();
+
+      try {
+        const res = await GasApi.ejecutar('loginUsuarioCustom', id, pass);
+        if (res.exito) {
+          localStorage.setItem('coworking_sesion', JSON.stringify(res.usuario));
+          this.cerrarModalAuth();
+          this.inicializar();
+        } else {
+          this._mostrarMensajeAuth(res.mensaje, 'error');
+        }
+      } catch (err) {
+        this._mostrarMensajeAuth('Error de conexión.', 'error');
+      } finally {
+        this._mostrarCargandoAuth(btn, false, 'Iniciar Sesión');
+      }
+    },
+
+    async procesarRegistro(evento) {
+      evento.preventDefault();
+      const correo = document.getElementById('regEmail').value.trim();
+      const codigo = document.getElementById('regCodigo').value.trim();
+      const pass   = document.getElementById('regPass').value.trim();
+      const btn    = document.getElementById('btnRegSubmit');
+
+      if (pass.length < 8) {
+        this._mostrarMensajeAuth('La contraseña debe tener al menos 8 caracteres.', 'error');
+        return;
+      }
+
+      this._mostrarCargandoAuth(btn, true, 'Registrando...');
+      this._ocultarMensajeAuth();
+
+      try {
+        const res = await GasApi.ejecutar('registrarUsuarioCustom', correo, codigo, pass);
+        if (res.exito) {
+          this._mostrarMensajeAuth('Registro exitoso. Iniciando sesión...', 'exito');
+          const loginRes = await GasApi.ejecutar('loginUsuarioCustom', correo, pass);
+          if (loginRes.exito) {
+            localStorage.setItem('coworking_sesion', JSON.stringify(loginRes.usuario));
+            setTimeout(() => { this.cerrarModalAuth(); this.inicializar(); }, 1500);
+          }
+        } else {
+          this._mostrarMensajeAuth(res.mensaje, 'error');
+        }
+      } catch (err) {
+        this._mostrarMensajeAuth('Error de conexión.', 'error');
+      } finally {
+        this._mostrarCargandoAuth(btn, false, 'Crear Cuenta');
+      }
+    },
+
+    _mostrarCargandoAuth(btn, activo, texto) {
+      if (!btn) return;
+      btn.disabled = activo;
+      btn.innerHTML = activo
+        ? `<i class="fa-solid fa-spinner fa-spin mr-2"></i>${texto}`
+        : texto;
+    },
+
+    _mostrarMensajeAuth(texto, tipo) {
+      const div = document.getElementById('formAuthMsg');
+      if (!div) return;
+      div.textContent = texto;
+      div.className = `mb-4 p-3 rounded-lg text-sm font-semibold text-center ${
+        tipo === 'error'
+          ? 'bg-rose-50 text-rose-600 border border-rose-200'
+          : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+      }`;
+      div.classList.remove('hidden');
+    },
+
+    _ocultarMensajeAuth() {
+      document.getElementById('formAuthMsg')?.classList.add('hidden');
+    }
+  };
+
+  // ──────────────────────────────────────────────────────────
+  // MÓDULO: StudentView
+  // ──────────────────────────────────────────────────────────
+  const StudentView = {
+    fechasSeleccionadas: [],   // [{ fecha: 'yyyy-mm-dd', horaEntrada: '08:00', horaSalida: '10:00' }]
+    archivosSeleccionados: [], // [{ nombre, tipo, base64, tamano }]
+    correoUsuario: '',
+    codigoUsuario: '',
+    usarMismoHorario: true,    // por defecto checkbox marcado
+
+    HORAS: [
+      '08:00','08:30','09:00','09:30','10:00','10:30',
+      '11:00','11:30','12:00','12:30','13:00','13:30',
+      '14:00','14:30','15:00','15:30','16:00','16:30',
+      '17:00','17:30','18:00','18:30','19:00','19:30','20:00'
+    ],
+
+    inicializar(infoUsuario) {
+      this.correoUsuario = infoUsuario.correo || '';
+      this.codigoUsuario = infoUsuario.codigo || '';
+      this._poblarSelectoresGlobales();
+      this._cargarReservasDevueltas();
+    },
+
+    _poblarSelectoresGlobales() {
+      const selectEntrada = document.getElementById('horaEntrada');
+      if (!selectEntrada) return;
+      selectEntrada.innerHTML = this.HORAS.slice(0, -1)
+        .map(h => `<option value="${h}">${this._formatearAmPm(h)}</option>`)
+        .join('');
+      this.filtrarHoraSalida();
+    },
+
+    _formatearAmPm(horaStr) {
+      const [h, m] = horaStr.split(':').map(Number);
+      const ampm   = h >= 12 ? 'PM' : 'AM';
+      const hora12 = h % 12 || 12;
+      return `${String(hora12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
+    },
+
+    // ── Toggle: mismo horario para todas las fechas ──
+    toggleMismoHorario() {
+      const checkbox = document.getElementById('checkMismoHorario');
+      this.usarMismoHorario = checkbox.checked;
+
+      const horarioGlobal     = document.getElementById('horarioGlobal');
+      const horariosPorFecha  = document.getElementById('horariosPorFecha');
+
+      if (this.usarMismoHorario) {
+        horarioGlobal?.classList.remove('hidden');
+        horariosPorFecha?.classList.add('hidden');
+      } else {
+        horarioGlobal?.classList.add('hidden');
+        horariosPorFecha?.classList.remove('hidden');
+        this._renderizarHorariosPorFecha();
+      }
+    },
+
+    _renderizarHorariosPorFecha() {
+      const contenedor = document.getElementById('horariosPorFecha');
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
+
+      if (this.fechasSeleccionadas.length === 0) {
+        contenedor.innerHTML = `
+          <p class="text-xs text-slate-400 text-center py-2">
+            <i class="fa-solid fa-circle-info mr-1"></i>Agrega fechas primero para configurar sus horarios individuales.
+          </p>`;
+        return;
+      }
+
+      this.fechasSeleccionadas.forEach((item, idx) => {
+        const [yyyy, mm, dd] = item.fecha.split('-');
+        const legible = `${dd}/${mm}/${yyyy}`;
+
+        const div = document.createElement('div');
+        div.className = 'bg-white border border-slate-200 rounded-xl p-3 animate-fadeIn';
+        div.innerHTML = `
+          <p class="text-xs font-black text-[#002f5c] mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-calendar-day"></i> ${legible}
+          </p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Hora de Entrada</label>
+              <select id="entrada_${idx}" onchange="StudentView._actualizarHoraSalida(${idx})"
+                class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#002f5c]/30">
+                ${this.HORAS.slice(0,-1).map(h => `<option value="${h}" ${h === (item.horaEntrada||'08:00') ? 'selected' : ''}>${this._formatearAmPm(h)}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Hora de Salida</label>
+              <select id="salida_${idx}"
+                class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#002f5c]/30">
+                ${this._opcionesSalidaParaEntrada(item.horaEntrada || '08:00', item.horaSalida)}
+              </select>
+            </div>
+          </div>
+        `;
+        contenedor.appendChild(div);
+      });
+    },
+
+    _opcionesSalidaParaEntrada(horaEntrada, horaSeleccionada) {
+      const idx = this.HORAS.indexOf(horaEntrada);
+      const opciones = this.HORAS.slice(idx + 1);
+      return opciones.map(h => `<option value="${h}" ${h === horaSeleccionada ? 'selected' : ''}>${this._formatearAmPm(h)}</option>`).join('');
+    },
+
+    _actualizarHoraSalida(idx) {
+      const entrada = document.getElementById(`entrada_${idx}`)?.value;
+      const salida  = document.getElementById(`salida_${idx}`);
+      if (!entrada || !salida) return;
+      salida.innerHTML = this._opcionesSalidaParaEntrada(entrada, '');
+      // Actualizar en array
+      if (this.fechasSeleccionadas[idx]) {
+        this.fechasSeleccionadas[idx].horaEntrada = entrada;
+      }
+    },
+
+    seleccionarRol(rol) {
+      document.getElementById('inputRol').value = rol;
+      const badge        = document.getElementById('badgeRol');
+      const labelCodigo  = document.getElementById('labelCodigo');
+      const inputCodigo  = document.getElementById('codigo');
+      const campoExt     = document.getElementById('campoExtension');
+      const inputExt     = document.getElementById('extension');
+      const campoResp    = document.getElementById('campoResponsable');
+
+      if (this.correoUsuario) {
+        const inputCorreo = document.getElementById('correo');
+        if (inputCorreo) inputCorreo.value = this.correoUsuario;
+      }
+      if (this.codigoUsuario) {
+        inputCodigo.value    = this.codigoUsuario;
+        inputCodigo.readOnly = true;
+        inputCodigo.className = 'w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-sm cursor-not-allowed';
+      }
+
+      const hoy = new Date();
+      const min = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+      const selectorFecha = document.getElementById('selectorFecha');
+      if (selectorFecha) selectorFecha.min = min;
+
+      if (rol === 'estudiante') {
+        if (badge) {
+          badge.className   = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100';
+          badge.textContent = 'Estudiante';
+        }
+        if (labelCodigo)  labelCodigo.textContent = 'Código de Alumno:';
+        if (!inputCodigo.value && inputCodigo) inputCodigo.placeholder = 'Ej. 218XXXXXX';
+        campoExt?.classList.add('hidden');
+        campoResp?.classList.add('hidden');
+        if (inputExt) { inputExt.required = false; inputExt.value = ''; }
+      } else {
+        if (badge) {
+          badge.className   = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100';
+          badge.textContent = 'Administrativo / Maestro';
+        }
+        if (labelCodigo)  labelCodigo.textContent = 'Código de Trabajador:';
+        if (!inputCodigo.value && inputCodigo) inputCodigo.placeholder = 'Ej. 95XXXXX';
+        campoExt?.classList.remove('hidden');
+        campoResp?.classList.remove('hidden');
+        if (inputExt) inputExt.required = true;
+      }
+    },
+
+    filtrarHoraSalida() {
+      const entrada = document.getElementById('horaEntrada');
+      const salida  = document.getElementById('horaSalida');
+      if (!entrada || !salida) return;
+      const indexEntrada   = this.HORAS.indexOf(entrada.value);
+      const horasFiltradas = this.HORAS.slice(indexEntrada + 1);
+      salida.innerHTML = horasFiltradas
+        .map(h => `<option value="${h}">${this._formatearAmPm(h)}</option>`)
+        .join('');
+    },
+
+    agregarFecha() {
+      const input = document.getElementById('selectorFecha');
+      const valor = input?.value;
+
+      if (!valor) {
+        this._mostrarToast('Selecciona una fecha en el calendario primero.', 'warn');
+        return;
+      }
+
+      if (this.fechasSeleccionadas.some(f => f.fecha === valor)) {
+        input.value = '';
+        this._mostrarToast('Esa fecha ya fue agregada.', 'warn');
+        return;
+      }
+
+      this.fechasSeleccionadas.push({ fecha: valor, horaEntrada: '08:00', horaSalida: '10:00' });
+      this._renderizarEtiquetasFechas();
+
+      if (!this.usarMismoHorario) {
+        this._renderizarHorariosPorFecha();
+      }
+      input.value = '';
+
+      document.getElementById('errorFechas')?.classList.add('hidden');
+    },
+
+    eliminarFecha(fecha) {
+      this.fechasSeleccionadas = this.fechasSeleccionadas.filter(f => f.fecha !== fecha);
+      this._renderizarEtiquetasFechas();
+      if (!this.usarMismoHorario) this._renderizarHorariosPorFecha();
+    },
+
+    _renderizarEtiquetasFechas() {
+      const contenedor = document.getElementById('listaFechasAgregadas');
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
+
+      [...this.fechasSeleccionadas].sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(item => {
+        const [yyyy, mm, dd] = item.fecha.split('-');
+        const legible = `${dd}/${mm}/${yyyy}`;
+        const span = document.createElement('span');
+        span.className = 'inline-flex items-center gap-1.5 bg-blue-50 text-[#002f5c] text-xs font-semibold px-2.5 py-1 rounded-lg border border-blue-100 shadow-sm';
+        span.innerHTML = `
+          <i class="fa-solid fa-calendar-day text-[10px]"></i>
+          ${legible}
+          <button type="button" onclick="StudentView.eliminarFecha('${item.fecha}')"
+            class="text-blue-400 hover:text-blue-700 font-black ml-1 hover:bg-blue-100 rounded px-0.5">×</button>
+        `;
+        contenedor.appendChild(span);
+      });
+    },
+
+    _inicializarHorarioUI() {
+      const checkbox = document.getElementById('checkMismoHorario');
+      if (checkbox) {
+        checkbox.checked = true;
+        this.usarMismoHorario = true;
+      }
+      document.getElementById('horarioGlobal')?.classList.remove('hidden');
+      document.getElementById('horariosPorFecha')?.classList.add('hidden');
+    },
+
+    // ── Procesamiento de archivos ──
+    onDragOver(event) {
+      event.preventDefault();
+      document.getElementById('uploadZone')?.classList.add('dragover');
+    },
+    onDragLeave(event) {
+      document.getElementById('uploadZone')?.classList.remove('dragover');
+    },
+    onDrop(event) {
+      event.preventDefault();
+      document.getElementById('uploadZone')?.classList.remove('dragover');
+      const files = event.dataTransfer?.files;
+      if (files) this._procesarListaArchivos(files);
+    },
+
+    procesarArchivos(event) {
+      this._procesarListaArchivos(event.target.files);
+    },
+
+    _procesarListaArchivos(fileList) {
+      const TIPOS_PERMITIDOS = ['application/pdf','application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'image/png','image/jpeg'];
+      const MAX_SIZE  = 5 * 1024 * 1024; // 5MB
+      const MAX_FILES = 5;
+
+      Array.from(fileList).forEach(file => {
+        if (this.archivosSeleccionados.length >= MAX_FILES) {
+          this._mostrarToast(`Máximo ${MAX_FILES} archivos permitidos.`, 'warn');
+          return;
+        }
+        if (file.size > MAX_SIZE) {
+          this._mostrarToast(`El archivo "${file.name}" supera los 5MB.`, 'error');
+          return;
+        }
+        if (!TIPOS_PERMITIDOS.includes(file.type)) {
+          this._mostrarToast(`Tipo de archivo no permitido: ${file.name}`, 'error');
+          return;
+        }
+        if (this.archivosSeleccionados.some(a => a.nombre === file.name)) {
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const base64 = e.target.result.split(',')[1];
+          this.archivosSeleccionados.push({
+            nombre: file.name,
+            tipo:   file.type,
+            base64: base64,
+            tamano: file.size
+          });
+          this._renderizarListaArchivos();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.getElementById('inputArchivos').value = '';
+    },
+
+    _renderizarListaArchivos() {
+      const lista = document.getElementById('listaArchivos');
+      if (!lista) return;
+      lista.innerHTML = '';
+
+      this.archivosSeleccionados.forEach((archivo, idx) => {
+        const tamanoKb = (archivo.tamano / 1024).toFixed(1);
+        const iconos = {
+          'application/pdf': 'fa-file-pdf text-rose-500',
+          'image/png':       'fa-file-image text-blue-500',
+          'image/jpeg':      'fa-file-image text-blue-500'
+        };
+        const icono = iconos[archivo.tipo] || 'fa-file text-slate-500';
+
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2 animate-fadeIn';
+        div.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0">
+            <i class="fa-solid ${icono} flex-shrink-0"></i>
+            <span class="text-xs font-semibold text-slate-700 truncate">${this._escapar(archivo.nombre)}</span>
+            <span class="text-[10px] text-slate-400 flex-shrink-0">${tamanoKb} KB</span>
+          </div>
+          <button type="button" onclick="StudentView.eliminarArchivo(${idx})"
+            class="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors flex-shrink-0 ml-2">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+          </button>
+        `;
+        lista.appendChild(div);
+      });
+    },
+
+    eliminarArchivo(idx) {
+      this.archivosSeleccionados.splice(idx, 1);
+      this._renderizarListaArchivos();
+    },
+
+    // ── Panel Mis Reservas Devueltas ──
+    abrirPanelMisReservas() {
+      const panel = document.getElementById('panelMisReservas');
+      if (!panel) return;
+      panel.classList.remove('hidden');
+      panel.classList.add('animate-fadeIn');
+      this._cargarReservasDevueltas();
+    },
+
+    cerrarPanelMisReservas() {
+      document.getElementById('panelMisReservas')?.classList.add('hidden');
+    },
+
+    async _cargarReservasDevueltas() {
+      if (!AuthService.usuario) return;
+      try {
+        const res = await GasApi.ejecutar('obtenerReservasDevueltas', this.correoUsuario);
+        this._renderizarReservasDevueltas(res.reservas || []);
+
+        const badge = document.getElementById('badgeReservasDevueltas');
+        const count = (res.reservas || []).length;
+        if (badge) {
+          if (count > 0) {
+            badge.textContent = count;
+            badge.classList.remove('hidden');
+            badge.classList.add('flex');
+          } else {
+            badge.classList.add('hidden');
+          }
+        }
+      } catch (e) {
+        console.error('[StudentView] Error al cargar reservas devueltas:', e);
+      }
+    },
+
+    _renderizarReservasDevueltas(reservas) {
+      const lista = document.getElementById('listaReservasDevueltas');
+      if (!lista) return;
+
+      if (reservas.length === 0) {
+        lista.innerHTML = `
+          <div class="text-center py-8">
+            <i class="fa-solid fa-check-circle text-3xl text-emerald-400 mb-2 block"></i>
+            <p class="text-sm font-semibold text-slate-600">¡Sin reservas por corregir!</p>
+            <p class="text-xs text-slate-400 mt-1">Todas tus solicitudes están al día.</p>
+          </div>`;
+        return;
+      }
+
+      lista.innerHTML = reservas.map(r => {
+        const [yyyy, mm, dd] = (r.fecha || '').split('-');
+        const fechaLegible = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : r.fecha;
+        return `
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 animate-fadeIn">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <span class="text-xs font-mono text-slate-500">${this._escapar(r.idReserva)}</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full badge-devuelta">Devuelta</span>
+                </div>
+                <p class="font-black text-slate-800 text-sm">${this._escapar(r.actividad || 'Sin nombre')}</p>
+                <p class="text-xs text-slate-600 mt-0.5">
+                  <i class="fa-solid fa-building mr-1 text-slate-400"></i>${this._escapar(r.coworking)} ·
+                  <i class="fa-solid fa-calendar ml-1 mr-1 text-slate-400"></i>${fechaLegible}
+                </p>
+                <div class="mt-2 p-2.5 bg-rose-50 border border-rose-100 rounded-lg">
+                  <p class="text-[10px] font-black text-rose-700 uppercase tracking-wider mb-0.5">Motivo del rechazo:</p>
+                  <p class="text-xs text-rose-800">${this._escapar(r.motivoRechazo || 'Sin motivo especificado')}</p>
+                </div>
+              </div>
+              <button onclick="StudentView.editarReservaDevuelta('${r.idReserva}')"
+                class="flex items-center gap-2 bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-sm flex-shrink-0 whitespace-nowrap">
+                <i class="fa-solid fa-pen-to-square"></i> Editar y Reenviar
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    },
+
+    async editarReservaDevuelta(idReserva) {
+      try {
+        const res = await GasApi.ejecutar('obtenerDetalleReserva', idReserva, this.correoUsuario);
+        if (!res.exito) {
+          this._mostrarToast('No se pudo cargar la reserva.', 'error');
+          return;
+        }
+
+        const r = res.reserva;
+        const botonesCoworking = document.querySelectorAll('[data-coworking]');
+        let botonCoworking = null;
+
+        botonesCoworking.forEach(btn => {
+          if (btn.dataset.coworking === r.coworking) botonCoworking = btn;
+        });
+
+        if (!botonCoworking) {
+          this._abrirModalConDatosDevueltos(r);
+          return;
+        }
+
+        ModalController.abrir(botonCoworking);
+        this._rellenarFormularioDevuelto(r);
+        this.cerrarPanelMisReservas();
+
+      } catch (e) {
+        this._mostrarToast('Error al cargar la reserva: ' + e.message, 'error');
+      }
+    },
+
+    _abrirModalConDatosDevueltos(r) {
+      document.getElementById('modalTitulo')?.setAttribute('textContent', r.coworking);
+      const inputCW = document.getElementById('inputCoworking');
+      if (inputCW) inputCW.value = r.coworking;
+
+      StudentView.resetear();
+      const rolFormulario = (r.rol === 'maestro' || r.rol === 'admin') ? 'administrativo' : 'estudiante';
+      StudentView.seleccionarRol(rolFormulario);
+      this._rellenarFormularioDevuelto(r);
+
+      const modal = document.getElementById('modalReserva');
+      if (modal) modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      this.cerrarPanelMisReservas();
+    },
+
+    _rellenarFormularioDevuelto(r) {
+      const inputId = document.getElementById('inputReservaDevueltaId');
+      if (inputId) inputId.value = r.idReserva;
+      const modoEdicion = document.getElementById('inputModoEdicion');
+      if (modoEdicion) modoEdicion.value = 'S';
+      const idOriginal = document.getElementById('inputIdOriginal');
+      if (idOriginal) idOriginal.value = r.idOriginal || r.idReserva;
+
+      const banner = document.getElementById('bannerReservaDevuelta');
+      const textoMotivo = document.getElementById('textoMotivoDevolucion');
+      if (banner) banner.classList.remove('hidden');
+      if (textoMotivo) textoMotivo.textContent = `Motivo: ${r.motivoRechazo || 'No especificado'}`;
+
+      const campos = {
+        'nombres':              r.nombres || r.nombreCompleto?.split(' ')[0] || '',
+        'apellidoPaterno':      r.apellidoPaterno || '',
+        'apellidoMaterno':      r.apellidoMaterno || '',
+        'codigo':               r.codigo || '',
+        'telefono':             r.telefono || '',
+        'extension':            r.extension !== 'N/A' ? (r.extension || '') : '',
+        'correo':               r.correo || '',
+        'correoResponsable':    r.correoResponsable || '',
+        'actividad':            r.actividad || '',
+        'descripcionActividad': r.descripcion || ''
+      };
+
+      Object.entries(campos).forEach(([id, valor]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = valor;
+      });
+
+      // Rellenar Tipo de Actividad
+      if (r.tipoActividad) {
+        const tipoRadio = document.querySelector(`input[name="tipoActividad"][value="${r.tipoActividad}"]`);
+        if (tipoRadio) tipoRadio.checked = true;
+      }
+
+      // Rellenar ODS
+      if (r.ods) {
+        document.querySelectorAll('input[name="ods_check"]').forEach(cb => {
+          cb.checked = r.ods.includes(cb.value);
+        });
+      }
+
+      if (r.fecha) {
+        this.fechasSeleccionadas = [{ fecha: r.fecha, horaEntrada: r.horaInicio || '08:00', horaSalida: r.horaFin || '10:00' }];
+        this._renderizarEtiquetasFechas();
+      }
+    },
+
+    // ── Envío del formulario ──
+    async enviarReserva(evento) {
+      evento.preventDefault();
+
+      const tipoActividad = document.querySelector('input[name="tipoActividad"]:checked');
+      if (!tipoActividad) {
+        document.getElementById('errorTipoActividad')?.classList.remove('hidden');
+        document.getElementById('tipoActividadContainer')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      document.getElementById('errorTipoActividad')?.classList.add('hidden');
+
+      if (this.fechasSeleccionadas.length === 0) {
+        document.getElementById('errorFechas')?.classList.remove('hidden');
+        return;
+      }
+      document.getElementById('errorFechas')?.classList.add('hidden');
+
+      const btn    = document.getElementById('btnEnviar');
+      const msgDiv = document.getElementById('mensajeResultado');
+
+      const odsChecks = document.querySelectorAll('input[name="ods_check"]:checked');
+      const odsSeleccionados = Array.from(odsChecks).map(cb => cb.value);
+
+      let fechasConHorario = [];
+      if (this.usarMismoHorario) {
+        const horaEntradaGlobal = document.getElementById('horaEntrada')?.value || '08:00';
+        const horaSalidaGlobal  = document.getElementById('horaSalida')?.value  || '10:00';
+        fechasConHorario = this.fechasSeleccionadas.map(f => ({
+          fecha:       f.fecha,
+          horaEntrada: horaEntradaGlobal,
+          horaSalida:  horaSalidaGlobal
+        }));
+      } else {
+        fechasConHorario = this.fechasSeleccionadas.map((f, idx) => ({
+          fecha:       f.fecha,
+          horaEntrada: document.getElementById(`entrada_${idx}`)?.value || f.horaEntrada || '08:00',
+          horaSalida:  document.getElementById(`salida_${idx}`)?.value  || f.horaSalida  || '10:00'
+        }));
+      }
+
+      for (const fh of fechasConHorario) {
+        const minEntrada = this._horaAMinutos(fh.horaEntrada);
+        const minSalida  = this._horaAMinutos(fh.horaSalida);
+        if (minSalida <= minEntrada) {
+          const [yyyy, mm, dd] = fh.fecha.split('-');
+          this._mostrarMensaje(msgDiv, `La hora de salida debe ser posterior a la entrada para el ${dd}/${mm}/${yyyy}.`, 'error');
+          return;
+        }
+      }
+
+      // CORRECCIÓN EXACTA DE ROL:
+      const rolActual = document.getElementById('inputRol')?.value || '';
+
+      const datos = {
+        rol:                  rolActual,
+        coworking:            document.getElementById('inputCoworking')?.value || '',
+        nombres:              document.getElementById('nombres')?.value.trim() || '',
+        apellidoPaterno:      document.getElementById('apellidoPaterno')?.value.trim() || '',
+        apellidoMaterno:      document.getElementById('apellidoMaterno')?.value.trim() || '',
+        codigo:               document.getElementById('codigo')?.value.trim() || '',
+        telefono:             document.getElementById('telefono')?.value.trim() || '',
+        extension:            document.getElementById('extension')?.value.trim() || 'N/A',
+        correoResponsable:    (rolActual === 'administrativo' || rolActual === 'maestro') ? (document.getElementById('correoResponsable')?.value.trim() || '') : '',
+        correo:               document.getElementById('correo')?.value.trim() || '',
+        actividad:            document.getElementById('actividad')?.value.trim() || '',
+        tipoActividad:        tipoActividad.value,
+        descripcionActividad: document.getElementById('descripcionActividad')?.value.trim() || '',
+        fechasConHorario:     fechasConHorario,
+        fechas:               fechasConHorario.map(f => f.fecha),
+        horaEntrada:          fechasConHorario[0]?.horaEntrada || '08:00',
+        horaSalida:           fechasConHorario[0]?.horaSalida  || '10:00',
+        ods:                  odsSeleccionados,
+        archivos:             this.archivosSeleccionados,
+        reservaDevueltaId:    document.getElementById('inputReservaDevueltaId')?.value || '',
+        modoEdicion:          document.getElementById('inputModoEdicion')?.value || 'N',
+        idOriginal:           document.getElementById('inputIdOriginal')?.value || ''
+      };
+
+      btn.disabled  = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Validando y registrando…';
+      this._ocultarMensaje(msgDiv);
+
+      try {
+        let funcionApi = 'registrarReserva';
+        if (datos.modoEdicion === 'S' && datos.idOriginal) {
+          funcionApi = 'reenviarReservaCorregida';
+        }
+
+        const resultado = await GasApi.ejecutar(funcionApi, datos, this.correoUsuario);
+
+        if (resultado.exito) {
+          this._mostrarMensaje(msgDiv, resultado.mensaje, 'exito');
+          document.getElementById('formReserva')?.reset();
+          this.fechasSeleccionadas   = [];
+          this.archivosSeleccionados = [];
+          this._renderizarEtiquetasFechas();
+          this._renderizarListaArchivos();
+          this._inicializarHorarioUI();
+
+          document.getElementById('bannerReservaDevuelta')?.classList.add('hidden');
+          document.getElementById('inputReservaDevueltaId').value = '';
+          document.getElementById('inputModoEdicion').value = 'N';
+          document.getElementById('inputIdOriginal').value = '';
+
+          setTimeout(() => { this._cargarReservasDevueltas(); }, 500);
+          setTimeout(() => ModalController.cerrar(), 3500);
+        } else {
+          this._mostrarMensaje(msgDiv, resultado.mensaje, 'error');
+          this._restaurarBoton(btn);
+        }
+      } catch (error) {
+        console.error('[StudentView] Error al enviar reserva:', error);
+        this._mostrarMensaje(msgDiv, 'Error de conexión: ' + (error.message || 'Inténtalo de nuevo.'), 'error');
+        this._restaurarBoton(btn);
+      }
+    },
+
+    _horaAMinutos(horaStr) {
+      const [h, m] = horaStr.split(':').map(Number);
+      return h * 60 + m;
+    },
+
+    _restaurarBoton(btn) {
+      if (!btn) return;
+      btn.disabled  = false;
+      btn.innerHTML = 'Confirmar mi reserva';
+    },
+
+    _mostrarMensaje(el, texto, tipo) {
+      if (!el) return;
+      const estilos = {
+        exito: 'bg-emerald-50 text-emerald-800 border border-emerald-200',
+        error: 'bg-rose-50 text-rose-800 border border-rose-200',
+        warn:  'bg-amber-50 text-amber-800 border border-amber-200'
+      };
+      el.className   = `mt-4 p-3 rounded-xl text-sm font-semibold text-center ${estilos[tipo] || estilos.error}`;
+      el.textContent = texto;
+      el.classList.remove('hidden');
+    },
+
+    _ocultarMensaje(el) {
+      if (el) el.classList.add('hidden');
+    },
+
+    _mostrarToast(texto, tipo = 'warn') {
+      const msgDiv = document.getElementById('mensajeResultado');
+      this._mostrarMensaje(msgDiv, texto, tipo);
+      setTimeout(() => this._ocultarMensaje(msgDiv), 3500);
+    },
+
+    _escapar(valor) {
+      return String(valor || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    },
+
+    resetear() {
+      const form = document.getElementById('formReserva');
+      if (form) form.reset();
+
+      this.fechasSeleccionadas   = [];
+      this.archivosSeleccionados = [];
+      this._renderizarEtiquetasFechas();
+      this._renderizarListaArchivos();
+      this._inicializarHorarioUI();
+
+      document.querySelectorAll('input[name="ods_check"]').forEach(cb => { cb.checked = false; });
+      document.querySelectorAll('input[name="tipoActividad"]').forEach(r => { r.checked = false; });
+      document.getElementById('errorTipoActividad')?.classList.add('hidden');
+      document.getElementById('errorFechas')?.classList.add('hidden');
+      document.getElementById('bannerReservaDevuelta')?.classList.add('hidden');
+
+      const inputId = document.getElementById('inputReservaDevueltaId');
+      if (inputId) inputId.value = '';
+      const modoEdicion = document.getElementById('inputModoEdicion');
+      if (modoEdicion) modoEdicion.value = 'N';
+      const idOriginal = document.getElementById('inputIdOriginal');
+      if (idOriginal) idOriginal.value = '';
+
+      this._ocultarMensaje(document.getElementById('mensajeResultado'));
+      this._restaurarBoton(document.getElementById('btnEnviar'));
+      this._poblarSelectoresGlobales();
+    }
+  };
+
+  // ──────────────────────────────────────────────────────────
+  // MÓDULO: ModalController
+  // ──────────────────────────────────────────────────────────
+  const ModalController = {
+    abrir(boton) {
+      if (!AuthService.usuario) {
+        AuthService.abrirModalAuth('login');
+        return;
+      }
+
+      const titulo    = boton.dataset.coworking || '';
+      const desc      = boton.dataset.desc      || '';
+      const capacidad = boton.dataset.cap       || '';
+      let   specs     = [];
+
+      try { specs = JSON.parse(boton.dataset.specs || '[]'); }
+      catch (e) { console.warn('[ModalController] Error al parsear specs:', e); }
+
+      this._setTexto('modalTitulo',      titulo);
+      this._setTexto('modalDescripcion', desc);
+      this._setTexto('modalCapacidad',   capacidad);
+
+      const listaEsp = document.getElementById('modalEspecificaciones');
+      if (listaEsp) {
+        listaEsp.innerHTML = specs.map(item => `
+          <li class="flex items-center gap-2 text-sm text-slate-600">
+             <i class="fa-solid fa-check text-emerald-500"></i> ${item}
+          </li>
+        `).join('');
+      }
+
+      const inputCW = document.getElementById('inputCoworking');
+      if (inputCW) inputCW.value = titulo;
+
+      StudentView.resetear();
+
+      const rolUsuario     = AuthService.usuario.rol;
+      const tipoFormulario = (rolUsuario === 'maestro' || rolUsuario === 'admin') ? 'administrativo' : 'estudiante';
+      StudentView.seleccionarRol(tipoFormulario);
+
+      const modal = document.getElementById('modalReserva');
+      if (modal) modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    },
+
+    cerrar() {
+      document.getElementById('modalReserva')?.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+      StudentView.resetear();
+    },
+
+    _setTexto(id, texto) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = texto;
+    }
+  };
+
+  // ──────────────────────────────────────────────────────────
+  // MÓDULO: AdminDashboard
+  // ──────────────────────────────────────────────────────────
+  const AdminDashboard = {
+    todasLasReservas: [],
+    todosLosUsuarios: [],
+    filtroActivo:     'todos',
+    _charts:          {},
+    _reservaEnModal:  null,
+    _calendarioInstance: null,
+
+    async inicializar() {
+      try {
+        const adminCorreo = AuthService.usuario?.correo || '';
+        const datos = await GasApi.ejecutar('obtenerDashboardAdmin', adminCorreo);
+
+        if (!datos.exito) {
+          this._mostrarErrorDashboard(datos.mensaje);
+          return;
+        }
+
+        this.todasLasReservas = datos.reservas || [];
+        this._renderizarMetricas(datos.metricas);
+        this._renderizarGraficas(datos.graficaEstados, datos.graficaEspacios);
+        this._renderizarTabla(this.todasLasReservas);
+        this.cargarUsuarios(adminCorreo);
+
+      } catch (error) {
+        console.error('[AdminDashboard] Error al inicializar:', error);
+        this._mostrarErrorDashboard('Error al cargar el dashboard: ' + (error.message || 'Inténtalo de nuevo.'));
+      }
+    },
+
+    // ── Tabs ──
+    cambiarTab(tab) {
+      const tabs = ['reservas', 'calendario', 'usuarios'];
+      const vistas = {
+        reservas:   'adminVistaReservas',
+        calendario: 'adminVistaCalendario',
+        usuarios:   'adminVistaUsuarios'
+      };
+      const botones = {
+        reservas:   'tabBtnReservas',
+        calendario: 'tabBtnCalendario',
+        usuarios:   'tabBtnUsuarios'
+      };
+
+      tabs.forEach(t => {
+        const vistaEl = document.getElementById(vistas[t]);
+        const btnEl   = document.getElementById(botones[t]);
+        if (t === tab) {
+          vistaEl?.classList.remove('hidden');
+          if (btnEl) btnEl.className = 'px-5 py-3 text-sm font-bold border-b-[3px] border-[#002f5c] text-[#002f5c] whitespace-nowrap bg-white/50 rounded-t-lg';
+        } else {
+          vistaEl?.classList.add('hidden');
+          if (btnEl) btnEl.className = 'px-5 py-3 text-sm font-bold border-b-[3px] border-transparent text-slate-500 hover:text-slate-800 hover:bg-white/50 transition-colors whitespace-nowrap rounded-t-lg';
+        }
+      });
+
+      if (tab === 'calendario') {
+        setTimeout(() => this._inicializarCalendario(), 100);
+      }
+    },
+
+    // ── Calendario Digital con FullCalendar ──
+    _inicializarCalendario() {
+      const contenedor = document.getElementById('contenedorCalendario');
+      if (!contenedor) return;
+
+      if (this._calendarioInstance) {
+        this._calendarioInstance.destroy();
+        this._calendarioInstance = null;
+      }
+
+      if (typeof FullCalendar === 'undefined') {
+        contenedor.innerHTML = `<div class="p-8 text-center text-slate-500">FullCalendar no disponible. Verifica la conexión a internet.</div>`;
+        return;
+      }
+
+      // Llenar selectores de filtro
+      const espacioSelect = document.getElementById('filtroCalendarioEspacio');
+      if (espacioSelect) {
+        const espaciosUnicos = [...new Set(this.todasLasReservas.map(r => r.coworking))].sort();
+        espacioSelect.innerHTML = `<option value="">Todos los espacios</option>` +
+          espaciosUnicos.map(e => `<option value="${this._escapar(e)}">${this._escapar(e)}</option>`).join('');
+      }
+
+      const eventos = this._reservasAEventosCalendario(this.todasLasReservas);
+
+      this._calendarioInstance = new FullCalendar.Calendar(contenedor, {
+        initialView: 'dayGridMonth',
+        locale: 'es',
+        headerToolbar: {
+          left:   'prev,next today',
+          center: 'title',
+          right:  'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        buttonText: {
+          today: 'Hoy',
+          month: 'Mes',
+          week:  'Semana',
+          day:   'Día'
+        },
+        events: eventos,
+        eventClick: (info) => {
+          const idReserva = info.event.extendedProps.idReserva;
+          if (idReserva) {
+            this.cambiarTab('reservas');
+            setTimeout(() => this.abrirModal(idReserva), 300);
+          }
+        },
+        eventDidMount: (info) => {
+          info.el.title = `${info.event.title}\nSolicitante: ${info.event.extendedProps.solicitante}\nHorario: ${info.event.extendedProps.horario}`;
+        },
+        height: '100%',
+        eventTimeFormat: {
+          hour:   '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }
+      });
+
+      this._calendarioInstance.render();
+    },
+
+    _reservasAEventosCalendario(reservas) {
+      const colores = {
+        'Pendiente': { bg: '#f59e0b', border: '#d97706', text: '#fff' },
+        'Aceptada':  { bg: '#10b981', border: '#059669', text: '#fff' },
+        'Rechazada': { bg: '#ef4444', border: '#dc2626', text: '#fff' },
+        'Devuelta':  { bg: '#8b5cf6', border: '#7c3aed', text: '#fff' }
+      };
+
+      return reservas.map(r => {
+        const color  = colores[r.estado] || { bg: '#94a3b8', border: '#64748b', text: '#fff' };
+
+        let formatFecha = r.fecha;
+        if (r.fecha && r.fecha.includes('/')) {
+            const [dd, mm, yyyy] = r.fecha.split('/');
+            formatFecha = `${yyyy}-${mm}-${dd}`;
+        }
+
+        const inicio = formatFecha && r.horaInicio ? `${formatFecha}T${r.horaInicio}` : formatFecha;
+        const fin    = formatFecha && r.horaFin    ? `${formatFecha}T${r.horaFin}`    : formatFecha;
+
+        return {
+          id:              r.idReserva,
+          title:           `${r.coworking.replace('Coworking ', 'CW')} · ${r.actividad || 'Sin nombre'}`,
+          start:           inicio,
+          end:             fin,
+          backgroundColor: color.bg,
+          borderColor:     color.border,
+          textColor:       color.text,
+          extendedProps: {
+            idReserva:   r.idReserva,
+            solicitante: r.nombreCompleto,
+            horario:     `${r.horaInicio} – ${r.horaFin}`,
+            estado:      r.estado,
+            coworking:   r.coworking
+          }
+        };
+      });
+    },
+
+    filtrarCalendario() {
+      if (!this._calendarioInstance) return;
+
+      const espacio = document.getElementById('filtroCalendarioEspacio')?.value || '';
+      const estado  = document.getElementById('filtroCalendarioEstado')?.value  || '';
+
+      let filtradas = [...this.todasLasReservas];
+      if (espacio) filtradas = filtradas.filter(r => r.coworking === espacio);
+      if (estado)  filtradas = filtradas.filter(r => r.estado    === estado);
+
+      const eventos = this._reservasAEventosCalendario(filtradas);
+
+      this._calendarioInstance.removeAllEvents();
+      eventos.forEach(e => this._calendarioInstance.addEvent(e));
+    },
+
+    // ── Usuarios ──
+    async cargarUsuarios(adminCorreo) {
+      try {
+        const res = await GasApi.ejecutar('obtenerListaUsuarios', adminCorreo);
+        if (res.exito) {
+          this.todosLosUsuarios = res.usuarios;
+          this._renderizarTablaUsuarios(this.todosLosUsuarios);
+        }
+      } catch (e) {
+        console.error('[AdminDashboard] Error al cargar usuarios:', e);
+      }
+    },
+
+    _renderizarTablaUsuarios(usuarios) {
+      const cuerpo = document.getElementById('cuerpoTablaUsuarios');
+      if (!cuerpo) return;
+
+      if (usuarios.length === 0) {
+        cuerpo.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-slate-500 text-sm">No hay usuarios registrados.</td></tr>`;
+        return;
+      }
+
+      cuerpo.innerHTML = usuarios.map(u => {
+        const isAdmin   = u.rol === 'admin';
+        const isMaestro = u.rol === 'maestro';
+        let badgeClass  = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+        if (isAdmin)   badgeClass = 'bg-purple-50 text-purple-700 border border-purple-200';
+        else if (isMaestro) badgeClass = 'bg-blue-50 text-blue-700 border border-blue-200';
+
+        const nextRol      = isAdmin ? (u.correo.includes('@alumnos') ? 'alumno' : 'maestro') : 'admin';
+        const actionText   = isAdmin ? 'Quitar Admin' : 'Hacer Admin';
+        const actionColor  = isAdmin
+          ? 'text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200'
+          : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200';
+
+        return `
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="p-4 text-xs font-mono text-slate-500">${this._escapar(u.id)}</td>
+            <td class="p-4 text-sm font-semibold text-slate-800">${this._escapar(u.correo)}</td>
+            <td class="p-4 text-sm text-slate-600">${this._escapar(u.codigo)}</td>
+            <td class="p-4">
+              <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${badgeClass}">${u.rol}</span>
+            </td>
+            <td class="p-4 text-right pr-6">
+              <button onclick="AdminDashboard.cambiarRolUsuario('${this._escapar(u.id)}', '${this._escapar(nextRol)}')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm ${actionColor}">
+                ${actionText}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    },
+
+    async cambiarRolUsuario(idUsuario, nuevoRol) {
+      const adminCorreo = AuthService.usuario?.correo || '';
+      if (!confirm(`¿Confirmas cambiar el rol a "${nuevoRol.toUpperCase()}"?`)) return;
+      try {
+        const res = await GasApi.ejecutar('actualizarRolUsuario', idUsuario, nuevoRol, adminCorreo);
+        if (res.exito) {
+          alert('✅ Rol actualizado correctamente.');
+          this.cargarUsuarios(adminCorreo);
+        } else {
+          alert('❌ Error: ' + res.mensaje);
+        }
+      } catch (error) {
+        alert('Error de conexión al cambiar el rol.');
+      }
+    },
+
+    // ── Métricas ──
+    _renderizarMetricas(metricas) {
+      const contenedor = document.getElementById('tarjetasMetricas');
+      if (!contenedor) return;
+
+      const config = [
+        { label: 'Total Reservas',  valor: metricas.total,      icono: 'fa-calendar-days',  color: 'text-blue-600',    bg: 'bg-blue-50',    borde: 'border-blue-100' },
+        { label: 'Pendientes',      valor: metricas.pendientes,  icono: 'fa-hourglass-half', color: 'text-amber-600',   bg: 'bg-amber-50',   borde: 'border-amber-100' },
+        { label: 'Aceptadas',       valor: metricas.aceptadas,   icono: 'fa-circle-check',   color: 'text-emerald-600', bg: 'bg-emerald-50', borde: 'border-emerald-100' },
+        { label: 'Rechazadas',      valor: metricas.rechazadas,  icono: 'fa-circle-xmark',   color: 'text-red-600',     bg: 'bg-red-50',     borde: 'border-red-100' }
+      ];
+
+      contenedor.innerHTML = config.map(c => `
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">${c.label}</p>
+            <p class="text-3xl font-black text-slate-800">${c.valor}</p>
+          </div>
+          <div class="w-14 h-14 rounded-full flex items-center justify-center ${c.bg} ${c.color} text-2xl border ${c.borde} shadow-sm">
+            <i class="fa-solid ${c.icono}"></i>
+          </div>
+        </div>
+      `).join('');
+    },
+
+    // ── Gráficas ──
+    _renderizarGraficas(dataEstados, dataEspacios) {
+      Object.values(this._charts).forEach(c => { if (c) c.destroy(); });
+      this._charts = {};
+
+      const ctxEstados = document.getElementById('graficaEstados');
+      if (ctxEstados && typeof Chart !== 'undefined') {
+        this._charts.estados = new Chart(ctxEstados, {
+          type: 'doughnut',
+          data: {
+            labels:   dataEstados.labels,
+            datasets: [{
+              data:            dataEstados.datos,
+              backgroundColor: ['#f59e0b','#10b981','#ef4444'],
+              borderColor:     ['#fff','#fff','#fff'],
+              borderWidth:     3,
+              hoverOffset:     6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { font: { size: 11, weight: 'bold' }, padding: 16, usePointStyle: true }
+              },
+              tooltip: {
+                callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} reserva(s)` }
+              }
+            },
+            cutout: '65%'
+          }
+        });
+      }
+
+      const ctxEspacios = document.getElementById('graficaEspacios');
+      if (ctxEspacios && typeof Chart !== 'undefined') {
+        this._charts.espacios = new Chart(ctxEspacios, {
+          type: 'bar',
+          data: {
+            labels:   dataEspacios.labels,
+            datasets: [{
+              label:           'Reservas',
+              data:            dataEspacios.datos,
+              backgroundColor: [
+                'rgba(0,47,92,0.80)',
+                'rgba(234,170,0,0.80)',
+                'rgba(16,185,129,0.80)',
+                'rgba(99,102,241,0.80)'
+              ],
+              borderRadius:  8,
+              borderSkipped: false
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: ctx => ` ${ctx.raw} reserva(s)` } }
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+              x: { ticks: { font: { size: 10 }, maxRotation: 30 }, grid: { display: false } }
+            }
+          }
+        });
+      }
+    },
+
+    // ── Tabla de Reservas ──
+    _renderizarTabla(reservas) {
+      const spinner      = document.getElementById('spinnerTabla');
+      const contenedor   = document.getElementById('contenedorTabla');
+      const cuerpo       = document.getElementById('cuerpoTabla');
+      const mensajeVacio = document.getElementById('mensajeTablaVacia');
+
+      spinner?.classList.add('hidden');
+      contenedor?.classList.remove('hidden');
+
+      if (!cuerpo) return;
+
+      if (reservas.length === 0) {
+        cuerpo.innerHTML = '';
+        mensajeVacio?.classList.remove('hidden');
+        return;
+      }
+
+      mensajeVacio?.classList.add('hidden');
+
+      cuerpo.innerHTML = reservas.map(r => {
+        const badgeClase  = this._obtenerClaseBadge(r.estado);
+        const esPendiente = r.estado === 'Pendiente';
+        const esDevuelta  = r.estado === 'Devuelta';
+
+        const [yyyy, mm, dd] = (r.fecha || '').split('-');
+        const fechaLegible   = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : r.fecha;
+
+        let btnAccion = '';
+        if (esPendiente) {
+          btnAccion = `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')" class="text-xs bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2 rounded-lg transition-colors shadow-sm whitespace-nowrap"><i class="fa-solid fa-magnifying-glass mr-1"></i> Revisar</button>`;
+        } else if (esDevuelta) {
+          btnAccion = `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg transition-colors shadow-sm whitespace-nowrap"><i class="fa-solid fa-eye mr-1"></i> Ver Devuelta</button>`;
+        } else {
+          btnAccion = `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg transition-colors whitespace-nowrap border border-slate-200"><i class="fa-solid fa-file-lines mr-1"></i> Detalle</button>`;
+        }
+
+        return `
+          <tr onclick="AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')" class="hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 cursor-pointer">
+            <td class="p-3 text-slate-500 font-mono text-[11px] whitespace-nowrap">${this._escapar(r.idReserva)}</td>
+            <td class="p-3">
+              <div class="font-bold text-slate-800 text-sm truncate max-w-[180px]">${this._escapar(r.nombreCompleto)}</div>
+              <div class="text-slate-500 text-xs truncate max-w-[180px]">${this._escapar(r.correo)}</div>
+            </td>
+            <td class="p-3 text-sm text-slate-700 font-medium">${this._escapar(r.coworking)}</td>
+            <td class="p-3 text-sm text-slate-700 whitespace-nowrap">${fechaLegible}</td>
+            <td class="p-3 text-sm text-slate-700 whitespace-nowrap"><i class="fa-regular fa-clock text-slate-400 mr-1"></i> ${r.horaInicio} – ${r.horaFin}</td>
+            <td class="p-3 text-center">
+              <span class="text-[10px] font-bold px-2.5 py-1 rounded-full ${badgeClase}">${r.estado}</span>
+            </td>
+            <td class="p-3 text-right pr-6">
+              ${btnAccion}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    },
+
+    filtrarPorEstado(estado) {
+      this.filtroActivo = estado;
+
+      document.querySelectorAll('.filtro-btn').forEach(btn => {
+        const activo = btn.dataset.filtro === estado;
+        btn.className = activo
+          ? 'filtro-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-colors bg-[#002f5c] text-white shadow-sm'
+          : 'filtro-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200';
+      });
+
+      const filtradas = estado === 'todos'
+        ? this.todasLasReservas
+        : this.todasLasReservas.filter(r => r.estado === estado);
+
+      this._renderizarTabla(filtradas);
+    },
+
+    // ── Modal de Detalle (profesional) ──
+    abrirModal(idReserva) {
+      const reserva = this.todasLasReservas.find(r => r.idReserva === idReserva);
+      if (!reserva) return;
+
+      this._reservaEnModal = reserva;
+
+      // Estado badge
+      const estadoEl = document.getElementById('modalAdminEstado');
+      if (estadoEl) {
+        estadoEl.className   = `text-xs font-bold px-3 py-1 rounded-full ${this._obtenerClaseBadge(reserva.estado)}`;
+        estadoEl.textContent = reserva.estado;
+      }
+
+      this._setTextoModal('modalAdminIdReservaTxt', reserva.idReserva);
+
+      const [yyyy, mm, dd] = (reserva.fecha || '').split('-');
+      const fechaLegible   = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : reserva.fecha;
+
+      // ── Tarjeta Solicitante ──
+      const datosSolicitante = [
+        { label: 'Nombre Completo', valor: reserva.nombreCompleto },
+        { label: 'Correo',          valor: reserva.correo },
+        { label: 'Código',          valor: reserva.codigo },
+        { label: 'Teléfono',        valor: reserva.telefono },
+        { label: 'Extensión',       valor: reserva.extension || 'N/A' },
+        { label: 'Rol',             valor: reserva.rol }
+      ];
+
+      const solicitanteEl = document.getElementById('modalAdminDatosSolicitante');
+      if (solicitanteEl) {
+        solicitanteEl.innerHTML = datosSolicitante.map(d => `
+          <div>
+            <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">${d.label}</span>
+            <span class="block text-sm font-semibold text-slate-700">${this._escapar(d.valor)}</span>
+          </div>
+        `).join('');
+      }
+
+      // ── Tarjeta Reserva ──
+      const datosReserva = [
+        { label: 'Espacio',      valor: reserva.coworking },
+        { label: 'Fecha',        valor: fechaLegible },
+        { label: 'Horario',      valor: `${reserva.horaInicio} – ${reserva.horaFin}` },
+        { label: 'Tipo',         valor: reserva.tipoActividad || 'No especificado' },
+        { label: 'Registrado',   valor: reserva.fechaRegistro },
+        { label: 'Responsable',  valor: reserva.correoResponsable || '—' }
+      ];
+
+      const reservaEl = document.getElementById('modalAdminDatosReserva');
+      if (reservaEl) {
+        reservaEl.innerHTML = datosReserva.map(d => `
+          <div>
+            <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">${d.label}</span>
+            <span class="block text-sm font-semibold text-slate-700">${this._escapar(d.valor)}</span>
+          </div>
+        `).join('');
+      }
+
+      // Actividad, Tipo, ODS y descripción
+      this._setTextoModal('modalAdminActividad', reserva.actividad || 'Sin actividad');
+
+      const tipoEl = document.getElementById('modalAdminTipoActividad');
+      if (tipoEl) {
+          const iconos = { 'Conferencia': 'fa-microphone', 'Club': 'fa-people-group', 'Clases': 'fa-chalkboard-user' };
+          const icono = iconos[reserva.tipoActividad] || 'fa-tag';
+          tipoEl.innerHTML = `<i class="fa-solid ${icono} opacity-70"></i> ${reserva.tipoActividad || 'General'}`;
+      }
+
+      this._setTextoModal('modalAdminOds',  reserva.ods && reserva.ods !== 'Ninguno seleccionado' ? reserva.ods : 'Sin ODS vinculados');
+      this._setTextoModal('modalAdminDesc', reserva.descripcion || 'Sin descripción');
+
+      // ── Archivos adjuntos ──
+      const secArchivos = document.getElementById('seccionArchivosAdmin');
+      const listaArch   = document.getElementById('listaArchivosAdmin');
+      if (reserva.archivosUrls && reserva.archivosUrls.length > 0) {
+        secArchivos?.classList.remove('hidden');
+        if (listaArch) {
+          listaArch.innerHTML = reserva.archivosUrls.map(a => `
+            <a href="${this._escapar(a.url)}" target="_blank" class="flex items-center gap-2 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 p-2 rounded-lg transition-colors group">
+              <i class="fa-solid fa-file-lines text-slate-400 group-hover:text-blue-500 text-lg"></i>
+              <span class="text-xs font-semibold text-slate-600 group-hover:text-blue-700 truncate">${this._escapar(a.nombre)}</span>
+            </a>
+          `).join('');
+        }
+      } else {
+        secArchivos?.classList.add('hidden');
+      }
+
+      // Panel de rechazo: ocultar por defecto
+      document.getElementById('panelRechazo')?.classList.add('hidden');
+      const inputMotivo = document.getElementById('inputMotivoRechazo');
+      if (inputMotivo) inputMotivo.value = '';
+      const checkReenvio = document.getElementById('checkPermitirReenvio');
+      if (checkReenvio) checkReenvio.checked = false;
+
+      // Renderizar botones según estado
+      this._renderizarBotonesModal(reserva);
+
+      const modal = document.getElementById('modalDetalleAdmin');
+      if (modal) modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    },
+
+    _renderizarBotonesModal(reserva) {
+      const accionesEl = document.getElementById('modalAdminAcciones');
+      if (!accionesEl) return;
+
+      if (reserva.estado === 'Pendiente') {
+        accionesEl.innerHTML = `
+          <button onclick="AdminDashboard.mostrarPanelRechazo()" class="flex-1 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 px-5 py-3 rounded-xl text-sm font-bold transition-colors shadow-sm">
+            <i class="fa-solid fa-ban mr-1"></i> Rechazar o Devolver
+          </button>
+          <button onclick="AdminDashboard.cambiarEstado('${this._escId(reserva.idReserva)}', 'Aceptada')" class="flex-1 bg-emerald-600 text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/30">
+            <i class="fa-solid fa-check mr-1"></i> Aprobar Solicitud
+          </button>
+        `;
+      } else if (reserva.estado === 'Aceptada') {
+        accionesEl.innerHTML = `
+          <div class="w-full text-center p-3 bg-emerald-50 text-emerald-800 rounded-xl text-sm font-semibold border border-emerald-200 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-circle-check"></i> Reserva aprobada. No puede modificarse.
+          </div>`;
+      } else if (reserva.estado === 'Devuelta') {
+        accionesEl.innerHTML = `
+          <div class="w-full text-center p-3 bg-amber-50 text-amber-800 rounded-xl text-sm font-semibold border border-amber-200 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left"></i> Devuelta para edición. Esperando reenvío del usuario.
+          </div>`;
+      } else {
+        accionesEl.innerHTML = `
+          <div class="w-full text-center p-3 bg-rose-50 text-rose-800 rounded-xl text-sm font-semibold border border-rose-200 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-circle-xmark"></i> Reserva rechazada. No puede modificarse.
+          </div>`;
+      }
+    },
+
+    mostrarPanelRechazo() {
+      document.getElementById('panelRechazo')?.classList.remove('hidden');
+      document.getElementById('panelRechazo')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // Ocultar botones de acción mientras se muestra el panel
+      const accionesEl = document.getElementById('modalAdminAcciones');
+      if (accionesEl) accionesEl.classList.add('hidden');
+    },
+
+    cancelarRechazo() {
+      document.getElementById('panelRechazo')?.classList.add('hidden');
+      const accionesEl = document.getElementById('modalAdminAcciones');
+      if (accionesEl) accionesEl.classList.remove('hidden');
+      if (this._reservaEnModal) this._renderizarBotonesModal(this._reservaEnModal);
+    },
+
+    async confirmarRechazo() {
+      const motivo = document.getElementById('inputMotivoRechazo')?.value.trim();
+      if (!motivo) {
+        document.getElementById('inputMotivoRechazo')?.focus();
+        document.getElementById('inputMotivoRechazo')?.classList.add('ring-2','ring-rose-400');
+        setTimeout(() => document.getElementById('inputMotivoRechazo')?.classList.remove('ring-2','ring-rose-400'), 2000);
+        return;
+      }
+
+      const permitirReenvio = document.getElementById('checkPermitirReenvio')?.checked || false;
+      const nuevoEstado     = permitirReenvio ? 'Devuelta' : 'Rechazada';
+      const idReserva       = this._reservaEnModal?.idReserva;
+
+      if (!idReserva) return;
+
+      // Mostrar cargando en el panel
+      const panelRechazo = document.getElementById('panelRechazo');
+      if (panelRechazo) {
+        panelRechazo.innerHTML = `
+          <div class="text-center p-6 text-slate-500 font-bold flex items-center justify-center gap-3">
+            <i class="fa-solid fa-spinner fa-spin text-2xl text-[#002f5c]"></i> Procesando…
+          </div>`;
+      }
+
+      await this.cambiarEstado(idReserva, nuevoEstado, motivo);
+    },
+
+    cerrarModal() {
+      document.getElementById('modalDetalleAdmin')?.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+      this._reservaEnModal = null;
+    },
+
+    async cambiarEstado(idReserva, nuevoEstado, motivoRechazo = '') {
+      const accionesEl  = document.getElementById('modalAdminAcciones');
+      const adminCorreo = AuthService.usuario?.correo || '';
+
+      if (accionesEl && !motivoRechazo) {
+        accionesEl.innerHTML = `
+          <div class="w-full text-center p-3 text-slate-500 text-sm font-bold flex items-center justify-center gap-2">
+            <i class="fa-solid fa-spinner fa-spin"></i> Procesando…
+          </div>`;
+      }
+
+      try {
+        const resultado = await GasApi.ejecutar(
+          'actualizarEstadoReserva',
+          idReserva,
+          nuevoEstado,
+          adminCorreo,
+          motivoRechazo
+        );
+
+        if (resultado.exito) {
+          // Actualizar en memoria
+          const idx = this.todasLasReservas.findIndex(r => r.idReserva === idReserva);
+          if (idx !== -1) {
+            this.todasLasReservas[idx].estado = nuevoEstado;
+            if (motivoRechazo) this.todasLasReservas[idx].motivoRechazo = motivoRechazo;
+          }
+
+          // Actualizar badge del estado en el modal
+          const estadoEl = document.getElementById('modalAdminEstado');
+          if (estadoEl) {
+            estadoEl.className   = `text-xs font-bold px-3 py-1 rounded-full ${this._obtenerClaseBadge(nuevoEstado)}`;
+            estadoEl.textContent = nuevoEstado;
+          }
+
+          if (accionesEl) {
+            accionesEl.classList.remove('hidden');
+            accionesEl.innerHTML = `
+              <div class="w-full text-center p-3 bg-emerald-50 text-emerald-800 rounded-xl text-sm font-bold border border-emerald-200">
+                <i class="fa-solid fa-check-circle mr-1"></i> ${resultado.mensaje}
+              </div>`;
+          }
+
+          document.getElementById('panelRechazo')?.classList.add('hidden');
+
+          setTimeout(() => {
+            this.cerrarModal();
+            this.filtrarPorEstado(this.filtroActivo);
+            if(this._calendarioInstance) this.filtrarCalendario();
+          }, 2000);
+
+        } else {
+          if (accionesEl) {
+            accionesEl.classList.remove('hidden');
+            accionesEl.innerHTML = `
+              <div class="w-full text-center p-3 bg-rose-50 text-rose-800 rounded-xl text-sm font-bold border border-rose-200">
+                <i class="fa-solid fa-circle-exclamation mr-1"></i> ${resultado.mensaje}
+              </div>`;
+          }
+          if (this._reservaEnModal) {
+            setTimeout(() => {
+              accionesEl?.classList.remove('hidden');
+              this._renderizarBotonesModal(this._reservaEnModal);
+              document.getElementById('panelRechazo')?.classList.add('hidden');
+            }, 3000);
+          }
+        }
+      } catch (error) {
+        if (accionesEl) {
+          accionesEl.classList.remove('hidden');
+          accionesEl.innerHTML = `
+            <div class="w-full text-center p-3 bg-rose-50 text-rose-800 rounded-xl text-sm font-bold border border-rose-200">
+              <i class="fa-solid fa-triangle-exclamation mr-1"></i> Error de conexión: ${error.message || 'Inténtalo de nuevo.'}
+            </div>`;
+        }
+        if (this._reservaEnModal) {
+          setTimeout(() => {
+            accionesEl?.classList.remove('hidden');
+            this._renderizarBotonesModal(this._reservaEnModal);
+            document.getElementById('panelRechazo')?.classList.add('hidden');
+          }, 3000);
+        }
+      }
+    },
+
+    // ── Buscador ──
+    async buscar() {
+      const inputEl     = document.getElementById('inputBusqueda');
+      const resultadoEl = document.getElementById('resultadoBusqueda');
+      const query       = inputEl?.value.trim() || '';
+      const adminCorreo = AuthService.usuario?.correo || '';
+
+      if (!query) {
+        this._mostrarResultadoBusqueda(resultadoEl,
+          '<div class="p-4 text-center text-slate-500 text-sm font-medium">Escribe un correo para buscar.</div>');
+        return;
+      }
+
+      this._mostrarResultadoBusqueda(resultadoEl,
+        `<div class="p-6 text-center text-slate-500 text-sm font-bold flex items-center justify-center gap-2">
+           <i class="fa-solid fa-spinner fa-spin text-[#002f5c] text-xl"></i> Buscando reservas…
+        </div>`);
+
+      try {
+        const resultado = await GasApi.ejecutar('buscarReservasPorCorreo', query, adminCorreo);
+
+        if (!resultado.exito) {
+          this._mostrarResultadoBusqueda(resultadoEl,
+            `<div class="p-4 text-center text-rose-600 text-sm font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> ${resultado.mensaje}</div>`);
+          return;
+        }
+
+        if (resultado.reservas.length === 0) {
+          this._mostrarResultadoBusqueda(resultadoEl,
+            `<div class="p-6 text-center text-slate-500 text-sm"><i class="fa-solid fa-magnifying-glass text-2xl text-slate-300 block mb-2"></i>${resultado.mensaje}</div>`);
+          return;
+        }
+
+        const html = `
+          <div class="p-3 bg-blue-50 text-[#002f5c] text-sm font-bold border-b border-blue-100 flex items-center justify-between">
+            <span><i class="fa-solid fa-list-check mr-2"></i> ${resultado.mensaje}</span>
+            <button onclick="AdminDashboard.limpiarBusqueda()" class="text-blue-400 hover:text-blue-700 p-1"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="max-h-64 overflow-y-auto">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase sticky top-0">
+                <tr>
+                  <th class="p-3 font-semibold">ID</th>
+                  <th class="p-3 font-semibold">Espacio</th>
+                  <th class="p-3 font-semibold">Fecha</th>
+                  <th class="p-3 font-semibold">Horario</th>
+                  <th class="p-3 font-semibold text-center">Estado</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${resultado.reservas.map(r => {
+                  const [yyyy, mm, dd] = (r.fecha || '').split('-');
+                  const fecha = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : r.fecha;
+                  return `
+                    <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')">
+                      <td class="p-3 text-xs font-mono text-slate-500">${this._escapar(r.idReserva)}</td>
+                      <td class="p-3 text-sm text-slate-800 font-semibold">${this._escapar(r.coworking)}</td>
+                      <td class="p-3 text-sm text-slate-600">${fecha}</td>
+                      <td class="p-3 text-sm text-slate-600 font-medium">${r.horaInicio} –${r.horaFin}</td>
+                      <td class="p-3 text-center">
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${this._obtenerClaseBadge(r.estado)}">${r.estado}</span>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        this._mostrarResultadoBusqueda(resultadoEl, html);
+
+      } catch (error) {
+        this._mostrarResultadoBusqueda(resultadoEl,
+          `<div class="p-4 text-center text-rose-600 text-sm font-semibold"><i class="fa-solid fa-circle-exclamation"></i> Error de conexión: ${error.message || 'Inténtalo de nuevo.'}</div>`);
+      }
+    },
+
+    limpiarBusqueda() {
+      const input     = document.getElementById('inputBusqueda');
+      const resultado = document.getElementById('resultadoBusqueda');
+      if (input)     input.value = '';
+      if (resultado) { resultado.classList.add('hidden'); resultado.innerHTML = ''; }
+    },
+
+    _mostrarResultadoBusqueda(el, html) {
+      if (!el) return;
+      el.innerHTML = html;
+      el.classList.remove('hidden');
+    },
+
+    async recargar() {
+      const spinner    = document.getElementById('spinnerTabla');
+      const contenedor = document.getElementById('contenedorTabla');
+      spinner?.classList.remove('hidden');
+      contenedor?.classList.add('hidden');
+      this.todasLasReservas = [];
+      this.filtroActivo     = 'todos';
+      await this.inicializar();
+    },
+
+    _mostrarErrorDashboard(mensaje) {
+      const spinner    = document.getElementById('spinnerTabla');
+      const contenedor = document.getElementById('contenedorTabla');
+      spinner?.classList.add('hidden');
+      if (contenedor) {
+        contenedor.classList.remove('hidden');
+        contenedor.innerHTML = `
+          <div class="p-10 text-center bg-rose-50 rounded-xl border border-rose-200 m-6">
+            <i class="fa-solid fa-circle-exclamation text-4xl text-rose-500 mb-4"></i>
+            <p class="text-rose-800 font-bold mb-5">${mensaje}</p>
+            <button onclick="AdminDashboard.recargar()" class="bg-rose-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-rose-700 shadow shadow-rose-600/30 transition-colors">
+              <i class="fa-solid fa-rotate-right mr-1"></i> Reintentar
+            </button>
+          </div>
+        `;
+      }
+    },
+
+    _obtenerClaseBadge(estado) {
+      const clases = {
+        'Pendiente': 'badge-pendiente',
+        'Aceptada':  'badge-aceptada',
+        'Rechazada': 'badge-rechazada',
+        'Devuelta':  'badge-devuelta'
+      };
+      return clases[estado] || 'bg-slate-100 text-slate-600 border border-slate-200';
+    },
+
+    _escapar(valor) {
+      return String(valor || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    },
+
+    _escId(id) {
+      return String(id).replace(/'/g, "\\'");
+    },
+
+    _setTextoModal(id, texto) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = texto;
+    }
+  };
+
+  // Constructor de fecha auxiliar para calendario si SpreadsheetApp no está disponible en frontend
+  var SpreadsheetApp = window.SpreadsheetApp || {
+    getActiveSpreadsheet: () => null,
+    getSpreadsheetTimeZone: () => 'America/Mexico_City'
+  };
+
+  // ── Exponer módulos globalmente ──
+  global.GasApi          = GasApi;
+  global.AuthService     = AuthService;
+  global.StudentView     = StudentView;
+  global.ModalController = ModalController;
+  global.AdminDashboard  = AdminDashboard;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    AuthService.inicializar();
+  });
+
+})(window);
+
+</script>
