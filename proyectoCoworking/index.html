@@ -477,12 +477,15 @@
               <!-- Selector de fechas / horarios dinámicos -->
               <div class="pt-4 border-t border-slate-100">
 
-                <!-- Toggle Mismo Horario -->
+               <!-- Toggle Mismo Horario -->
                 <div class="flex flex-wrap items-center gap-3 mb-4 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
                   <label class="flex items-center gap-3 text-sm font-bold text-[#002f5c] cursor-pointer">
-                    <div class="relative w-10 h-5 bg-slate-300 rounded-full shadow-inner transition-colors toggle-bg">
-                      <input type="checkbox" id="checkMismoHorario" class="sr-only toggle-checkbox" onchange="StudentView.toggleMismoHorario()" checked>
-                      <div class="toggle-label absolute left-0 w-5 h-5 bg-white rounded-full shadow border border-slate-200 transition-all top-0"></div>
+                    <div class="relative w-10 h-5">
+                      <input type="checkbox" id="checkMismoHorario" class="sr-only peer" onchange="StudentView.toggleMismoHorario()" checked>
+                      <!-- Fondo del toggle que cambia a azul -->
+                      <div class="w-full h-full bg-slate-300 rounded-full shadow-inner transition-colors peer-checked:bg-[#002f5c]"></div>
+                      <!-- Círculo blanco que se desliza a la derecha -->
+                      <div class="absolute left-0 top-0 w-5 h-5 bg-white rounded-full shadow border border-slate-200 transition-all peer-checked:translate-x-full"></div>
                     </div>
                     Usar el mismo horario para todas las fechas
                   </label>
@@ -664,34 +667,65 @@
         </div>
       </div>
 
-      <!-- TAB 3: USUARIOS -->
+<!-- TAB 3: USUARIOS (NUEVO DISEÑO HÍBRIDO) -->
       <div id="adminVistaUsuarios" class="hidden">
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-          <div class="p-5 border-b border-slate-200 bg-white flex justify-between items-center">
-            <div>
-              <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-users-gear text-[#002f5c]"></i> Directorio de Usuarios
-              </h3>
-              <p class="text-xs text-slate-500 mt-1">Haz upgrade o downgrade de los privilegios del sistema.</p>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Columna Izquierda: Admins Actuales -->
+          <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
+            <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+              <div>
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <i class="fa-solid fa-user-shield text-[#002f5c]"></i> Administradores del Sistema
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">Usuarios con acceso total a este panel directivo.</p>
+              </div>
+              <button onclick="AdminDashboard.cargarUsuarios(AuthService.usuario.correo)" class="bg-white border border-slate-200 text-[#002f5c] hover:bg-slate-50 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm">
+                <i class="fa-solid fa-rotate mr-1"></i> Actualizar
+              </button>
             </div>
-            <button onclick="AdminDashboard.cargarUsuarios(AuthService.usuario.correo)" class="bg-slate-100 text-[#002f5c] hover:bg-slate-200 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm">
-              <i class="fa-solid fa-rotate mr-2"></i>Actualizar
-            </button>
+            <div class="overflow-x-auto flex-grow bg-white">
+              <table class="w-full text-left border-collapse min-w-[500px]">
+                <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase sticky top-0 z-0">
+                  <tr>
+                    <th class="p-4 font-semibold">Correo Institucional</th>
+                    <th class="p-4 font-semibold text-center">Rol</th>
+                    <th class="p-4 font-semibold text-right pr-6">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="cuerpoTablaAdmins" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="overflow-x-auto">
-            <table class="tabla-admin w-full text-left border-collapse min-w-[800px]">
-              <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase">
-                <tr>
-                  <th class="p-4 font-semibold">ID Usuario</th>
-                  <th class="p-4 font-semibold">Correo Institucional</th>
-                  <th class="p-4 font-semibold">Código</th>
-                  <th class="p-4 font-semibold">Rol Actual</th>
-                  <th class="p-4 font-semibold text-right pr-6">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="cuerpoTablaUsuarios" class="divide-y divide-slate-100"></tbody>
-            </table>
+
+          <!-- Columna Derecha: Buscador para Promover -->
+          <div class="lg:col-span-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[600px]">
+            <div class="p-5 border-b border-slate-200 bg-slate-50 shrink-0">
+              <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-magnifying-glass-plus text-[#002f5c]"></i> Buscar Usuario
+              </h3>
+              <p class="text-xs text-slate-500 mt-1">Busca alumnos o docentes para darles permisos.</p>
+            </div>
+            <div class="p-5 flex-grow flex flex-col">
+              <label class="block text-xs font-bold text-slate-500 mb-2">Código o Correo</label>
+              <div class="flex gap-2 mb-4 shrink-0">
+                <div class="relative flex-grow">
+                  <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                  <input type="text" id="inputBusquedaUsuario" placeholder="Ej. 218... o @alumnos" class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#002f5c] outline-none shadow-sm" onkeydown="if(event.key === 'Enter') AdminDashboard.buscarUsuariosSistema()">
+                </div>
+                <button onclick="AdminDashboard.buscarUsuariosSistema()" class="bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow">Buscar</button>
+              </div>
+              
+              <div id="contenedorResultadosUsuarios" class="flex-grow border border-slate-200 rounded-xl overflow-hidden flex flex-col bg-slate-50 h-full">
+                <div id="mensajeResultadosUsuarios" class="p-6 text-center text-slate-400 text-sm flex flex-col justify-center h-full">
+                  <i class="fa-solid fa-users text-3xl mb-2 opacity-50"></i>
+                  <span>Realiza una búsqueda para ver resultados.</span>
+                </div>
+                <div id="listaResultadosUsuarios" class="hidden overflow-y-auto h-full divide-y divide-slate-100 bg-white"></div>
+              </div>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
