@@ -1,0 +1,138 @@
+/**
+ * Función requerida por Apps Script para servir la aplicación web.
+ */
+function doGet(e) {
+  return HtmlService.createHtmlOutputFromFile('Index')
+    .setTitle('Coordinación INCO - Portal')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/**
+ * Genera un ID único para la base de datos (Ej: USR-8f7a2b)
+ */
+function generarIdUnico(prefijo = 'USR-') {
+  return prefijo + Math.random().toString(36).substr(2, 6);
+}
+
+/**
+ * Función para autenticar al usuario contra la hoja "Usuarios".
+ * @param {string} codigo - Código del estudiante/docente.
+ * @param {string} nip - Contraseña o NIP.
+ */
+function autenticarUsuario(codigo, nip) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Usuarios");
+    const data = sheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      // Índice 1 es Código, Índice 5 es NIP
+      if (row[1].toString() === codigo.toString() && row[5].toString() === nip.toString()) {
+        return {
+          exito: true,
+          usuario: {
+            idInterno: row[0].toString(), 
+            code: row[1].toString(),
+            name: row[2],
+            role: row[3],
+            email: row[4],
+            photo: row[6] || null,
+            // Simulamos datos de kardex restantes temporalmente
+            career: "Ingeniería en Computación (INCO)",
+            gpa: 90.5,
+            credits: 200,
+            totalCredits: 380,
+            integralHours: 40,
+            requiredHours: 60,
+            status: "Activo Regular",
+            cycle: "2026B"
+          }
+        };
+      }
+    }
+    return { exito: false, mensaje: "Código o NIP incorrectos. Verifica tus datos." };
+  } catch (error) {
+    return { exito: false, mensaje: "Error de servidor: " + error.toString() };
+  }
+}
+
+/**
+ * Función para registrar un nuevo usuario desde el Frontend.
+ */
+function registrarUsuario(datosUsuario) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Usuarios");
+    const nuevoId = generarIdUnico('USR-'); 
+    
+    // Verificación simple: ¿Ya existe el código?
+    const data = sheet.getDataRange().getValues();
+    for(let i = 1; i < data.length; i++){
+       if(data[i][1].toString() === datosUsuario.code.toString()){
+          return { exito: false, mensaje: "El código ingresado ya está registrado." };
+       }
+    }
+
+    // Insertamos la fila (debe coincidir con las columnas de Google Sheets)
+    sheet.appendRow([
+      nuevoId,               // A: ID_Usuario
+      datosUsuario.code,     // B: Codigo
+      datosUsuario.name,     // C: Nombre
+      datosUsuario.role,     // D: Rol
+      datosUsuario.email,    // E: Email
+      datosUsuario.nip,      // F: NIP
+      datosUsuario.photo     // G: Foto
+    ]);
+    
+    return { 
+      exito: true, 
+      usuario: { ...datosUsuario, idInterno: nuevoId, photo: datosUsuario.photo || null } 
+    };
+    
+  } catch(error) {
+    return { exito: false, mensaje: "Error al registrar: " + error.toString() };
+  }
+}
+
+/**
+ * Obtiene toda la información necesaria al iniciar sesión (Tickets y Avisos).
+ */
+function obtenerDatosPlataforma(codigoUsuario, rol) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let tickets = [];
+    let avisos = [];
+
+    // 1. Cargar Tickets
+    const hojaTickets = ss.getSheetByName("Tickets");
+    if (hojaTickets) {
+      const dataTickets = hojaTickets.getDataRange().getValues();
+      for (let i = 1; i < dataTickets.length; i++) {
+        const fila = dataTickets[i];
+        if (rol === 'Coordinacion' || fila[1].toString() === codigoUsuario.toString()) {
+          tickets.push({
+            id: fila[0], code: fila[1].toString(), student: fila[2],
+            subject: fila[3], details: fila[4], status: fila[5],
+            reply: fila[6], date: fila[7]
+          });
+        }
+      }
+    }
+
+    // 2. Cargar Avisos
+    const hojaAvisos = ss.getSheetByName("Avisos");
+    if (hojaAvisos) {
+      const dataAvisos = hojaAvisos.getDataRange().getValues();
+      for (let i = 1; i < dataAvisos.length; i++) {
+        avisos.push({
+          id: dataAvisos[i][0], title: dataAvisos[i][1], date: dataAvisos[i][2], 
+          cat: dataAvisos[i][3], urgent: dataAvisos[i][4] === 'Sí', desc: dataAvisos[i][5]
+        });
+      }
+    }
+
+    return { exito: true, tickets: tickets.reverse(), avisos: avisos.reverse() };
+  } catch (error) {
+    return { exito: false, mensaje: "Error cargando la base de datos: " + error.toString() };
+  }
+}

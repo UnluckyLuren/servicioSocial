@@ -1,0 +1,1983 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coordinación de Ingeniería en Computación - CUCEI</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            udg: {
+              navy: '#0f2744',
+              blue: '#1e3a8a',
+              royal: '#2563eb',
+              light: '#eff6ff',
+              gold: '#d97706',
+              goldHover: '#b45309',
+              amber: '#f59e0b',
+              emerald: '#059669',
+            }
+          },
+          fontFamily: {
+            sans: ['"Inter"', 'system-ui', 'sans-serif'],
+            display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React & Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    
+    h1, h2, h3, h4, .font-display {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+    }
+    .dark .glass-card {
+      background: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(12px);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const FAQ_LIST = [
+      { q: "¿Cómo abro un ticket de atención con la Coordinación?", a: "Accede al módulo 'Mesa de Ayuda y Soporte' (primer elemento del menú) y redacta tu asunto. Recibirás respuesta directa en tu buzón de notificaciones." },
+      { q: "¿Cuántos créditos requiero para iniciar Servicio Social?", a: "Debes cumplir con al menos el 60% de créditos del plan INCO (228 créditos acumulados)." },
+      { q: "¿Cuáles son las opciones para Titulación Automática?", a: "Promedio general superior a 90 sin reprobadas o dictamen Sobresaliente en EGEL CENEVAL." },
+      { q: "¿Cómo solicito un justificante por enfermedad?", a: "Sube tu comprobante médico (IMSS/SSA) en el módulo 'Justificantes' en un lapso no mayor a 5 días hábiles." },
+      { q: "¿Qué trámite procede si caigo en Artículo 33?", a: "Genera la carta petición a la Comisión de Educación desde la sección 'Art. 33 y 35'." }
+    ];
+
+    // === PUENTE DE COMUNICACIÓN CON APPS SCRIPT ===
+    const server = new Proxy({}, {
+      get: (target, prop) => {
+        return (...args) => {
+          return new Promise((resolve, reject) => {
+            if (typeof google === 'undefined') {
+              console.warn(`Simulando llamada a backend: ${prop}`, args);
+              reject(new Error("google.script.run no está disponible. Ejecuta esto dentro de Apps Script."));
+              return;
+            }
+            google.script.run
+              .withSuccessHandler(resolve)
+              .withFailureHandler(reject)
+              [prop](...args);
+          });
+        };
+      }
+    });
+
+    const GUEST_USER = { name: "Visitante", role: "Invitado", code: "", gpa: 0, credits: 0, totalCredits: 380, integralHours: 0, requiredHours: 60, status: "Sin sesión", photo: null };
+
+    function App() {
+      const [user, setUser] = useState(GUEST_USER);
+      const [isLoggedIn, setIsLoggedIn] = useState(false);
+      const [activeTab, setActiveTab] = useState('dudas'); 
+      const [darkMode, setDarkMode] = useState(false);
+      const [toast, setToast] = useState(null);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [activeModal, setActiveModal] = useState(null); 
+      const [userDropdown, setUserDropdown] = useState(false);
+      const [mobileNavOpen, setMobileNavOpen] = useState(false);
+      
+      const [notifOpen, setNotifOpen] = useState(false);
+      const [notifications, setNotifications] = useState([]);
+      const [globalTickets, setGlobalTickets] = useState([]);
+      const [notices, setNotices] = useState([]); 
+
+      // Cargar datos reales al iniciar sesión
+      useEffect(() => {
+        if (isLoggedIn && user.role !== 'Invitado') {
+          server.obtenerDatosPlataforma(user.code, user.role)
+            .then(res => {
+              if (res.exito) {
+                setGlobalTickets(res.tickets);
+                setNotices(res.avisos);
+              }
+            })
+            .catch(err => console.error("Error de red cargando datos", err));
+        } else {
+          setGlobalTickets([]);
+          setNotices([]);
+          setNotifications([]);
+        }
+      }, [isLoggedIn, user]);
+
+      const [chatOpen, setChatOpen] = useState(false);
+      const [chatMessages, setChatMessages] = useState([
+        { sender: 'bot', text: '¡Hola! Bienvenido al portal de la Coordinación de Ingeniería en Computación (CUCEI). ¿En qué trámite o duda de la carrera puedo colaborarte hoy?' }
+      ]);
+      const [chatInput, setChatInput] = useState('');
+      const [chatLoading, setChatLoading] = useState(false);
+
+      useEffect(() => {
+        if (darkMode) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }, [darkMode]);
+
+      useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      });
+
+      const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3500);
+      };
+
+      const addNotification = (title, text, type = 'info') => {
+        const newNotif = { id: Date.now(), title, text, date: 'Ahora mismo', unread: true, type };
+        setNotifications(prev => [newNotif, ...prev]);
+      };
+
+      const markAllNotifsRead = () => {
+        setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+        showToast("Todas las notificaciones marcadas como leídas");
+      };
+
+      const handleUpdateUser = (updatedFields) => {
+        setUser(prev => ({ ...prev, ...updatedFields }));
+        showToast("Perfil de usuario actualizado correctamente");
+        addNotification("Perfil Actualizado", "Tus datos de contacto y foto fueron actualizados.", "success");
+      };
+
+      const handleSendChatMessage = async (presetText = null) => {
+        const textToSend = presetText || chatInput;
+        if (!textToSend.trim()) return;
+
+        const newMessages = [...chatMessages, { sender: 'user', text: textToSend }];
+        setChatMessages(newMessages);
+        if (!presetText) setChatInput('');
+        setChatLoading(true);
+
+        try {
+          const systemInstruction = `Eres el Asistente Institucional de la Coordinación de Ingeniería en Computación del CUCEI (Universidad de Guadalajara). Atiendes con profesionalismo, claridad y tono institucional formal sobre trámites, materias, titulación y reglamentos.`;
+          const apiKey = "";
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: textToSend }] }],
+              systemInstruction: { parts: [{ text: systemInstruction }] }
+            })
+          });
+
+          const result = await response.json();
+          const botReply = result?.candidates?.[0]?.content?.parts?.[0]?.text || 
+            "Para un seguimiento presencial o firma de documento, acude a la Coordinación en el Edificio M, Planta Alta (M202) de Lunes a Viernes de 09:00 a 18:00 hrs.";
+
+          setChatMessages(prev => [...prev, { sender: 'bot', text: botReply }]);
+        } catch (error) {
+          setChatMessages(prev => [...prev, { 
+            sender: 'bot', 
+            text: '📌 Si requieres atención personalizada, abre un Ticket en la Mesa de Ayuda o acude al módulo M202 en CUCEI.' 
+          }]);
+        } finally {
+          setChatLoading(false);
+        }
+      };
+
+      const getNavSections = () => {
+        if (!isLoggedIn || user.role === 'Invitado') {
+          return [
+            {
+              group: "PORTAL PÚBLICO",
+              items: [
+                { id: 'dudas', label: 'Preguntas Frecuentes', icon: 'help-circle', badge: 'FAQ' }
+              ]
+            }
+          ];
+        }
+
+        if (user.role === 'Coordinacion') {
+          return [
+            {
+              group: "PANEL ADMINISTRATIVO COORDINACIÓN",
+              items: [
+                { id: 'admin_panel', label: 'Gestión de Tickets y Respuestas', icon: 'life-buoy', badge: `${globalTickets.filter(t => t.status === 'Pendiente').length} pendientes` },
+                { id: 'admin_justificantes', label: 'Aprobar Justificantes (Art. 53)', icon: 'shield-check', badge: 'Revisión' },
+                { id: 'avisos', label: 'Publicar Avisos Oficiales', icon: 'bell', badge: null },
+                { id: 'dudas', label: 'Preguntas Frecuentes FAQ', icon: 'help-circle', badge: null },
+              ]
+            }
+          ];
+        }
+
+        if (user.role === 'Docente') {
+          return [
+            {
+              group: "MÓDULOS DOCENTES / PROFESORES",
+              items: [
+                { id: 'tickets', label: 'Mesa de Ayuda y Tickets', icon: 'life-buoy', badge: 'Atención Directa' },
+                { id: 'dudas', label: 'Preguntas Frecuentes', icon: 'help-circle', badge: null },
+                { id: 'constancias_docente', label: 'Solicitar Constancia Carga Horaria', icon: 'file-text', badge: 'Docente' },
+                { id: 'modulares', label: 'Proyectos Modulares Asesorados', icon: 'layers', badge: null },
+                { id: 'avisos', label: 'Avisos de Coordinación', icon: 'bell', badge: '4' },
+              ]
+            }
+          ];
+        }
+
+        return [
+          {
+            group: "SOPORTE Y AYUDA PRIORITARIA",
+            items: [
+              { id: 'tickets', label: 'Mesa de Ayuda / Tickets', icon: 'life-buoy', badge: 'Soporte' },
+              { id: 'dudas', label: 'Preguntas Frecuentes', icon: 'help-circle', badge: 'FAQ' },
+              { id: 'inicio', label: 'Inicio Catálogo Dashboard', icon: 'layout-dashboard', badge: null },
+              { id: 'avisos', label: 'Avisos Oficiales CUCEI', icon: 'bell', badge: null },
+            ]
+          },
+          {
+            group: "TRÁMITES Y SOLICITUDES ESTUDIANTILES",
+            items: [
+              { id: 'justificantes', label: 'Justificante Médico (Art. 53)', icon: 'shield-check', badge: 'Faltas' },
+              { id: 'ajuste', label: 'Ajuste de Materias/Cupos', icon: 'sliders', badge: 'SIIAU' },
+              { id: 'art33_35', label: 'Dictamen Art. 33 y 35', icon: 'scale', badge: 'Comisión' },
+            ]
+          },
+          {
+            group: "GESTIÓN ACADÉMICA INCO",
+            items: [
+              { id: 'constancias', label: 'Kardex y Constancias', icon: 'file-text', badge: 'Digital' },
+              { id: 'titulacion', label: 'Opciones de Titulación', icon: 'graduation-cap', badge: 'EGEL' },
+              { id: 'modulares', label: 'Proyectos Modulares I, II, III', icon: 'layers', badge: 'Protocolo' },
+              { id: 'horas', label: 'Horas Integrales', icon: 'award', badge: `${user.integralHours || 52}/60h` },
+              { id: 'malla', label: 'Malla Curricular INCO', icon: 'grid', badge: null },
+            ]
+          }
+        ];
+      };
+
+      const unreadCount = notifications.filter(n => n.unread).length;
+
+      return (
+        <div className="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-900 selection:bg-udg-blue selection:text-white">
+          
+          {toast && (
+            <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-semibold animate-in fade-in slide-in-from-top-2 ${
+              toast.type === 'error' 
+                ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-950/90 dark:border-red-800 dark:text-red-200' 
+                : 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/90 dark:border-emerald-800 dark:text-emerald-200'
+            }`}>
+              <i data-lucide={toast.type === 'error' ? 'alert-circle' : 'check-circle-2'} className="w-5 h-5 shrink-0"></i>
+              <span>{toast.message}</span>
+            </div>
+          )}
+
+          <header className="bg-udg-navy text-white sticky top-0 z-40 border-b border-slate-800 shadow-lg backdrop-blur-md bg-opacity-95">
+            <div className="bg-slate-950/80 px-4 py-1 text-[11px] font-medium text-slate-300 border-b border-slate-800">
+              <div className="max-w-7xl mx-auto flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-udg-gold tracking-wide">Universidad de Guadalajara</span>
+                  <span className="hidden sm:inline text-slate-600">•</span>
+                  <span className="hidden sm:inline text-slate-300">Centro Universitario de Ciencias Exactas e Ingenierías</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">Ciclo Lectivo: 2026B</span>
+                  <span className="text-slate-600">|</span>
+                  <a href="https://siiau.udg.mx" target="_blank" className="hover:text-udg-gold transition-colors">Portal SIIAU</a>
+                </div>
+              </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+              
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setMobileNavOpen(!mobileNavOpen)}
+                  className="lg:hidden p-2 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700"
+                >
+                  <i data-lucide="menu" className="w-5 h-5"></i>
+                </button>
+
+                <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveTab(user.role === 'Coordinacion' ? 'admin_panel' : 'tickets')}>
+                  <div className="w-10 h-10 rounded-2xl bg-white p-1 flex items-center justify-center shadow-lg border border-slate-200 shrink-0 transform group-hover:scale-105 transition-transform">
+                    <div className="text-center leading-none">
+                      <span className="block font-black text-xs text-udg-navy tracking-tight">UDG</span>
+                      <span className="block font-extrabold text-[9px] text-udg-gold">CUCEI</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-white group-hover:text-udg-gold transition-colors leading-tight font-display">
+                      Ingeniería en Computación
+                    </h1>
+                    <p className="text-[11px] text-slate-300 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      Módulo M202 • Portal Institucional
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 sm:gap-3">
+                
+                <div className="relative">
+                  <button 
+                    onClick={() => setNotifOpen(!notifOpen)}
+                    className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all relative flex items-center justify-center"
+                    title="Bandeja de Notificaciones"
+                  >
+                    <i data-lucide="bell" className="w-4 h-4 text-udg-gold"></i>
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-600 text-white font-bold text-[10px] w-4 h-4 rounded-full flex items-center justify-center shadow animate-bounce">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {notifOpen && (
+                    <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 py-3 z-50 text-slate-800 dark:text-slate-100 text-xs animate-in fade-in slide-in-from-top-2">
+                      <div className="px-4 pb-2 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <i data-lucide="bell-ring" className="w-4 h-4 text-udg-gold"></i>
+                          <h4 className="font-bold text-sm font-display">Notificaciones en Vivo</h4>
+                        </div>
+                        {unreadCount > 0 && (
+                          <button onClick={markAllNotifsRead} className="text-[10px] text-udg-blue dark:text-blue-400 hover:underline font-semibold">
+                            Marcar leídas
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-72 overflow-y-auto custom-scrollbar divide-y divide-slate-100 dark:divide-slate-700/60">
+                        {notifications.length === 0 ? (
+                          <p className="p-4 text-center text-slate-400">No tienes notificaciones pendientes.</p>
+                        ) : (
+                          notifications.map(n => (
+                            <div key={n.id} className={`p-3.5 transition-colors ${n.unread ? 'bg-blue-50/70 dark:bg-slate-700/50' : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'}`}>
+                              <div className="flex justify-between items-start gap-2">
+                                <h5 className="font-bold text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
+                                  {n.unread && <span className="w-2 h-2 rounded-full bg-udg-gold shrink-0"></span>}
+                                  {n.title}
+                                </h5>
+                                <span className="text-[10px] text-slate-400 shrink-0">{n.date}</span>
+                              </div>
+                              <p className="text-slate-600 dark:text-slate-300 text-[11px] mt-1 leading-relaxed">{n.text}</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div className="px-4 pt-2 border-t border-slate-100 dark:border-slate-700 text-center">
+                        <span className="text-[10px] text-slate-400">Notificaciones automáticas del sistema INCO</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button 
+                  onClick={() => setDarkMode(!darkMode)}
+                  className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all text-xs flex items-center gap-1.5"
+                  title="Cambiar Contraste"
+                >
+                  <i data-lucide={darkMode ? 'sun' : 'moon'} className="w-4 h-4 text-udg-gold"></i>
+                  <span className="hidden md:inline text-[11px] font-medium">{darkMode ? 'Claro' : 'Oscuro'}</span>
+                </button>
+
+                {isLoggedIn && user.role !== 'Invitado' ? (
+                  <div className="relative">
+                    <button 
+                      onClick={() => setUserDropdown(!userDropdown)}
+                      className="flex items-center gap-2.5 bg-slate-800 hover:bg-slate-700/90 p-1.5 pr-3 rounded-2xl border border-slate-700 transition-all text-left"
+                    >
+                      <div className="w-9 h-9 rounded-xl overflow-hidden bg-udg-blue text-white flex items-center justify-center font-bold text-xs border border-blue-400/40 shrink-0">
+                        {user.photo ? (
+                          <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          user.name ? user.name.charAt(0) : 'U'
+                        )}
+                      </div>
+                      <div className="hidden sm:block">
+                        <p className="text-xs font-bold text-white leading-tight">{user.name.split(' ')[0]} {user.name.split(' ')[2] || ''}</p>
+                        <span className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${
+                          user.role === 'Coordinacion' 
+                            ? 'bg-amber-500 text-slate-950' 
+                            : user.role === 'Docente' 
+                              ? 'bg-emerald-500 text-white' 
+                              : 'bg-blue-500 text-white'
+                        }`}>
+                          {user.role}
+                        </span>
+                      </div>
+                      <i data-lucide="chevron-down" className="w-4 h-4 text-slate-400"></i>
+                    </button>
+
+                    {userDropdown && (
+                      <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 py-2 z-50 text-slate-800 dark:text-slate-100 text-xs">
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-700 shrink-0 border border-slate-300 dark:border-slate-600 shadow-inner">
+                            {user.photo ? (
+                              <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center font-bold text-slate-600 dark:text-slate-200 text-base">{user.name ? user.name.charAt(0) : 'U'}</div>
+                            )}
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="font-bold text-slate-900 dark:text-white truncate font-display">{user.name}</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                            <p className="text-[10px] text-udg-gold font-mono font-semibold">Rol: {user.role}</p>
+                          </div>
+                        </div>
+
+                        <button 
+                          onClick={() => { setActiveModal('edit_profile'); setUserDropdown(false); }}
+                          className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/60 flex items-center gap-2.5 text-udg-navy dark:text-blue-300 font-semibold"
+                        >
+                          <i data-lucide="camera" className="w-4 h-4 text-udg-gold"></i>
+                          <span>Cambiar Foto y Editar Datos</span>
+                        </button>
+
+                        <div className="border-t border-slate-100 dark:border-slate-700 my-1"></div>
+                        <button 
+                          onClick={() => { 
+                            setIsLoggedIn(false); 
+                            setUser(GUEST_USER);
+                            setActiveTab('dudas');
+                            setUserDropdown(false);
+                            showToast("Sesión cerrada correctamente"); 
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2.5 font-semibold"
+                        >
+                          <i data-lucide="log-out" className="w-4 h-4"></i>
+                          <span>Cerrar Sesión</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setActiveModal('register')}
+                      className="bg-udg-gold hover:bg-udg-goldHover text-white font-bold px-3.5 py-2 rounded-xl transition-all text-xs flex items-center gap-1.5 shadow-sm"
+                    >
+                      <i data-lucide="user-plus" className="w-4 h-4"></i>
+                      <span>Registrarse</span>
+                    </button>
+                    <button 
+                      onClick={() => setActiveModal('login')}
+                      className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-3.5 py-2 rounded-xl border border-slate-700 transition-all text-xs flex items-center gap-1.5"
+                    >
+                      <i data-lucide="log-in" className="w-4 h-4 text-udg-gold"></i>
+                      <span>Ingresar</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </header>
+
+          <div className="flex-1 max-w-7xl w-full mx-auto flex flex-col lg:flex-row gap-6 p-4 sm:p-6">
+            
+            <aside className={`lg:w-72 shrink-0 space-y-6 ${mobileNavOpen ? 'block' : 'hidden lg:block'}`}>
+              
+              {isLoggedIn && user.role !== 'Invitado' ? (
+                <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                  <div className={`absolute top-0 left-0 right-0 h-16 ${
+                    user.role === 'Coordinacion' 
+                      ? 'bg-gradient-to-r from-amber-600 to-udg-gold' 
+                      : user.role === 'Docente' 
+                        ? 'bg-gradient-to-r from-emerald-700 to-teal-800' 
+                        : 'bg-gradient-to-r from-udg-navy to-udg-blue'
+                  }`}></div>
+                  
+                  <div className="relative pt-4 flex flex-col items-center text-center">
+                    <div className="relative mb-3">
+                      <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-slate-800 shadow-md flex items-center justify-center font-bold text-2xl text-udg-navy">
+                        {user.photo ? (
+                          <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          user.name ? user.name.charAt(0) : 'U'
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => setActiveModal('edit_profile')}
+                        className="absolute bottom-0 right-0 bg-udg-gold hover:bg-udg-goldHover text-white p-1.5 rounded-full shadow border-2 border-white dark:border-slate-800 transition-transform hover:scale-110"
+                        title="Editar Foto o Datos"
+                      >
+                        <i data-lucide="camera" className="w-3.5 h-3.5"></i>
+                      </button>
+                    </div>
+
+                    <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight font-display">{user.name}</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">{user.career}</p>
+                    
+                    <div className="w-full bg-slate-50 dark:bg-slate-900/60 rounded-xl p-2.5 mt-3 border border-slate-100 dark:border-slate-700 text-[11px] space-y-1.5 text-left">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Código:</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{user.code}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Rol Activo:</span>
+                        <span className="font-bold text-udg-navy dark:text-blue-400">{user.role}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Teléfono:</span>
+                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{user.phone || 'Sin registrar'}</span>
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={() => setActiveModal('edit_profile')}
+                      className="w-full mt-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <i data-lucide="user-cog" className="w-3.5 h-3.5 text-udg-gold"></i>
+                      <span>Editar Perfil</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gradient-to-br from-udg-navy to-slate-900 rounded-2xl p-5 text-white shadow-md space-y-3 border border-slate-800">
+                  <div className="w-10 h-10 rounded-xl bg-udg-gold text-white flex items-center justify-center font-bold">
+                    <i data-lucide="shield-alert" className="w-5 h-5"></i>
+                  </div>
+                  <h3 className="font-bold text-sm font-display">Ingreso de Usuarios</h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Inicia sesión con tu código de Alumno, Docente o Administrador de Coordinación.
+                  </p>
+                  <div className="pt-1 flex flex-col gap-2">
+                    <button 
+                      onClick={() => setActiveModal('login')}
+                      className="w-full bg-udg-gold hover:bg-udg-goldHover text-white py-2 rounded-xl text-xs font-bold transition-all shadow"
+                    >
+                      Iniciar Sesión SIIAU
+                    </button>
+                    <button 
+                      onClick={() => setActiveModal('register')}
+                      className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-xl text-xs font-semibold border border-slate-700"
+                    >
+                      Crear Nueva Cuenta
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <nav className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
+                {getNavSections().map((sec) => (
+                  <div key={sec.group} className="space-y-1">
+                    <p className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+                      {sec.group}
+                    </p>
+                    {sec.items.map((item) => {
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setActiveTab(item.id);
+                            setMobileNavOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-xs font-semibold ${
+                            isActive 
+                              ? 'bg-udg-navy text-white shadow-md dark:bg-udg-blue' 
+                              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <i data-lucide={item.icon} className={`w-4 h-4 ${isActive ? 'text-udg-gold' : 'text-slate-400 dark:text-slate-400'}`}></i>
+                            <span>{item.label}</span>
+                          </div>
+                          {item.badge && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              isActive 
+                                ? 'bg-white/20 text-white' 
+                                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                            }`}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </nav>
+
+              <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                  <i data-lucide="clock" className="w-4 h-4 text-udg-gold"></i>
+                  <span>Atención Presencial M202</span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Lunes a Viernes: 09:00 hrs – 18:00 hrs<br/>
+                  Coordinación de Computación CUCEI
+                </p>
+              </div>
+
+            </aside>
+
+            <main className="flex-1 space-y-6 overflow-hidden">
+              
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-2 text-xs text-udg-blue dark:text-blue-400 font-bold mb-1">
+                      <span className="w-2 h-2 rounded-full bg-udg-gold animate-pulse"></span>
+                      Portal de Atención e Interacción Institucional
+                    </div>
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-display">
+                      {isLoggedIn && user.role !== 'Invitado' ? `¡Bienvenido, ${user.name.split(' ')[0]}!` : 'Portal de Ingeniería en Computación'}
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
+                      {user.role === 'Coordinacion' 
+                        ? 'Panel Administrativo: Responde tickets de estudiantes, gestiona avisos y dictámenes.' 
+                        : user.role === 'Docente'
+                          ? 'Panel Docente: Generación de constancias de adscripción y gestión de alumnos.'
+                          : 'Envía tus tickets directamente a Coordinación o consulta preguntas frecuentes en primer lugar.'}
+                    </p>
+                  </div>
+
+                  {!isLoggedIn && (
+                    <button 
+                      onClick={() => setActiveModal('login')}
+                      className="self-start md:self-auto bg-udg-gold hover:bg-udg-goldHover text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all shadow-md"
+                    >
+                      <i data-lucide="log-in" className="w-4 h-4"></i>
+                      <span>Ingresar con Mi Código</span>
+                    </button>
+                  )}
+                </div>
+
+                {isLoggedIn && user.role === 'Estudiante' && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-4 border-t border-slate-100 dark:border-slate-700/80 text-xs">
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Promedio General</span>
+                      <span className="text-lg font-black text-udg-navy dark:text-blue-400">{user.gpa} <span className="text-xs font-normal text-slate-400">/ 100</span></span>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Créditos Avance</span>
+                      <span className="text-lg font-black text-slate-800 dark:text-slate-100">{user.credits} <span className="text-xs font-normal text-slate-400">({Math.round((user.credits/user.totalCredits)*100)}%)</span></span>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Horas Integrales</span>
+                      <span className="text-lg font-black text-udg-gold">{user.integralHours} <span className="text-xs font-normal text-slate-400">/ {user.requiredHours}h</span></span>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Estatus SIIAU</span>
+                      <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
+                        <i data-lucide="check-circle-2" className="w-4 h-4"></i> {user.status}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <i data-lucide="search" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                <input
+                  type="text"
+                  placeholder="Buscar cualquier servicio... (Ej: Ticket, Preguntas Frecuentes, Justificante, Promedio, EGEL)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 pl-10 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-udg-blue text-xs shadow-sm"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" className="w-4 h-4"></i>
+                  </button>
+                )}
+              </div>
+
+              {activeTab === 'tickets' && (
+                <TicketsModule 
+                  user={user} 
+                  showToast={showToast} 
+                  addNotification={addNotification}
+                  globalTickets={globalTickets}
+                  setGlobalTickets={setGlobalTickets}
+                />
+              )}
+
+              {activeTab === 'dudas' && <DudasBuzonModule faqList={FAQ_LIST} showToast={showToast} />}
+
+              {activeTab === 'inicio' && (
+                <HomeDashboard setActiveTab={setActiveTab} searchQuery={searchQuery} user={user} />
+              )}
+
+              {activeTab === 'justificantes' && (
+                <JustificantesModule 
+                  showToast={showToast} 
+                  addNotification={addNotification} 
+                  isLoggedIn={isLoggedIn} 
+                  setActiveModal={setActiveModal} 
+                />
+              )}
+
+              {activeTab === 'titulacion' && <TitulacionModule showToast={showToast} />}
+              {activeTab === 'constancias' && <ConstanciasModule user={user} showToast={showToast} isLoggedIn={isLoggedIn} setActiveModal={setActiveModal} />}
+              {activeTab === 'constancias_docente' && <ConstanciasDocenteModule user={user} showToast={showToast} />}
+              {activeTab === 'modulares' && <ProyectosModularesModule showToast={showToast} user={user} />}
+              {activeTab === 'ajuste' && <AjusteMateriasModule showToast={showToast} addNotification={addNotification} />}
+              {activeTab === 'art33_35' && <ArticulosReglamentoModule user={user} showToast={showToast} addNotification={addNotification} />}
+              {activeTab === 'horas' && <HorasIntegralesModule user={user} showToast={showToast} />}
+              {activeTab === 'malla' && <MallaCurricularModule />}
+              {activeTab === 'avisos' && <AvisosModule notices={notices} user={user} showToast={showToast} />}
+
+              {activeTab === 'admin_panel' && (
+                <AdminPanelTickets 
+                  globalTickets={globalTickets} 
+                  setGlobalTickets={setGlobalTickets}
+                  showToast={showToast}
+                  addNotification={addNotification}
+                />
+              )}
+
+              {activeTab === 'admin_justificantes' && (
+                <AdminJustificantesModule showToast={showToast} addNotification={addNotification} />
+              )}
+
+            </main>
+
+          </div>
+
+          <div className="fixed bottom-5 right-5 z-40">
+            {chatOpen ? (
+              <div className="w-80 sm:w-96 h-[480px] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+                <div className="bg-udg-navy text-white p-3.5 flex items-center justify-between border-b border-slate-700">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-udg-blue flex items-center justify-center font-bold text-white text-xs border border-blue-400/30">
+                      INCO
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs flex items-center gap-1.5 font-display">
+                        Asistente Virtual INCO
+                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      </h4>
+                      <p className="text-[10px] text-slate-300">Respuesta en segundos</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setChatOpen(false)} className="text-slate-300 hover:text-white p-1">
+                    <i data-lucide="x" className="w-4 h-4"></i>
+                  </button>
+                </div>
+
+                <div className="flex-1 p-3.5 overflow-y-auto space-y-3 custom-scrollbar text-xs">
+                  {chatMessages.map((msg, index) => (
+                    <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[85%] rounded-2xl p-3 leading-relaxed ${
+                        msg.sender === 'user' 
+                          ? 'bg-udg-blue text-white font-normal rounded-tr-none shadow-sm' 
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-tl-none border border-slate-200 dark:border-slate-600'
+                      }`}>
+                        {msg.text}
+                      </div>
+                    </div>
+                  ))}
+                  {chatLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-slate-100 dark:bg-slate-700 p-3 rounded-xl rounded-tl-none flex items-center gap-2 text-slate-500 dark:text-slate-300 text-xs">
+                        <i data-lucide="loader-2" className="w-3.5 h-3.5 animate-spin text-udg-blue"></i>
+                        <span>Consultando reglamentos...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 overflow-x-auto flex gap-1.5 custom-scrollbar">
+                  {["¿Cómo abro un ticket?", "Justificante médico", "Titulación EGEL", "Horas Integrales"].map((preset, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSendChatMessage(preset)}
+                      className="whitespace-nowrap px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-udg-blue text-[10px] font-medium transition-all"
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-2.5 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Escribe tu duda..."
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()}
+                    className="flex-1 bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 px-3 py-2 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-udg-blue"
+                  />
+                  <button
+                    onClick={() => handleSendChatMessage()}
+                    disabled={chatLoading}
+                    className="bg-udg-navy hover:bg-udg-blue text-white font-medium p-2 rounded-xl transition-all disabled:opacity-50"
+                  >
+                    <i data-lucide="send" className="w-4 h-4"></i>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setChatOpen(true)}
+                className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-4 py-3 rounded-full shadow-2xl border border-slate-700 flex items-center gap-2.5 transition-all text-xs"
+              >
+                <i data-lucide="message-square" className="w-4 h-4 text-udg-gold"></i>
+                <span className="font-semibold font-display">Asistente Virtual INCO</span>
+              </button>
+            )}
+          </div>
+
+          {activeModal === 'login' && (
+            <LoginModal 
+              onClose={() => setActiveModal(null)} 
+              onLogin={(userData) => {
+                setUser(userData);
+                setIsLoggedIn(true);
+                setActiveModal(null);
+                showToast(`Sesión iniciada como ${userData.name} (${userData.role})`);
+                if (userData.role === 'Coordinacion') {
+                  setActiveTab('admin_panel');
+                } else if (userData.role === 'Docente') {
+                  setActiveTab('tickets');
+                } else {
+                  setActiveTab('tickets');
+                }
+              }}
+              onOpenRegister={() => setActiveModal('register')}
+            />
+          )}
+
+          {activeModal === 'register' && (
+            <RegisterModal 
+              onClose={() => setActiveModal(null)}
+              onRegister={(newUserData) => {
+                setUser(newUserData);
+                setIsLoggedIn(true);
+                setActiveModal(null);
+                showToast(`¡Registro exitoso! Bienvenido ${newUserData.name}`);
+                addNotification("Bienvenido al Portal", "Tu registro de estudiante se completó con éxito.", "success");
+              }}
+              onOpenLogin={() => setActiveModal('login')}
+            />
+          )}
+
+          {activeModal === 'edit_profile' && (
+            <EditProfileModal 
+              user={user}
+              onClose={() => setActiveModal(null)}
+              onSave={(updatedFields) => {
+                handleUpdateUser(updatedFields);
+                setActiveModal(null);
+              }}
+            />
+          )}
+
+          <footer className="bg-udg-navy text-slate-300 text-xs border-t border-slate-800 mt-auto py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left">
+              <div>
+                <h4 className="text-white font-bold text-sm mb-2 flex items-center justify-center md:justify-start gap-2 font-display">
+                  <span className="w-2 h-2 rounded-full bg-udg-gold"></span>
+                  Universidad de Guadalajara • CUCEI
+                </h4>
+                <p className="leading-relaxed text-slate-400 text-[11px]">
+                  Coordinación de Ingeniería en Computación.<br/>
+                  Módulo M202, Planta Alta. Blvd. Marcelino García Barragán #1421, Guadalajara, Jal.
+                </p>
+              </div>
+              <div>
+                <h4 className="text-white font-bold text-sm mb-2 font-display">Contacto Oficial</h4>
+                <p className="text-[11px] text-slate-400">Correo: <a href="mailto:cdcomp@cucei.udg.mx" className="text-blue-300 hover:underline">cdcomp@cucei.udg.mx</a></p>
+                <p className="text-[11px] text-slate-400">Teléfono: (33) 1378 5900 Ext. 27741</p>
+                <p className="text-[11px] text-slate-400">Horario: Lunes a Viernes de 09:00 a 18:00 hrs.</p>
+              </div>
+              <div>
+                <h4 className="text-white font-bold text-sm mb-2 font-display">Enlaces Directos</h4>
+                <div className="flex flex-wrap gap-2 justify-center md:justify-start text-[11px]">
+                  <a href="https://siiau.udg.mx" target="_blank" className="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl text-slate-200 border border-slate-700">SIIAU Directo</a>
+                  <a href="https://cucei.udg.mx" target="_blank" className="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl text-slate-200 border border-slate-700">Sitio CUCEI</a>
+                </div>
+              </div>
+            </div>
+            <div className="max-w-7xl mx-auto px-4 mt-6 pt-4 border-t border-slate-800 text-center text-[10px] text-slate-400">
+              © {new Date().getFullYear()} Coordinación de Ingeniería en Computación • Centro Universitario de Ciencias Exactas e Ingenierías.
+            </div>
+          </footer>
+
+        </div>
+      );
+    }
+
+    function TicketsModule({ user, showToast, addNotification, globalTickets, setGlobalTickets }) {
+      const [subject, setSubject] = useState('');
+      const [details, setDetails] = useState('');
+      
+      const userTickets = globalTickets.filter(t => t.student === user.name || user.role !== 'Estudiante');
+
+      const handleCreateTicket = (e) => {
+        e.preventDefault();
+        if (!subject.trim() || !details.trim()) {
+          showToast("Ingresa el asunto y los detalles del ticket", "error");
+          return;
+        }
+
+        const newId = `INC-${Math.floor(100 + Math.random() * 900)}`;
+        const newTicket = {
+          id: newId,
+          student: user.name,
+          code: user.code,
+          subject: subject,
+          status: 'Pendiente',
+          date: 'Hoy',
+          reply: ''
+        };
+
+        setGlobalTickets([newTicket, ...globalTickets]);
+        setSubject('');
+        setDetails('');
+        showToast(`Ticket #${newId} registrado correctamente. En revisión por Coordinación.`);
+        
+        addNotification("Ticket Registrado", `Se generó tu ticket #${newId}. Recibirás respuesta de la Coordinación en este portal.`, "ticket");
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+            <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+              <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold">
+                <i data-lucide="life-buoy" className="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Mesa de Ayuda y Tickets de Atención Directa</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Canal prioritario de comunicación con la Coordinación de Computación (Edificio M202).</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateTicket} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Asunto de la Solicitud o Aclaración *</label>
+                <input 
+                  type="text" 
+                  placeholder="Ej: Problema con cruce de horarios en SIIAU o Duda de Proyecto Modular" 
+                  value={subject} 
+                  onChange={(e) => setSubject(e.target.value)} 
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl focus:ring-2 focus:ring-udg-blue outline-none" 
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Descripción Detallada *</label>
+                <textarea 
+                  rows="3" 
+                  placeholder="Escribe los detalles específicos (NRCs, códigos, profesores o antecedentes)..." 
+                  value={details} 
+                  onChange={(e) => setDetails(e.target.value)} 
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl focus:ring-2 focus:ring-udg-blue outline-none"
+                ></textarea>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button type="submit" className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-md transition-all">
+                  <i data-lucide="send" className="w-4 h-4"></i>
+                  <span>Aperturar Nuevo Ticket</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+              <i data-lucide="history" className="w-4 h-4 text-udg-gold"></i>
+              Mis Tickets de Atención Solicitados ({userTickets.length})
+            </h4>
+
+            <div className="space-y-3 text-xs">
+              {userTickets.length === 0 ? (
+                <p className="text-slate-400 py-4 text-center">Aún no has aperturado tickets en la plataforma.</p>
+              ) : (
+                userTickets.map(t => (
+                  <div key={t.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-udg-navy dark:text-blue-400">#{t.id}</span>
+                        <span className="text-slate-400">•</span>
+                        <span className="text-slate-500 font-medium">{t.date}</span>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        t.status === 'Atendido' 
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                      }`}>
+                        {t.status}
+                      </span>
+                    </div>
+
+                    <h5 className="font-bold text-slate-900 dark:text-white text-sm">{t.subject}</h5>
+
+                    {t.reply ? (
+                      <div className="bg-blue-50 dark:bg-slate-800 p-3 rounded-xl border border-blue-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 space-y-1 mt-2">
+                        <div className="flex items-center gap-1.5 text-udg-blue dark:text-blue-400 font-bold text-[11px]">
+                          <i data-lucide="check-circle" className="w-3.5 h-3.5"></i>
+                          <span>Respuesta Oficial de Coordinación:</span>
+                        </div>
+                        <p className="text-xs leading-relaxed">{t.reply}</p>
+                      </div>
+                    ) : (
+                      <p className="text-slate-400 italic text-[11px]">En espera de revisión por el personal de la Coordinación INCO...</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function AdminPanelTickets({ globalTickets, setGlobalTickets, showToast, addNotification }) {
+      const [replyTexts, setReplyTexts] = useState({});
+
+      const handleReply = (ticketId, studentName) => {
+        const text = replyTexts[ticketId];
+        if (!text || !text.trim()) {
+          showToast("Escribe un mensaje de respuesta", "error");
+          return;
+        }
+
+        const updated = globalTickets.map(t => {
+          if (t.id === ticketId) {
+            return { ...t, status: 'Atendido', reply: text };
+          }
+          return t;
+        });
+
+        setGlobalTickets(updated);
+        setReplyTexts(prev => ({ ...prev, [ticketId]: '' }));
+        showToast(`Respuesta enviada para el ticket #${ticketId}`);
+
+        addNotification(
+          "Respuesta de Coordinación", 
+          `Dra. Laura Morales ha respondido al ticket #${ticketId} de ${studentName}.`,
+          "success"
+        );
+      };
+
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5 text-xs">
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 flex items-center justify-center font-bold">
+              <i data-lucide="shield-check" className="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Panel de Administración de Tickets (Coordinación INCO)</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Atiende y responde las solicitudes enviadas por los alumnos en tiempo real.</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {globalTickets.map(t => (
+              <div key={t.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="font-mono font-bold text-udg-navy dark:text-blue-400 text-sm">#{t.id}</span>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm">{t.subject}</h4>
+                    <p className="text-slate-500 text-[11px]">Solicitante: <span className="font-semibold text-slate-700 dark:text-slate-300">{t.student}</span> (Cód: {t.code})</p>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    t.status === 'Atendido' 
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                  }`}>
+                    {t.status}
+                  </span>
+                </div>
+
+                {t.reply ? (
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                    <p className="font-bold text-emerald-800 dark:text-emerald-300">Respuesta Brindada:</p>
+                    <p className="text-slate-700 dark:text-slate-200 mt-0.5">{t.reply}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <textarea 
+                      rows="2"
+                      placeholder="Escribe la solución oficial o dictamen de Coordinación..."
+                      value={replyTexts[t.id] || ''}
+                      onChange={(e) => setReplyTexts({ ...replyTexts, [t.id]: e.target.value })}
+                      className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                    ></textarea>
+                    <button 
+                      onClick={() => handleReply(t.id, t.student)}
+                      className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow"
+                    >
+                      <i data-lucide="send" className="w-3.5 h-3.5"></i>
+                      <span>Enviar Respuesta y Notificar Alumno</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function AdminJustificantesModule({ showToast, addNotification }) {
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
+            <i data-lucide="shield-check" className="w-5 h-5 text-udg-gold"></i>
+            Validación de Justificantes Médicos u Oficiales (Art. 53)
+          </h3>
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex justify-between items-center">
+            <div>
+              <h4 className="font-bold text-slate-900 dark:text-white text-sm">Alejandro González Ramírez (Cód: 219845123)</h4>
+              <p className="text-slate-500">Motivo: Incapacidad Médica IMSS • Materias: Redes de Computadoras</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => {
+                showToast("Justificante aprobado con sello digital");
+                addNotification("Justificante Aprobado", "Tu justificante fue validado oficialmente.", "success");
+              }} className="bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-xl">Aprobar</button>
+              <button onClick={() => showToast("Justificante rechazado por falta de firma", "error")} className="bg-red-600 text-white font-bold px-3 py-1.5 rounded-xl">Rechazar</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function ConstanciasDocenteModule({ user, showToast }) {
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
+            <i data-lucide="file-text" className="w-5 h-5 text-emerald-600"></i>
+            Módulo Docente - Emisión de Constancias de Asignación y Carga Horaria
+          </h3>
+          <p className="text-slate-500">Estimado profesor {user.name}, desde aquí puede solicitar y descargar sus constancias institucionales de adscripción al Departamento de Computación.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
+              <h4 className="font-bold text-slate-900 dark:text-white">Constancia de Carga Horaria 2026B</h4>
+              <p className="text-slate-500">Documento firmado por la Coordinación acreditando las horas frente a grupo.</p>
+              <button onClick={() => showToast("Generando constancia de adscripción docente en PDF...")} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold">Generar PDF Oficial</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function HomeDashboard({ setActiveTab, searchQuery, user }) {
+      const services = [
+        { id: 'tickets', title: 'Mesa de Ayuda y Tickets', desc: 'Atención personalizada para aclaraciones específicas con la coordinación.', icon: 'life-buoy', badge: 'Prioridad 1' },
+        { id: 'dudas', title: 'Preguntas Frecuentes FAQ', desc: 'Guía rápida con respuestas a los trámites más comunes del estudiante.', icon: 'help-circle', badge: 'Prioridad 2' },
+        { id: 'justificantes', title: 'Justificante de Faltas', desc: 'Sube tu comprobante médico u oficial para validación ante profesores (Art. 53).', icon: 'shield-check', badge: 'Art. 53' },
+        { id: 'titulacion', title: 'Opciones de Titulación', desc: 'Requisitos y trámites para EGEL CENEVAL, Tesis o Promedio Sobresaliente.', icon: 'graduation-cap', badge: 'Trámite' },
+        { id: 'constancias', title: 'Kardex y Constancias', desc: 'Genera Kardex simple, certificado de estudios o Constancia de Alumno Activo.', icon: 'file-text', badge: 'Digital' },
+        { id: 'modulares', title: 'Proyectos Modulares', desc: 'Registro de protocolos Modulares I, II y III, asignación y carta de asesor.', icon: 'layers', badge: 'Investigación' },
+        { id: 'ajuste', title: 'Ajuste de Horario y Cupos', desc: 'Solicitud de inclusión de materias o solución a empalmes en SIIAU.', icon: 'sliders', badge: 'SIIAU' },
+        { id: 'art33_35', title: 'Dictámenes Art. 33 y 35', desc: 'Formato y recepción de cartas petición a la Comisión de Educación.', icon: 'scale', badge: 'Reglamento' },
+        { id: 'horas', title: 'Horas Integrales', desc: 'Registro y validación de las 60 horas requeridas en conferencias y eventos.', icon: 'award', badge: '60 hrs req.' },
+        { id: 'malla', title: 'Malla Curricular INCO', desc: 'Visualiza la ruta crítica de materias, créditos y prerrequisitos del plan.', icon: 'grid', badge: 'Plan INCO' },
+        { id: 'avisos', title: 'Tablón de Avisos Oficiales', desc: 'Convocatorias de becas, exámenes extraordinarios y fechas clave.', icon: 'bell', badge: 'Oficial' }
+      ];
+
+      const filtered = services.filter(s => 
+        s.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        s.desc.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+                <i data-lucide="layout-grid" className="w-5 h-5 text-udg-blue"></i>
+                Catálogo de Servicios y Módulos de Atención
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Servicios ordenados prioritariamente para dar agilidad a tus dudas</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 hover:border-udg-blue dark:hover:border-blue-400 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold group-hover:bg-udg-navy group-hover:text-white transition-colors">
+                      <i data-lucide={item.icon} className="w-5 h-5"></i>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                      {item.badge}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-udg-blue dark:group-hover:text-blue-400 transition-colors font-display">
+                      {item.title}
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1">
+                      {item.desc}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs font-semibold text-udg-navy dark:text-blue-400">
+                  <span>Acceder al trámite</span>
+                  <i data-lucide="chevron-right" className="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function JustificantesModule({ showToast, addNotification, isLoggedIn, setActiveModal }) {
+      const [reason, setReason] = useState('Salud');
+      const [startDate, setStartDate] = useState('');
+      const [teachers, setTeachers] = useState('');
+      const [fileName, setFileName] = useState('');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!isLoggedIn) {
+          setActiveModal('login');
+          return;
+        }
+        if (!startDate || !teachers) {
+          showToast("Ingresa la fecha y las materias afectadas", "error");
+          return;
+        }
+        showToast("Solicitud de justificante registrada correctamente para revisión");
+        addNotification("Solicitud de Justificante", "Tu justificante fue recibido y enviado a revisión por el coordinador.", "info");
+        setStartDate('');
+        setTeachers('');
+        setFileName('');
+      };
+
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+            <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold">
+              <i data-lucide="shield-check" className="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Justificante de Faltas (Reglamento Art. 53)</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Plazo máximo de entrega: 5 días hábiles posteriores a la fecha de la falta médica u oficial.</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Motivo del Justificante</label>
+              <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5">
+                <option value="Salud">Incapacidad Médica (IMSS / Salud Pública / Particular)</option>
+                <option value="Comision">Comisión Institucional o Evento Representativo CUCEI</option>
+                <option value="Personal">Fuerza Mayor / Asunto Grave Familiar</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Materias y Profesores Afectados</label>
+              <input type="text" placeholder="Ej. Redes (Dr. Pérez), BD (Mtra. Silva)" value={teachers} onChange={(e) => setTeachers(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5" />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Fecha de Inicio de Incapacidad</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5" />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Anexo Digital (PDF / Comprobante)</label>
+              <input type="file" onChange={(e) => setFileName(e.target.files[0]?.name || '')} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2 text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-udg-navy file:text-white" />
+            </div>
+
+            <div className="md:col-span-2 pt-2 flex justify-end">
+              <button type="submit" className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-md">
+                <i data-lucide="send" className="w-4 h-4"></i>
+                <span>Enviar Solicitud de Justificante</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      );
+    }
+
+    function TitulacionModule({ showToast }) {
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+            <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold">
+              <i data-lucide="graduation-cap" className="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Modalidades de Titulación - INCO</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Reglamento General de Titulación de la Universidad de Guadalajara.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
+              <h4 className="font-bold text-slate-900 dark:text-white text-sm font-display">1. Examen Global CENEVAL (EGEL Plus)</h4>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">Obtener resultado Satisfactorio o Sobresaliente en la evaluación nacional de la carrera de Computación.</p>
+              <button onClick={() => showToast("Descargando guía de registro EGEL CENEVAL")} className="bg-slate-800 hover:bg-slate-700 text-white px-3.5 py-1.5 rounded-xl font-semibold">Ver Guía de Examen</button>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
+              <h4 className="font-bold text-slate-900 dark:text-white text-sm font-display">2. Desempeño Sobresaliente / Promedio</h4>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">Promedio general mínimo de 90 con un máximo del 10% de exámenes extraordinarios acumulados.</p>
+              <button onClick={() => showToast("Verificación completada: Promedio ELEGIBLE para Titulación Automática")} className="bg-udg-navy hover:bg-udg-blue text-white px-3.5 py-1.5 rounded-xl font-semibold">Verificar Elegibilidad</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function ConstanciasModule({ user, showToast, isLoggedIn, setActiveModal }) {
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
+            <i data-lucide="file-text" className="w-5 h-5 text-udg-blue"></i>
+            Kardex de Calificaciones y Constancias Oficiales
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
+              <h4 className="font-bold text-slate-900 dark:text-white font-display">Kardex Simple de Calificaciones</h4>
+              <p className="text-slate-500">Documento que avala tus calificaciones acumuladas y promedio general de {user.gpa}.</p>
+              <button onClick={() => {
+                if(!isLoggedIn) return setActiveModal('login');
+                showToast("Generando Kardex en PDF con sello digital de verificación");
+              }} className="bg-udg-navy text-white px-4 py-2 rounded-xl font-bold">Generar Kardex PDF</button>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
+              <h4 className="font-bold text-slate-900 dark:text-white font-display">Constancia de Alumno Activo</h4>
+              <p className="text-slate-500">Acredita tu inscripción oficial en el ciclo lectivo 2026B para trámites externos.</p>
+              <button onClick={() => {
+                if(!isLoggedIn) return setActiveModal('login');
+                showToast("Generando Constancia de Alumno Activo UdG");
+              }} className="bg-udg-gold text-white px-4 py-2 rounded-xl font-bold">Descargar Constancia</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function ProyectosModularesModule({ showToast, user }) {
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
+            <i data-lucide="layers" className="w-5 h-5 text-udg-blue"></i>
+            Proyectos Modulares (INCO)
+          </h3>
+          <p className="text-xs text-slate-500">Gestión de anteproyectos y cartas de tutoría para Proyectos Modulares I, II y III.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            {['Proyecto Modular I', 'Proyecto Modular II', 'Proyecto Modular III'].map((mod, i) => (
+              <div key={i} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-udg-light text-udg-navy dark:bg-slate-700 dark:text-blue-300">Modulo {i+1}</span>
+                <h4 className="font-bold text-slate-900 dark:text-white font-display">{mod}</h4>
+                <button onClick={() => showToast(`Iniciando prerregistro de protocolo para ${mod}`)} className="w-full bg-slate-800 text-white py-2 rounded-xl font-semibold">
+                  Registrar Anteproyecto
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function AjusteMateriasModule({ showToast, addNotification }) {
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
+            <i data-lucide="sliders" className="w-5 h-5 text-udg-blue"></i>
+            Solicitud de Ajuste de Materias y Cupos SIIAU
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input type="text" placeholder="NRC de la materia en SIIAU (Ej: 14892)" className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl" />
+            <input type="text" placeholder="Nombre completo de la asignatura" className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl" />
+          </div>
+          <button onClick={() => {
+            showToast("Solicitud enviada a la coordinación para revisión de cupos");
+            addNotification("Ajuste de Materia", "Tu solicitud de cupo fue turnada a la coordinación.", "info");
+          }} className="bg-udg-navy text-white font-bold px-5 py-2.5 rounded-xl">
+            Enviar Solicitud a Coordinación
+          </button>
+        </div>
+      );
+    }
+
+    function ArticulosReglamentoModule({ user, showToast, addNotification }) {
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
+            <i data-lucide="scale" className="w-5 h-5 text-udg-gold"></i>
+            Carta Petición a la Comisión de Educación (Art. 33 y 35)
+          </h3>
+          <textarea rows="4" placeholder="Redacta los motivos o causas justificables de tu petición dirigidas al Consejo Divisional..." className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3"></textarea>
+          <button onClick={() => {
+            showToast("Generando Carta Petición oficial en PDF");
+            addNotification("Carta Petición Art. 33", "Se generó el formato oficial para entrega presencial.", "info");
+          }} className="bg-udg-gold text-white font-bold px-5 py-2.5 rounded-xl">
+            Generar Carta Formato PDF
+          </button>
+        </div>
+      );
+    }
+
+    function HorasIntegralesModule({ user }) {
+      const percentage = Math.min(100, Math.round(((user.integralHours || 52) / (user.requiredHours || 60)) * 100));
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
+            <i data-lucide="award" className="w-5 h-5 text-udg-gold"></i>
+            Horas Integrales ({user.integralHours || 52} / {user.requiredHours || 60} hrs)
+          </h3>
+          <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+            <div className="flex justify-between font-semibold">
+              <span>Porcentaje de cumplimiento</span>
+              <span className="text-udg-navy dark:text-blue-400 font-mono font-bold">{percentage}%</span>
+            </div>
+            <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div className="h-full bg-udg-gold transition-all" style={{ width: `${percentage}%` }}></div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function MallaCurricularModule() {
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
+            <i data-lucide="grid" className="w-5 h-5 text-udg-blue"></i>
+            Malla Curricular Plan INCO
+          </h3>
+          <p className="text-slate-500">Plan de estudios oficial de la carrera de Ingeniería en Computación de CUCEI.</p>
+        </div>
+      );
+    }
+
+    function AvisosModule({ notices, user, showToast }) {
+      const [newTitle, setNewTitle] = useState('');
+      const [newDesc, setNewDesc] = useState('');
+
+      const handleAddNotice = (e) => {
+        e.preventDefault();
+        if (!newTitle.trim()) return;
+        showToast("Nuevo aviso oficial publicado correctamente");
+        setNewTitle('');
+        setNewDesc('');
+      };
+
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
+            <i data-lucide="bell" className="w-5 h-5 text-udg-gold"></i>
+            Tablón de Avisos Oficiales
+          </h3>
+
+          {user.role === 'Coordinacion' && (
+            <form onSubmit={handleAddNotice} className="p-4 bg-amber-50 dark:bg-slate-900/80 rounded-xl border border-amber-200 dark:border-slate-700 space-y-2 mb-4">
+              <h4 className="font-bold text-amber-900 dark:text-amber-300">Publicar Nuevo Aviso Institucional:</h4>
+              <input type="text" placeholder="Título del aviso" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="w-full p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700" />
+              <textarea placeholder="Descripción del aviso" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="w-full p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"></textarea>
+              <button type="submit" className="bg-udg-gold text-white font-bold px-4 py-1.5 rounded-lg">Publicar Aviso</button>
+            </form>
+          )}
+
+          <div className="space-y-3">
+            {notices.map(n => (
+              <div key={n.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 space-y-1">
+                <span className="text-[10px] font-bold text-udg-navy dark:text-blue-400">{n.cat} • {n.date}</span>
+                <h4 className="font-bold text-slate-900 dark:text-white font-display">{n.title}</h4>
+                <p className="text-slate-500">{n.desc}</p>
+              </div>
+            ))}
+            {notices.length === 0 && (
+              <p className="text-slate-400 py-4 text-center">No hay avisos recientes publicados.</p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function DudasBuzonModule({ faqList }) {
+      return (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5 text-xs">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
+            <i data-lucide="help-circle" className="w-5 h-5 text-udg-blue"></i>
+            Preguntas Frecuentes (FAQ)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {faqList.map((f, i) => (
+              <div key={i} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                <h4 className="font-bold text-slate-900 dark:text-white mb-1 font-display">{f.q}</h4>
+                <p className="text-slate-500 leading-relaxed">{f.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function EditProfileModal({ user, onClose, onSave }) {
+      const [phone, setPhone] = useState(user.phone || '');
+      const [email, setEmail] = useState(user.email || '');
+      const [photoPreview, setPhotoPreview] = useState(user.photo || null);
+
+      const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setPhotoPreview(reader.result);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      const handleSave = (e) => {
+        e.preventDefault();
+        onSave({ phone, email, photo: photoPreview });
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden relative text-slate-800 dark:text-slate-100">
+            
+            <div className="bg-udg-navy p-5 text-white flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <i data-lucide="user-cog" className="w-5 h-5 text-udg-gold"></i>
+                <h3 className="font-bold text-base font-display">Actualizar Datos de Perfil</h3>
+              </div>
+              <button onClick={onClose} className="text-slate-300 hover:text-white p-1">
+                <i data-lucide="x" className="w-5 h-5"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleSave} className="p-6 space-y-4 text-xs">
+              
+              <div className="flex flex-col items-center justify-center p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800 border-2 border-white dark:border-slate-700 shadow-md mb-2">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Foto Perfil" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center font-bold text-xl text-slate-500">{user.name ? user.name.charAt(0) : 'U'}</div>
+                  )}
+                </div>
+                <label className="cursor-pointer bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5">
+                  <i data-lucide="upload" className="w-3.5 h-3.5 text-udg-gold"></i>
+                  <span>Seleccionar Nueva Foto</span>
+                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                </label>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre Registrado</label>
+                <input type="text" disabled value={user.name} className="w-full bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl text-slate-500 font-medium" />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teléfono Móvil de Contacto</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Correo Electrónico</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold py-2.5 rounded-xl"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-udg-navy hover:bg-udg-blue text-white font-bold py-2.5 rounded-xl shadow-md font-display"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+    
+    function RegisterModal({ onClose, onRegister, onOpenLogin }) {
+      const [name, setName] = useState('');
+      const [code, setCode] = useState('');
+      const [email, setEmail] = useState('');
+      const [phone, setPhone] = useState('');
+      const [nip, setNip] = useState('');
+      const [photoPreview, setPhotoPreview] = useState(null);
+      const [errorMsg, setErrorMsg] = useState('');
+      const [loading, setLoading] = useState(false);
+
+      const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setPhotoPreview(reader.result);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setErrorMsg('');
+
+        if (!name.trim() || !code.trim() || !email.trim() || !phone.trim() || !nip.trim()) {
+          setErrorMsg('Por favor completa todos los campos requeridos.');
+          return;
+        }
+
+        const nuevoUsuario = {
+          code: code,
+          name: name,
+          role: "Estudiante",
+          email: email,
+          nip: nip,
+          photo: photoPreview || null
+        };
+
+        setLoading(true);
+        try {
+          const respuesta = await server.registrarUsuario(nuevoUsuario);
+          if (respuesta.exito) {
+            onRegister(respuesta.usuario); // Éxito: cerramos el modal
+          } else {
+            setErrorMsg(respuesta.mensaje);
+            setLoading(false); // Falla: apagamos la carga
+          }
+        } catch (error) {
+          setErrorMsg("Error al conectar con el servidor.");
+          setLoading(false); // Falla: apagamos la carga
+        }
+      };
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden relative text-slate-800 dark:text-slate-100 max-h-[90vh] flex flex-col">
+            
+            <div className="bg-udg-navy p-5 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-udg-gold text-white flex items-center justify-center font-black text-xs shadow-md">
+                  UDG
+                </div>
+                <div>
+                  <h3 className="font-bold text-base font-display">Registro de Estudiante INCO</h3>
+                  <p className="text-[11px] text-slate-300">Coordinación de Ingeniería en Computación • CUCEI</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="text-slate-300 hover:text-white p-1">
+                <i data-lucide="x" className="w-5 h-5"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-xs custom-scrollbar">
+              
+              {errorMsg && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 font-semibold flex items-center gap-2">
+                  <i data-lucide="alert-circle" className="w-4 h-4 shrink-0"></i>
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800 border-2 border-white dark:border-slate-700 shadow-sm flex items-center justify-center text-slate-400 mb-2">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Vista Previa" className="w-full h-full object-cover" />
+                  ) : (
+                    <i data-lucide="user" className="w-8 h-8"></i>
+                  )}
+                </div>
+                <label className="cursor-pointer bg-udg-navy hover:bg-udg-blue text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5">
+                  <i data-lucide="camera" className="w-4 h-4 text-udg-gold"></i>
+                  <span>{photoPreview ? 'Cambiar Foto' : 'Subir Foto de Perfil'}</span>
+                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                </label>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre Completo *</label>
+                <input
+                  type="text"
+                  placeholder="Ej: Alejandro González Ramírez"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Código de Alumno UdG *</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: 219845123"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teléfono Móvil *</label>
+                  <input
+                    type="tel"
+                    placeholder="Ej: 33 1425 8990"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Correo Institucional / Personal *</label>
+                <input
+                  type="email"
+                  placeholder="ejemplo@alumnos.udg.mx"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">NIP del Sistema SIIAU *</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={nip}
+                  onChange={(e) => setNip(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                />
+              </div>
+
+           <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-udg-gold hover:bg-udg-goldHover text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mt-2 font-display disabled:opacity-70"
+              >
+                {loading ? (
+                  <span key="loading-state" className="flex items-center gap-2">
+                    <i data-lucide="loader-2" className="w-4 h-4 animate-spin"></i> Registrando...
+                  </span>
+                ) : (
+                  <span key="ready-state" className="flex items-center gap-2">
+                    <i data-lucide="user-check" className="w-4 h-4"></i> Completar Registro
+                  </span>
+                )}
+              </button>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={onOpenLogin}
+                  className="text-udg-blue dark:text-blue-400 font-semibold hover:underline"
+                >
+                  ¿Ya tienes cuenta? Inicia sesión aquí
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+    
+    function LoginModal({ onClose, onLogin, onOpenRegister }) {
+      const [roleType, setRoleType] = useState('Estudiante');
+      const [code, setCode] = useState('');
+      const [nip, setNip] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [errorMsg, setErrorMsg] = useState('');
+
+      const handleAuth = async (e) => {
+        e.preventDefault();
+        setErrorMsg('');
+        
+        if (!code || !nip) {
+          setErrorMsg("Ingresa tu código y NIP.");
+          return;
+        }
+
+        setLoading(true);
+        try {
+          const respuesta = await server.autenticarUsuario(code, nip);
+          if (respuesta.exito) {
+            onLogin(respuesta.usuario); // Éxito: cerramos el modal
+          } else {
+            setErrorMsg(respuesta.mensaje);
+            setLoading(false); // Falla: apagamos la carga
+          }
+        } catch (error) {
+          setErrorMsg("Error de conexión con el servidor.");
+          setLoading(false); // Falla: apagamos la carga
+        }
+      };
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden relative text-slate-800 dark:text-slate-100">
+            
+            <div className="bg-udg-navy p-5 text-white relative">
+              <button onClick={onClose} className="absolute top-4 right-4 text-slate-300 hover:text-white">
+                <i data-lucide="x" className="w-5 h-5"></i>
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white text-udg-navy flex items-center justify-center font-black text-xs shadow-md">
+                  UDG
+                </div>
+                <div>
+                  <h3 className="font-bold text-base font-display">Inicio de Sesión Institucional</h3>
+                  <p className="text-[11px] text-slate-300">Coordinación de Ingeniería en Computación</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase text-[10px] tracking-wider">Selecciona tu Rol de Acceso:</label>
+                <div className="grid grid-cols-3 gap-1.5 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
+                  <button 
+                    type="button" 
+                    onClick={() => { setRoleType('Estudiante'); setCode(''); }}
+                    className={`py-1.5 rounded-lg font-bold transition-all ${roleType === 'Estudiante' ? 'bg-udg-navy text-white shadow' : 'text-slate-600 dark:text-slate-400'}`}
+                  >
+                    Estudiante
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => { setRoleType('Docente'); setCode(''); }}
+                    className={`py-1.5 rounded-lg font-bold transition-all ${roleType === 'Docente' ? 'bg-emerald-700 text-white shadow' : 'text-slate-600 dark:text-slate-400'}`}
+                  >
+                    Docente
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => { setRoleType('Coordinacion'); setCode(''); }}
+                    className={`py-1.5 rounded-lg font-bold transition-all ${roleType === 'Coordinacion' ? 'bg-udg-gold text-white shadow' : 'text-slate-600 dark:text-slate-400'}`}
+                  >
+                    Admin
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleAuth} className="space-y-4">
+                {errorMsg && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 font-semibold rounded-xl flex items-center gap-2 mb-2">
+                    <i data-lucide="alert-circle" className="w-4 h-4 shrink-0"></i>
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+                
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Código UdG</label>
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">NIP SIIAU</label>
+                  <input
+                    type="password"
+                    value={nip}
+                    onChange={(e) => setNip(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                  />
+                </div>
+
+              <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-udg-navy hover:bg-udg-blue text-white font-bold py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 font-display disabled:opacity-70"
+                >
+                  {loading ? (
+                    <span key="loading-state" className="flex items-center gap-2">
+                      <i data-lucide="loader-2" className="w-4 h-4 animate-spin"></i> Autenticando...
+                    </span>
+                  ) : (
+                    <span key="ready-state">Ingresar como {roleType}</span>
+                  )}
+                </button>
+              </form>
+
+              {roleType === 'Estudiante' && (
+                <div className="text-center pt-2 border-t border-slate-100 dark:border-slate-700 space-y-2">
+                  <p className="text-slate-500">¿Nuevo alumno en la coordinación?</p>
+                  <button
+                    onClick={onOpenRegister}
+                    className="bg-udg-gold hover:bg-udg-goldHover text-white font-bold px-4 py-2 rounded-xl text-xs w-full transition-all font-display"
+                  >
+                    Crear Nuevo Registro con Mis Datos
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
