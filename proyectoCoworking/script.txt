@@ -200,6 +200,8 @@
       const codigo = document.getElementById('regCodigo').value.trim();
       const pass   = document.getElementById('regPass').value.trim();
       const btn    = document.getElementById('btnRegSubmit');
+      const nombres  = document.getElementById('regNombres').value.trim();
+      const apellidos= document.getElementById('regApellidos').value.trim();
 
       if (pass.length < 8) {
         this._mostrarMensajeAuth('La contraseña debe tener al menos 8 caracteres.', 'error');
@@ -210,7 +212,7 @@
       this._ocultarMensajeAuth();
 
       try {
-        const res = await GasApi.ejecutar('registrarUsuarioCustom', correo, codigo, pass);
+        const res = await GasApi.ejecutar('registrarUsuarioCustom', correo, codigo, pass, nombres, apellidos);
         if (res.exito) {
           this._mostrarMensajeAuth('Registro exitoso. Iniciando sesión...', 'exito');
           const loginRes = await GasApi.ejecutar('loginUsuarioCustom', correo, pass);
@@ -276,6 +278,8 @@
     inicializar(infoUsuario) {
       this.correoUsuario = infoUsuario.correo || '';
       this.codigoUsuario = infoUsuario.codigo || '';
+      this.nombresUsuario = infoUsuario.nombres || '';
+      this.apellidosUsuario = infoUsuario.apellidos || '';
       this._poblarSelectoresGlobales();
       this._cargarReservasDevueltas();
     },
@@ -392,6 +396,14 @@
         inputCodigo.value    = this.codigoUsuario;
         inputCodigo.readOnly = true;
         inputCodigo.className = 'w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-sm cursor-not-allowed';
+      }
+      if (this.nombresUsuario) {
+        const inNom = document.getElementById('nombres');
+        if (inNom) inNom.value = this.nombresUsuario;
+      }
+      if (this.apellidosUsuario) {
+        const inApe = document.getElementById('apellidos');
+        if (inApe) inApe.value = this.apellidosUsuario;
       }
 
       const hoy = new Date();
@@ -766,8 +778,7 @@
 
       const campos = {
         'nombres':              r.nombres || r.nombreCompleto?.split(' ')[0] || '',
-        'apellidoPaterno':      r.apellidoPaterno || '',
-        'apellidoMaterno':      r.apellidoMaterno || '',
+        'apellidos':            (r.apellidoPaterno || '') + (r.apellidoMaterno ? ' ' + r.apellidoMaterno : ''),
         'codigo':               r.codigo || '',
         'telefono':             r.telefono || '',
         'extension':            r.extension !== 'N/A' ? (r.extension || '') : '',
@@ -864,8 +875,8 @@
         rol:                  rolActual,
         coworking:            document.getElementById('inputCoworking')?.value || '',
         nombres:              document.getElementById('nombres')?.value.trim() || '',
-        apellidoPaterno:      document.getElementById('apellidoPaterno')?.value.trim() || '',
-        apellidoMaterno:      document.getElementById('apellidoMaterno')?.value.trim() || '',
+        apellidoPaterno:      document.getElementById('apellidos')?.value.trim() || '',
+        apellidoMaterno:      '',
         codigo:               document.getElementById('codigo')?.value.trim() || '',
         telefono:             document.getElementById('telefono')?.value.trim() || '',
         extension:            document.getElementById('extension')?.value.trim() || 'N/A',

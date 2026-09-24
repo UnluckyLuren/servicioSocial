@@ -100,8 +100,9 @@ function inicializarHojas_() {
   // Hoja Usuarios
   const hU = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
   if (hU.getLastRow() === 0) {
-    hU.appendRow(['ID','Correo','Codigo','PasswordHash','Rol','Nombre','Fecha_Registro']);
-    hU.getRange(1,1,1,7).setFontWeight('bold').setBackground(CONFIG.COLOR_PRIMARIO).setFontColor('#ffffff');
+    // CAMBIAR LA CABECERA PARA AGREGAR 'Nombres' y 'Apellidos'
+    hU.appendRow(['ID','Correo','Codigo','PasswordHash','Rol','Nombre','Fecha_Registro', 'Nombres', 'Apellidos']);
+    hU.getRange(1,1,1,9).setFontWeight('bold').setBackground(CONFIG.COLOR_PRIMARIO).setFontColor('#ffffff');
   }
 
   // Hoja Reservas (23 columnas)
@@ -188,7 +189,7 @@ function determinarRolUsuario_(correo) {
   return 'denegado';
 }
 
-function registrarUsuarioCustom(correo, codigo, contrasenia) {
+function registrarUsuarioCustom(correo, codigo, contrasenia, nombres, apellidos) {
   try {
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
@@ -208,7 +209,10 @@ function registrarUsuarioCustom(correo, codigo, contrasenia) {
 
     const passHash = hashPassword_(contrasenia);
     const nuevoId  = `USR-${Date.now()}`;
-    sheet.appendRow([nuevoId, cL, coL, passHash, rol, '', new Date()]);
+    const nombreCompleto = `${nombres} ${apellidos}`.trim();
+    
+    // Aquí agregamos los nombres y apellidos al final del arreglo
+    sheet.appendRow([nuevoId, cL, coL, passHash, rol, nombreCompleto, new Date(), nombres, apellidos]);
     registrarLog_(cL, 'REGISTRO_USUARIO', `Rol asignado: ${rol}`);
 
     return { exito: true, mensaje: 'Registro exitoso.' };
@@ -231,7 +235,18 @@ function loginUsuarioCustom(identificador, contrasenia) {
       const hash   = String(data[i][3]);
 
       if (correo === idLower || codigo === idLower) {
-        if (hash === passHash) {
+       if (hash === passHash) {
+          // Lógica para usuarios antiguos vs nuevos
+          let nombreComp = String(data[i][5] || '');
+          let nomb = data[i][7] || '';
+          let apel = data[i][8] || '';
+          
+          if (!nomb && nombreComp) {
+            let partes = nombreComp.split(' ');
+            nomb = partes[0] || '';
+            apel = partes.slice(1).join(' ') || '';
+          }
+
           return {
             exito: true,
             usuario: {
@@ -239,7 +254,9 @@ function loginUsuarioCustom(identificador, contrasenia) {
               correo:          data[i][1],
               codigo:          data[i][2],
               rol:             data[i][4],
-              nombre:          data[i][5] || ''
+              nombre:          nombreComp,
+              nombres:         nomb,
+              apellidos:       apel
             }
           };
         }
