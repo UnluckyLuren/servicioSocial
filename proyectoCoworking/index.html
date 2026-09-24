@@ -169,6 +169,17 @@
         </form>
 
         <form id="formRegister" onsubmit="AuthService.procesarRegistro(event)" class="space-y-4 hidden">
+
+          <!-- AGREGAR ESTO DENTRO DE formRegister -->
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">Nombres</label>
+            <input type="text" id="regNombres" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">Apellidos</label>
+            <input type="text" id="regApellidos" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+
           <div>
             <label class="block text-xs font-bold text-slate-500 mb-1">Correo Institucional</label>
             <input type="email" id="regEmail" required placeholder="@alumnos.udg.mx" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
@@ -209,7 +220,7 @@
         <span class="inline-block py-1 px-3 rounded-full bg-blue-400/20 text-blue-200 text-xs font-bold uppercase tracking-wider mb-4 border border-blue-400/30">
           <i class="fa-solid fa-sparkles mr-1"></i> ¡Nuevos Espacios Disponibles!
         </span>
-        <h2 class="text-4xl md:text-5xl font-black mb-4 tracking-tight">Disfruta de los espacios que hay para ti 🙂</h2>
+        <h2 class="text-4xl md:text-5xl font-black mb-4 tracking-tight">Centro de Innovación y Emprendimiento CUCEI</h2>
         <p class="text-blue-100 max-w-2xl mx-auto text-sm md:text-base leading-relaxed">
           Reserva un lugar en cualquiera de nuestros coworkings equipados dentro de CUCEI.
           Elige el que mejor se adapte a tus necesidades del día.
@@ -356,19 +367,15 @@
               <input type="hidden" id="inputIdOriginal" name="idOriginal" value="">
               <input type="hidden" id="inputReservaDevueltaId" name="reservaDevueltaId" value="">
 
-              <!-- Fila 1: Nombres -->
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <!-- Fila 1: Nombres (Bloqueados y precargados) -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label class="block text-xs font-bold text-slate-500 mb-1">Nombres</label>
-                  <input type="text" id="nombres" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                  <input type="text" id="nombres" required readonly class="w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-sm cursor-not-allowed outline-none">
                 </div>
                 <div>
-                  <label class="block text-xs font-bold text-slate-500 mb-1">Apellido Paterno</label>
-                  <input type="text" id="apellidoPaterno" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
-                <div>
-                  <label class="block text-xs font-bold text-slate-500 mb-1">Apellido Materno</label>
-                  <input type="text" id="apellidoMaterno" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                  <label class="block text-xs font-bold text-slate-500 mb-1">Apellidos</label>
+                  <input type="text" id="apellidos" required readonly class="w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-sm cursor-not-allowed outline-none">
                 </div>
               </div>
 
@@ -410,15 +417,15 @@
                     <span class="text-2xl text-slate-400 mb-2 transition-colors"><i class="fa-solid fa-microphone"></i></span>
                     <span class="font-bold text-sm text-slate-600 transition-colors">Conferencia</span>
                   </label>
-                  <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Club">
-                    <input type="radio" name="tipoActividad" value="Club" class="sr-only mt-1">
+                  <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Taller">
+                    <input type="radio" name="tipoActividad" value="Taller" class="sr-only mt-1">
                     <span class="text-2xl text-slate-400 mb-2 transition-colors"><i class="fa-solid fa-people-group"></i></span>
-                    <span class="font-bold text-sm text-slate-600 transition-colors">Club</span>
+                    <span class="font-bold text-sm text-slate-600 transition-colors">Taller</span>
                   </label>
-                  <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Clases">
-                    <input type="radio" name="tipoActividad" value="Clases" class="sr-only mt-1">
+                  <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Reunion">
+                    <input type="radio" name="tipoActividad" value="Reunion" class="sr-only mt-1">
                     <span class="text-2xl text-slate-400 mb-2 transition-colors"><i class="fa-solid fa-chalkboard-user"></i></span>
-                    <span class="font-bold text-sm text-slate-600 transition-colors">Clases</span>
+                    <span class="font-bold text-sm text-slate-600 transition-colors">Reunión</span>
                   </label>
                 </div>
                 <p id="errorTipoActividad" class="hidden text-xs text-rose-500 mt-2"><i class="fa-solid fa-circle-exclamation mr-1"></i> Selecciona un tipo de actividad.</p>
@@ -431,7 +438,7 @@
 
               <div>
                 <label class="block text-xs font-bold text-slate-500 mb-1">Breve Descripción de la Actividad</label>
-                <textarea id="descripcionActividad" required rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Describe brevemente lo que realizarás..."></textarea>
+                <textarea id="descripcionActividad" required rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Descripción breve del evento de Innovación o Emprendimiento"></textarea>
               </div>
 
               <!-- ODS -->
