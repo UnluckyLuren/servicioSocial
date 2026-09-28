@@ -32,6 +32,7 @@
   // ──────────────────────────────────────────────────────────
   const AuthService = {
     usuario: null,
+    correoEnVerificacion: '', // Se usa para retener el correo durante el paso 2SV
 
     async inicializar() {
       try {
@@ -85,7 +86,7 @@
       } else {
         document.getElementById('vistaAdmin')?.classList.add('hidden');
         document.getElementById('vistaAlumno')?.classList.remove('hidden');
-        // Mostrar botón Mis Reservas
+
         const btnMis = document.getElementById('btnMisReservas');
         if (btnMis) {
           btnMis.classList.remove('hidden');
@@ -146,15 +147,21 @@
       document.body.style.overflow = 'auto';
       document.getElementById('formLogin')?.reset();
       document.getElementById('formRegister')?.reset();
+      document.getElementById('formVerification')?.reset();
     },
 
     setAuthMode(modo) {
       const formLogin = document.getElementById('formLogin');
       const formReg   = document.getElementById('formRegister');
+      const formVerif = document.getElementById('formVerification');
+      const tabs      = document.getElementById('authTabs');
+
       const btnLogin  = document.getElementById('btnTabLogin');
       const btnReg    = document.getElementById('btnTabRegister');
 
       this._ocultarMensajeAuth();
+      tabs?.classList.remove('hidden');
+      formVerif?.classList.add('hidden');
 
       if (modo === 'login') {
         formLogin?.classList.remove('hidden');
@@ -167,6 +174,21 @@
         if (btnReg)   btnReg.className   = 'flex-1 text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c]';
         if (btnLogin) btnLogin.className = 'flex-1 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700';
       }
+    },
+
+    mostrarFormVerificacion(correo) {
+      this.correoEnVerificacion = correo;
+      document.getElementById('formLogin')?.classList.add('hidden');
+      document.getElementById('formRegister')?.classList.add('hidden');
+      document.getElementById('authTabs')?.classList.add('hidden');
+
+      const formVerif = document.getElementById('formVerification');
+      formVerif?.classList.remove('hidden');
+
+      const display = document.getElementById('verifEmailDisplay');
+      if (display) display.textContent = correo;
+
+      this._ocultarMensajeAuth();
     },
 
     async procesarLogin(evento) {
@@ -184,6 +206,10 @@
           localStorage.setItem('coworking_sesion', JSON.stringify(res.usuario));
           this.cerrarModalAuth();
           this.inicializar();
+        } else if (res.requiereVerificacion) {
+          // El usuario conoce la contraseña pero no se ha verificado
+          this._mostrarMensajeAuth(res.mensaje, 'warn');
+          setTimeout(() => { this.mostrarFormVerificacion(res.correo); }, 1500);
         } else {
           this._mostrarMensajeAuth(res.mensaje, 'error');
         }
@@ -200,24 +226,27 @@
       const codigo = document.getElementById('regCodigo').value.trim();
       const pass   = document.getElementById('regPass').value.trim();
       const btn    = document.getElementById('btnRegSubmit');
+      const nombres  = document.getElementById('regNombres').value.trim();
+      const apellidos= document.getElementById('regApellidos').value.trim();
 
       if (pass.length < 8) {
         this._mostrarMensajeAuth('La contraseña debe tener al menos 8 caracteres.', 'error');
         return;
       }
 
-      this._mostrarCargandoAuth(btn, true, 'Registrando...');
+      this._mostrarCargandoAuth(btn, true, 'Enviando código...');
       this._ocultarMensajeAuth();
 
       try {
-        const res = await GasApi.ejecutar('registrarUsuarioCustom', correo, codigo, pass);
-        if (res.exito) {
-          this._mostrarMensajeAuth('Registro exitoso. Iniciando sesión...', 'exito');
-          const loginRes = await GasApi.ejecutar('loginUsuarioCustom', correo, pass);
-          if (loginRes.exito) {
-            localStorage.setItem('coworking_sesion', JSON.stringify(loginRes.usuario));
-            setTimeout(() => { this.cerrarModalAuth(); this.inicializar(); }, 1500);
-          }
+        const res = await GasApi.ejecutar('registrarUsuarioCustom', correo, codigo, pass, nombres, apellidos);
+
+        if (res.exito && res.requiereVerificacion) {
+          this._mostrarMensajeAuth(res.mensaje, 'exito');
+          setTimeout(() => { this.mostrarFormVerificacion(res.correo); }, 1500);
+        } else if (!res.exito && res.requiereVerificacion) {
+          // Intentó registrarse de nuevo y ya existe, pero sin verificar
+          this._mostrarMensajeAuth(res.mensaje, 'warn');
+          setTimeout(() => { this.mostrarFormVerificacion(res.correo); }, 2000);
         } else {
           this._mostrarMensajeAuth(res.mensaje, 'error');
         }
@@ -225,6 +254,35 @@
         this._mostrarMensajeAuth('Error de conexión.', 'error');
       } finally {
         this._mostrarCargandoAuth(btn, false, 'Crear Cuenta');
+      }
+    },
+
+    async procesarVerificacion(evento) {
+      evento.preventDefault();
+      const codigo = document.getElementById('verifCode').value.trim();
+      const btn = document.getElementById('btnVerifSubmit');
+
+      this._mostrarCargandoAuth(btn, true, 'Validando código...');
+      this._ocultarMensajeAuth();
+
+      try {
+        const res = await GasApi.ejecutar('verificarCodigoRegistro', this.correoEnVerificacion, codigo);
+        if (res.exito) {
+          this._mostrarMensajeAuth('¡Cuenta activada con éxito! Entrando...', 'exito');
+          localStorage.setItem('coworking_sesion', JSON.stringify(res.usuario));
+          setTimeout(() => {
+            this.cerrarModalAuth();
+            this.inicializar();
+          }, 1500);
+        } else {
+          this._mostrarMensajeAuth(res.mensaje, 'error');
+          document.getElementById('verifCode').value = '';
+          document.getElementById('verifCode').focus();
+        }
+      } catch (e) {
+        this._mostrarMensajeAuth('Error de conexión.', 'error');
+      } finally {
+        this._mostrarCargandoAuth(btn, false, 'Verificar y Activar Cuenta');
       }
     },
 
@@ -240,11 +298,12 @@
       const div = document.getElementById('formAuthMsg');
       if (!div) return;
       div.textContent = texto;
-      div.className = `mb-4 p-3 rounded-lg text-sm font-semibold text-center ${
-        tipo === 'error'
-          ? 'bg-rose-50 text-rose-600 border border-rose-200'
-          : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-      }`;
+
+      let clase = 'bg-rose-50 text-rose-600 border border-rose-200';
+      if (tipo === 'exito') clase = 'bg-emerald-50 text-emerald-600 border border-emerald-200';
+      else if (tipo === 'warn') clase = 'bg-amber-50 text-amber-700 border border-amber-200';
+
+      div.className = `mb-4 p-3 rounded-lg text-sm font-semibold text-center ${clase}`;
       div.classList.remove('hidden');
     },
 
@@ -257,11 +316,14 @@
   // MÓDULO: StudentView
   // ──────────────────────────────────────────────────────────
   const StudentView = {
-    fechasSeleccionadas: [],   // [{ fecha: 'yyyy-mm-dd', horaEntrada: '08:00', horaSalida: '10:00' }]
-    archivosSeleccionados: [], // [{ nombre, tipo, base64, tamano }]
+    fechasSeleccionadas: [],
+    archivosSeleccionados: [],
+    archivosExistentes: [],
+    archivosAEliminar: [],
+    archivosEnProceso: 0,
     correoUsuario: '',
     codigoUsuario: '',
-    usarMismoHorario: true,    // por defecto checkbox marcado
+    usarMismoHorario: true,
 
     HORAS: [
       '08:00','08:30','09:00','09:30','10:00','10:30',
@@ -273,6 +335,8 @@
     inicializar(infoUsuario) {
       this.correoUsuario = infoUsuario.correo || '';
       this.codigoUsuario = infoUsuario.codigo || '';
+      this.nombresUsuario = infoUsuario.nombres || '';
+      this.apellidosUsuario = infoUsuario.apellidos || '';
       this._poblarSelectoresGlobales();
       this._cargarReservasDevueltas();
     },
@@ -293,7 +357,6 @@
       return `${String(hora12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
     },
 
-    // ── Toggle: mismo horario para todas las fechas ──
     toggleMismoHorario() {
       const checkbox = document.getElementById('checkMismoHorario');
       this.usarMismoHorario = checkbox.checked;
@@ -366,29 +429,41 @@
       const salida  = document.getElementById(`salida_${idx}`);
       if (!entrada || !salida) return;
       salida.innerHTML = this._opcionesSalidaParaEntrada(entrada, '');
-      // Actualizar en array
       if (this.fechasSeleccionadas[idx]) {
         this.fechasSeleccionadas[idx].horaEntrada = entrada;
       }
     },
 
     seleccionarRol(rol) {
-      document.getElementById('inputRol').value = rol;
-      const badge        = document.getElementById('badgeRol');
-      const labelCodigo  = document.getElementById('labelCodigo');
-      const inputCodigo  = document.getElementById('codigo');
-      const campoExt     = document.getElementById('campoExtension');
-      const inputExt     = document.getElementById('extension');
-      const campoResp    = document.getElementById('campoResponsable');
+      const rolNormalizado = String(rol || '').toLowerCase();
+      document.getElementById('inputRol').value = rolNormalizado;
+
+      const badge = document.getElementById('badgeRol');
+      const labelCodigo = document.getElementById('labelCodigo');
+      const inputCodigo = document.getElementById('codigo');
+      const campoExt = document.getElementById('campoExtension');
+      const inputExt = document.getElementById('extension');
+      const campoResp = document.getElementById('campoResponsable');
+      const nombreEncargado = document.getElementById('nombreEncargado');
+      const apellidosEncargado = document.getElementById('apellidosEncargado');
+      const correoEncargado = document.getElementById('correoEncargado');
 
       if (this.correoUsuario) {
         const inputCorreo = document.getElementById('correo');
         if (inputCorreo) inputCorreo.value = this.correoUsuario;
       }
-      if (this.codigoUsuario) {
-        inputCodigo.value    = this.codigoUsuario;
+      if (this.codigoUsuario && inputCodigo) {
+        inputCodigo.value = this.codigoUsuario;
         inputCodigo.readOnly = true;
         inputCodigo.className = 'w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-sm cursor-not-allowed';
+      }
+      if (this.nombresUsuario) {
+        const inNom = document.getElementById('nombres');
+        if (inNom) inNom.value = this.nombresUsuario;
+      }
+      if (this.apellidosUsuario) {
+        const inApe = document.getElementById('apellidos');
+        if (inApe) inApe.value = this.apellidosUsuario;
       }
 
       const hoy = new Date();
@@ -396,26 +471,45 @@
       const selectorFecha = document.getElementById('selectorFecha');
       if (selectorFecha) selectorFecha.min = min;
 
-      if (rol === 'estudiante') {
+      if (rolNormalizado === 'estudiante' || rolNormalizado === 'alumno') {
         if (badge) {
-          badge.className   = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100';
+          badge.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100';
           badge.textContent = 'Estudiante';
         }
-        if (labelCodigo)  labelCodigo.textContent = 'Código de Alumno:';
-        if (!inputCodigo.value && inputCodigo) inputCodigo.placeholder = 'Ej. 218XXXXXX';
+        if (labelCodigo) labelCodigo.textContent = 'Código de Alumno:';
+        if (inputCodigo && !inputCodigo.value) inputCodigo.placeholder = 'Ej. 218XXXXXX';
         campoExt?.classList.add('hidden');
         campoResp?.classList.add('hidden');
         if (inputExt) { inputExt.required = false; inputExt.value = ''; }
-      } else {
+        [nombreEncargado, apellidosEncargado, correoEncargado].forEach(el => {
+          if (el) { el.value = ''; el.required = false; }
+        });
+      } else if (rolNormalizado === 'maestro') {
         if (badge) {
-          badge.className   = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100';
-          badge.textContent = 'Administrativo / Maestro';
+          badge.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100';
+          badge.textContent = 'Académico';
         }
-        if (labelCodigo)  labelCodigo.textContent = 'Código de Trabajador:';
-        if (!inputCodigo.value && inputCodigo) inputCodigo.placeholder = 'Ej. 95XXXXX';
+        if (labelCodigo) labelCodigo.textContent = 'Código de Trabajador:';
+        if (inputCodigo && !inputCodigo.value) inputCodigo.placeholder = 'Ej. 95XXXXX';
         campoExt?.classList.remove('hidden');
         campoResp?.classList.remove('hidden');
-        if (inputExt) inputExt.required = true;
+        if (inputExt) inputExt.required = false;
+        [nombreEncargado, apellidosEncargado, correoEncargado].forEach(el => {
+          if (el) el.required = false;
+        });
+      } else {
+        if (badge) {
+          badge.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100';
+          badge.textContent = 'Administrativo';
+        }
+        if (labelCodigo) labelCodigo.textContent = 'Código de Trabajador:';
+        if (inputCodigo && !inputCodigo.value) inputCodigo.placeholder = 'Ej. 95XXXXX';
+        campoExt?.classList.remove('hidden');
+        campoResp?.classList.add('hidden');
+        if (inputExt) { inputExt.required = false; inputExt.value = ''; }
+        [nombreEncargado, apellidosEncargado, correoEncargado].forEach(el => {
+          if (el) { el.value = ''; el.required = false; }
+        });
       }
     },
 
@@ -452,7 +546,6 @@
         this._renderizarHorariosPorFecha();
       }
       input.value = '';
-
       document.getElementById('errorFechas')?.classList.add('hidden');
     },
 
@@ -492,7 +585,6 @@
       document.getElementById('horariosPorFecha')?.classList.add('hidden');
     },
 
-    // ── Procesamiento de archivos ──
     onDragOver(event) {
       event.preventDefault();
       document.getElementById('uploadZone')?.classList.add('dragover');
@@ -511,30 +603,37 @@
       this._procesarListaArchivos(event.target.files);
     },
 
-    _procesarListaArchivos(fileList) {
+   _procesarListaArchivos(fileList) {
       const TIPOS_PERMITIDOS = ['application/pdf','application/msword',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'image/png','image/jpeg'];
-      const MAX_SIZE  = 5 * 1024 * 1024; // 5MB
+      const MAX_SIZE  = 25 * 1024 * 1024;
       const MAX_FILES = 5;
+      const btnEnviar = document.getElementById('btnEnviar');
 
       Array.from(fileList).forEach(file => {
-        if (this.archivosSeleccionados.length >= MAX_FILES) {
-          this._mostrarToast(`Máximo ${MAX_FILES} archivos permitidos.`, 'warn');
+        if (this.archivosSeleccionados.length + this.archivosExistentes.length >= MAX_FILES) {
+          this._mostrarToast(`Máximo ${MAX_FILES} archivos permitidos en total.`, 'warn');
           return;
         }
         if (file.size > MAX_SIZE) {
-          this._mostrarToast(`El archivo "${file.name}" supera los 5MB.`, 'error');
+          this._mostrarToast(`El archivo "${file.name}" supera los 25MB.`, 'error');
           return;
         }
         if (!TIPOS_PERMITIDOS.includes(file.type)) {
-          this._mostrarToast(`Tipo de archivo no permitido: ${file.name}`, 'error');
+          this._mostrarToast(`Tipo no permitido: ${file.name}`, 'error');
           return;
         }
-        if (this.archivosSeleccionados.some(a => a.nombre === file.name)) {
+        if (this.archivosSeleccionados.some(a => a.nombre === file.name) || this.archivosExistentes.some(a => a.nombre === file.name)) {
           return;
+        }
+
+        this.archivosEnProceso++;
+        if (btnEnviar) {
+          btnEnviar.disabled = true;
+          btnEnviar.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Procesando archivos...';
         }
 
         const reader = new FileReader();
@@ -546,7 +645,13 @@
             base64: base64,
             tamano: file.size
           });
+
+          this.archivosEnProceso--;
           this._renderizarListaArchivos();
+
+          if (this.archivosEnProceso === 0 && btnEnviar) {
+            this._restaurarBoton(btnEnviar);
+          }
         };
         reader.readAsDataURL(file);
       });
@@ -559,25 +664,35 @@
       if (!lista) return;
       lista.innerHTML = '';
 
+      this.archivosExistentes.forEach((archivo, idx) => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-2 animate-fadeIn';
+        div.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0">
+            <i class="fa-solid fa-cloud-arrow-down flex-shrink-0 text-[#002f5c]"></i>
+            <span class="text-xs font-semibold text-slate-700 truncate">${this._escapar(archivo.nombre)}</span>
+            <span class="text-[10px] font-bold text-[#002f5c] bg-blue-100/50 px-2 py-0.5 rounded-full flex-shrink-0 border border-[#002f5c]/20">Ya subido</span>
+          </div>
+          <button type="button" onclick="StudentView.eliminarArchivoExistente(${idx})" class="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors flex-shrink-0 ml-2">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+          </button>
+        `;
+        lista.appendChild(div);
+      });
+
       this.archivosSeleccionados.forEach((archivo, idx) => {
         const tamanoKb = (archivo.tamano / 1024).toFixed(1);
-        const iconos = {
-          'application/pdf': 'fa-file-pdf text-rose-500',
-          'image/png':       'fa-file-image text-blue-500',
-          'image/jpeg':      'fa-file-image text-blue-500'
-        };
-        const icono = iconos[archivo.tipo] || 'fa-file text-slate-500';
+        const icono = 'fa-file-lines text-slate-400';
 
         const div = document.createElement('div');
-        div.className = 'flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2 animate-fadeIn';
+        div.className = 'flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2 mb-2 animate-fadeIn';
         div.innerHTML = `
           <div class="flex items-center gap-2 min-w-0">
             <i class="fa-solid ${icono} flex-shrink-0"></i>
             <span class="text-xs font-semibold text-slate-700 truncate">${this._escapar(archivo.nombre)}</span>
             <span class="text-[10px] text-slate-400 flex-shrink-0">${tamanoKb} KB</span>
           </div>
-          <button type="button" onclick="StudentView.eliminarArchivo(${idx})"
-            class="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors flex-shrink-0 ml-2">
+          <button type="button" onclick="StudentView.eliminarArchivo(${idx})" class="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors flex-shrink-0 ml-2">
             <i class="fa-solid fa-trash-can text-xs"></i>
           </button>
         `;
@@ -590,30 +705,36 @@
       this._renderizarListaArchivos();
     },
 
-    // ── Panel Mis Reservas Devueltas ──
+    eliminarArchivoExistente(idx) {
+      const arch = this.archivosExistentes.splice(idx, 1)[0];
+      this.archivosAEliminar.push(arch);
+      this._renderizarListaArchivos();
+    },
+
     abrirPanelMisReservas() {
       const panel = document.getElementById('panelMisReservas');
       if (!panel) return;
       panel.classList.remove('hidden');
       panel.classList.add('animate-fadeIn');
-      this._cargarReservasDevueltas();
+      this._cargarMisReservas();
     },
 
     cerrarPanelMisReservas() {
       document.getElementById('panelMisReservas')?.classList.add('hidden');
     },
 
-    async _cargarReservasDevueltas() {
+    async _cargarMisReservas() {
       if (!AuthService.usuario) return;
       try {
-        const res = await GasApi.ejecutar('obtenerReservasDevueltas', this.correoUsuario);
-        this._renderizarReservasDevueltas(res.reservas || []);
+        const res = await GasApi.ejecutar('obtenerMisReservas', this.correoUsuario);
+        const reservas = res.reservas || [];
+        this._renderizarMisReservas(reservas);
 
         const badge = document.getElementById('badgeReservasDevueltas');
-        const count = (res.reservas || []).length;
+        const devueltas = reservas.filter(r => r.estado === 'Devuelta').length;
         if (badge) {
-          if (count > 0) {
-            badge.textContent = count;
+          if (devueltas > 0) {
+            badge.textContent = devueltas;
             badge.classList.remove('hidden');
             badge.classList.add('flex');
           } else {
@@ -621,53 +742,95 @@
           }
         }
       } catch (e) {
-        console.error('[StudentView] Error al cargar reservas devueltas:', e);
+        console.error('[StudentView] Error al cargar mis reservas:', e);
+        const lista = document.getElementById('listaReservasDevueltas');
+        if (lista) {
+          lista.innerHTML = `
+            <div class="text-center py-8">
+              <i class="fa-solid fa-circle-exclamation text-3xl text-rose-400 mb-2 block"></i>
+              <p class="text-sm font-semibold text-slate-600">No se pudieron cargar tus reservas.</p>
+              <p class="text-xs text-slate-400 mt-1">${this._escapar(e.message || 'Inténtalo de nuevo.')}</p>
+            </div>`;
+        }
       }
     },
 
-    _renderizarReservasDevueltas(reservas) {
+    async _cargarReservasDevueltas() {
+      return this._cargarMisReservas();
+    },
+
+    _renderizarMisReservas(reservas) {
       const lista = document.getElementById('listaReservasDevueltas');
       if (!lista) return;
 
-      if (reservas.length === 0) {
+      if (!reservas.length) {
         lista.innerHTML = `
           <div class="text-center py-8">
-            <i class="fa-solid fa-check-circle text-3xl text-emerald-400 mb-2 block"></i>
-            <p class="text-sm font-semibold text-slate-600">¡Sin reservas por corregir!</p>
-            <p class="text-xs text-slate-400 mt-1">Todas tus solicitudes están al día.</p>
+            <i class="fa-solid fa-folder-open text-3xl text-slate-300 mb-2 block"></i>
+            <p class="text-sm font-semibold text-slate-600">Aún no tienes reservas.</p>
+            <p class="text-xs text-slate-400 mt-1">Aquí aparecerán todas las solicitudes que realices.</p>
           </div>`;
         return;
       }
 
+      const badgeClases = {
+        'Pendiente': 'badge-pendiente',
+        'Aceptada': 'badge-aceptada',
+        'Rechazada': 'badge-rechazada',
+        'Devuelta': 'badge-devuelta',
+        'Reemplazada': 'bg-slate-100 text-slate-600 border border-slate-200'
+      };
+
       lista.innerHTML = reservas.map(r => {
         const [yyyy, mm, dd] = (r.fecha || '').split('-');
-        const fechaLegible = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : r.fecha;
+        const fechaLegible = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : (r.fecha || 'Sin fecha');
+        const claseEstado = badgeClases[r.estado] || 'bg-slate-100 text-slate-600 border border-slate-200';
+        const responsable = [r.nombreEncargado || '', r.apellidosEncargado || ''].filter(Boolean).join(' ');
+        const esDevuelta = r.estado === 'Devuelta';
+
         return `
-          <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 animate-fadeIn">
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-              <div class="min-w-0">
+          <div class="bg-white border border-slate-200 rounded-xl p-4 animate-fadeIn shadow-sm hover:shadow-md transition-shadow">
+            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+              <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2 flex-wrap mb-1">
                   <span class="text-xs font-mono text-slate-500">${this._escapar(r.idReserva)}</span>
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full badge-devuelta">Devuelta</span>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${claseEstado}">${this._escapar(r.estado)}</span>
                 </div>
                 <p class="font-black text-slate-800 text-sm">${this._escapar(r.actividad || 'Sin nombre')}</p>
-                <p class="text-xs text-slate-600 mt-0.5">
-                  <i class="fa-solid fa-building mr-1 text-slate-400"></i>${this._escapar(r.coworking)} ·
-                  <i class="fa-solid fa-calendar ml-1 mr-1 text-slate-400"></i>${fechaLegible}
+                <p class="text-xs text-slate-600 mt-1">
+                  <i class="fa-solid fa-building mr-1 text-slate-400"></i>${this._escapar(r.coworking || 'Sin espacio')} ·
+                  <i class="fa-solid fa-calendar ml-1 mr-1 text-slate-400"></i>${fechaLegible} ·
+                  <i class="fa-regular fa-clock ml-1 mr-1 text-slate-400"></i>${this._escapar(r.horaInicio || '')} – ${this._escapar(r.horaFin || '')}
                 </p>
-                <div class="mt-2 p-2.5 bg-rose-50 border border-rose-100 rounded-lg">
-                  <p class="text-[10px] font-black text-rose-700 uppercase tracking-wider mb-0.5">Motivo del rechazo:</p>
-                  <p class="text-xs text-rose-800">${this._escapar(r.motivoRechazo || 'Sin motivo especificado')}</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-xs">
+                  <div class="bg-slate-50 border border-slate-100 rounded-lg p-2">
+                    <span class="block text-[9px] font-black uppercase tracking-wider text-slate-400">Responsable</span>
+                    <span class="font-semibold text-slate-700">${this._escapar(responsable || 'No registrado')}</span>
+                  </div>
+                  <div class="bg-slate-50 border border-slate-100 rounded-lg p-2">
+                    <span class="block text-[9px] font-black uppercase tracking-wider text-slate-400">Correo responsable</span>
+                    <span class="font-semibold text-slate-700 break-all">${this._escapar(r.correoEncargado || r.correoResponsable || 'No registrado')}</span>
+                  </div>
                 </div>
+                ${esDevuelta ? `
+                  <div class="mt-2 p-2.5 bg-rose-50 border border-rose-100 rounded-lg">
+                    <p class="text-[10px] font-black text-rose-700 uppercase tracking-wider mb-0.5">Motivo de devolución:</p>
+                    <p class="text-xs text-rose-800">${this._escapar(r.motivoRechazo || 'Sin motivo especificado')}</p>
+                  </div>` : ''}
               </div>
-              <button onclick="StudentView.editarReservaDevuelta('${r.idReserva}')"
-                class="flex items-center gap-2 bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-sm flex-shrink-0 whitespace-nowrap">
-                <i class="fa-solid fa-pen-to-square"></i> Editar y Reenviar
-              </button>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                ${esDevuelta ? `
+                  <button onclick="StudentView.editarReservaDevuelta('${this._escapar(r.idReserva)}')" class="flex items-center gap-2 bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-sm whitespace-nowrap">
+                    <i class="fa-solid fa-pen-to-square"></i> Editar y Reenviar
+                  </button>` : ''}
+              </div>
             </div>
-          </div>
-        `;
+          </div>`;
       }).join('');
+    },
+
+    _renderizarReservasDevueltas(reservas) {
+      return this._renderizarMisReservas(reservas);
     },
 
     async editarReservaDevuelta(idReserva) {
@@ -706,7 +869,7 @@
       if (inputCW) inputCW.value = r.coworking;
 
       StudentView.resetear();
-      const rolFormulario = (r.rol === 'maestro' || r.rol === 'admin') ? 'administrativo' : 'estudiante';
+      const rolFormulario = (r.rol === 'maestro' || r.rol === 'admin' || r.rol === 'administrativo') ? (r.rol === 'maestro' ? 'maestro' : 'administrativo') : 'estudiante';
       StudentView.seleccionarRol(rolFormulario);
       this._rellenarFormularioDevuelto(r);
 
@@ -729,17 +892,38 @@
       if (banner) banner.classList.remove('hidden');
       if (textoMotivo) textoMotivo.textContent = `Motivo: ${r.motivoRechazo || 'No especificado'}`;
 
+      if (r.ods) {
+        document.querySelectorAll('input[name="ods_check"]').forEach(cb => {
+          cb.checked = r.ods.includes(cb.value);
+        });
+      }
+
+      let descLimpia = r.descripcion || '';
+      if (r.coworking && r.coworking.includes('Coworking 3')) {
+        document.querySelectorAll('input[name="maquinas_check"]').forEach(cb => {
+          cb.checked = descLimpia.includes(cb.value);
+        });
+        descLimpia = descLimpia.split('\n\nEquipos requeridos:')[0].trim();
+
+        const txtUso = document.getElementById('descripcionUsoCW3');
+        if (txtUso) txtUso.value = descLimpia;
+      } else {
+        const txtDesc = document.getElementById('descripcionActividad');
+        if (txtDesc) txtDesc.value = descLimpia;
+      }
+
       const campos = {
         'nombres':              r.nombres || r.nombreCompleto?.split(' ')[0] || '',
-        'apellidoPaterno':      r.apellidoPaterno || '',
-        'apellidoMaterno':      r.apellidoMaterno || '',
+        'apellidos':            (r.apellidoPaterno || '') + (r.apellidoMaterno ? ' ' + r.apellidoMaterno : ''),
         'codigo':               r.codigo || '',
         'telefono':             r.telefono || '',
         'extension':            r.extension !== 'N/A' ? (r.extension || '') : '',
         'correo':               r.correo || '',
-        'correoResponsable':    r.correoResponsable || '',
-        'actividad':            r.actividad || '',
-        'descripcionActividad': r.descripcion || ''
+        'correoResponsable':    r.correoResponsable || r.correoEncargado || '',
+        'nombreEncargado':      r.nombreEncargado || '',
+        'apellidosEncargado':   r.apellidosEncargado || '',
+        'correoEncargado':      r.correoEncargado || r.correoResponsable || '',
+        'actividad':            r.actividad || ''
       };
 
       Object.entries(campos).forEach(([id, valor]) => {
@@ -747,42 +931,72 @@
         if (el) el.value = valor;
       });
 
-      // Rellenar Tipo de Actividad
       if (r.tipoActividad) {
         const tipoRadio = document.querySelector(`input[name="tipoActividad"][value="${r.tipoActividad}"]`);
         if (tipoRadio) tipoRadio.checked = true;
-      }
-
-      // Rellenar ODS
-      if (r.ods) {
-        document.querySelectorAll('input[name="ods_check"]').forEach(cb => {
-          cb.checked = r.ods.includes(cb.value);
-        });
       }
 
       if (r.fecha) {
         this.fechasSeleccionadas = [{ fecha: r.fecha, horaEntrada: r.horaInicio || '08:00', horaSalida: r.horaFin || '10:00' }];
         this._renderizarEtiquetasFechas();
       }
+
+      if (r.archivosExistentes && r.archivosExistentes.length > 0) {
+        this.archivosExistentes = r.archivosExistentes;
+        this._renderizarListaArchivos();
+      }
     },
 
-    // ── Envío del formulario ──
     async enviarReserva(evento) {
       evento.preventDefault();
 
-      const tipoActividad = document.querySelector('input[name="tipoActividad"]:checked');
-      if (!tipoActividad) {
-        document.getElementById('errorTipoActividad')?.classList.remove('hidden');
-        document.getElementById('tipoActividadContainer')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
+      const coworkingSeleccionado = document.getElementById('inputCoworking')?.value || '';
+      const isCW3 = coworkingSeleccionado.includes('Coworking 3');
+
+      let valorTipoActividad = 'Uso de Maquinaria';
+      if (!isCW3) {
+        const tipoActividad = document.querySelector('input[name="tipoActividad"]:checked');
+        if (!tipoActividad) {
+          document.getElementById('errorTipoActividad')?.classList.remove('hidden');
+          document.getElementById('tipoActividadContainer')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        valorTipoActividad = tipoActividad.value;
+        document.getElementById('errorTipoActividad')?.classList.add('hidden');
       }
-      document.getElementById('errorTipoActividad')?.classList.add('hidden');
 
       if (this.fechasSeleccionadas.length === 0) {
         document.getElementById('errorFechas')?.classList.remove('hidden');
         return;
       }
       document.getElementById('errorFechas')?.classList.add('hidden');
+
+      let descFinal = '';
+      let maquinasSeleccionadas = [];
+
+      if (isCW3) {
+        const maquinasChecks = document.querySelectorAll('input[name="maquinas_check"]:checked');
+        maquinasSeleccionadas = Array.from(maquinasChecks).map(cb => cb.value);
+
+        if (maquinasSeleccionadas.length === 0) {
+          this._mostrarToast('Debes seleccionar al menos una máquina para usar el Coworking 3.', 'error');
+          return;
+        }
+
+        const descUsoInput = document.getElementById('descripcionUsoCW3');
+        const descUsoVal = descUsoInput ? descUsoInput.value.trim() : '';
+
+        if (!descUsoVal) {
+          document.getElementById('errorDescCW3')?.classList.remove('hidden');
+          descUsoInput?.focus();
+          return;
+        }
+        document.getElementById('errorDescCW3')?.classList.add('hidden');
+
+        descFinal = descUsoVal + '\n\nEquipos requeridos:\n- ' + maquinasSeleccionadas.join('\n- ');
+      } else {
+        descFinal = document.getElementById('descripcionActividad')?.value.trim() || '';
+      }
 
       const btn    = document.getElementById('btnEnviar');
       const msgDiv = document.getElementById('mensajeResultado');
@@ -817,29 +1031,49 @@
         }
       }
 
-      // CORRECCIÓN EXACTA DE ROL:
       const rolActual = document.getElementById('inputRol')?.value || '';
+
+      const nombreEncargado = document.getElementById('nombreEncargado')?.value.trim() || '';
+      const apellidosEncargado = document.getElementById('apellidosEncargado')?.value.trim() || '';
+      const correoEncargado = document.getElementById('correoEncargado')?.value.trim().toLowerCase() || '';
+
+      if (rolActual === 'maestro') {
+        const hayDatosEncargado = nombreEncargado || apellidosEncargado || correoEncargado;
+        if (hayDatosEncargado && (!nombreEncargado || !apellidosEncargado || !correoEncargado)) {
+          this._mostrarMensaje(msgDiv, 'Si agregas un encargado, debes capturar nombre, apellidos y correo.', 'error');
+          return;
+        }
+        if (correoEncargado && !/@(alumnos\.udg\.mx|academicos\.udg\.mx|cucei\.udg\.mx)$/i.test(correoEncargado)) {
+          this._mostrarMensaje(msgDiv, 'El correo del encargado debe terminar en @alumnos.udg.mx, @academicos.udg.mx o @cucei.udg.mx.', 'error');
+          return;
+        }
+      }
 
       const datos = {
         rol:                  rolActual,
-        coworking:            document.getElementById('inputCoworking')?.value || '',
+        coworking:            coworkingSeleccionado,
         nombres:              document.getElementById('nombres')?.value.trim() || '',
-        apellidoPaterno:      document.getElementById('apellidoPaterno')?.value.trim() || '',
-        apellidoMaterno:      document.getElementById('apellidoMaterno')?.value.trim() || '',
+        apellidoPaterno:      document.getElementById('apellidos')?.value.trim() || '',
+        apellidoMaterno:      '',
         codigo:               document.getElementById('codigo')?.value.trim() || '',
         telefono:             document.getElementById('telefono')?.value.trim() || '',
         extension:            document.getElementById('extension')?.value.trim() || 'N/A',
-        correoResponsable:    (rolActual === 'administrativo' || rolActual === 'maestro') ? (document.getElementById('correoResponsable')?.value.trim() || '') : '',
+        nombreEncargado:      rolActual === 'maestro' ? nombreEncargado : '',
+        apellidosEncargado:   rolActual === 'maestro' ? apellidosEncargado : '',
+        correoEncargado:      rolActual === 'maestro' ? correoEncargado : '',
+        correoResponsable:    rolActual === 'maestro' ? correoEncargado : '',
         correo:               document.getElementById('correo')?.value.trim() || '',
         actividad:            document.getElementById('actividad')?.value.trim() || '',
-        tipoActividad:        tipoActividad.value,
-        descripcionActividad: document.getElementById('descripcionActividad')?.value.trim() || '',
+        tipoActividad:        valorTipoActividad,
+        descripcionActividad: descFinal,
         fechasConHorario:     fechasConHorario,
         fechas:               fechasConHorario.map(f => f.fecha),
         horaEntrada:          fechasConHorario[0]?.horaEntrada || '08:00',
         horaSalida:           fechasConHorario[0]?.horaSalida  || '10:00',
         ods:                  odsSeleccionados,
         archivos:             this.archivosSeleccionados,
+        archivosExistentes:   this.archivosExistentes,
+        archivosAEliminar:    this.archivosAEliminar,
         reservaDevueltaId:    document.getElementById('inputReservaDevueltaId')?.value || '',
         modoEdicion:          document.getElementById('inputModoEdicion')?.value || 'N',
         idOriginal:           document.getElementById('inputIdOriginal')?.value || ''
@@ -871,7 +1105,7 @@
           document.getElementById('inputModoEdicion').value = 'N';
           document.getElementById('inputIdOriginal').value = '';
 
-          setTimeout(() => { this._cargarReservasDevueltas(); }, 500);
+          setTimeout(() => { this._cargarMisReservas(); }, 500);
           setTimeout(() => ModalController.cerrar(), 3500);
         } else {
           this._mostrarMensaje(msgDiv, resultado.mensaje, 'error');
@@ -927,17 +1161,35 @@
     },
 
     resetear() {
+      ['nombreEncargado', 'apellidosEncargado', 'correoEncargado'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.value = ''; el.required = false; }
+      });
+      const extReset = document.getElementById('extension');
+      if (extReset) { extReset.value = ''; extReset.required = false; }
+      document.getElementById('campoResponsable')?.classList.add('hidden');
+      document.getElementById('campoExtension')?.classList.add('hidden');
+
       const form = document.getElementById('formReserva');
       if (form) form.reset();
 
       this.fechasSeleccionadas   = [];
       this.archivosSeleccionados = [];
+      this.archivosExistentes    = [];
+      this.archivosAEliminar     = [];
+      this.archivosEnProceso     = 0;
       this._renderizarEtiquetasFechas();
       this._renderizarListaArchivos();
       this._inicializarHorarioUI();
 
       document.querySelectorAll('input[name="ods_check"]').forEach(cb => { cb.checked = false; });
       document.querySelectorAll('input[name="tipoActividad"]').forEach(r => { r.checked = false; });
+      document.querySelectorAll('input[name="maquinas_check"]').forEach(cb => { cb.checked = false; });
+
+      const descCW3 = document.getElementById('descripcionUsoCW3');
+      if(descCW3) descCW3.value = '';
+      document.getElementById('errorDescCW3')?.classList.add('hidden');
+
       document.getElementById('errorTipoActividad')?.classList.add('hidden');
       document.getElementById('errorFechas')?.classList.add('hidden');
       document.getElementById('bannerReservaDevuelta')?.classList.add('hidden');
@@ -968,6 +1220,7 @@
       const titulo    = boton.dataset.coworking || '';
       const desc      = boton.dataset.desc      || '';
       const capacidad = boton.dataset.cap       || '';
+      const imgSrc    = boton.dataset.img       || '';
       let   specs     = [];
 
       try { specs = JSON.parse(boton.dataset.specs || '[]'); }
@@ -976,6 +1229,9 @@
       this._setTexto('modalTitulo',      titulo);
       this._setTexto('modalDescripcion', desc);
       this._setTexto('modalCapacidad',   capacidad);
+
+      const modalImg = document.getElementById('modalImagen');
+      if (modalImg) modalImg.src = imgSrc;
 
       const listaEsp = document.getElementById('modalEspecificaciones');
       if (listaEsp) {
@@ -992,7 +1248,7 @@
       StudentView.resetear();
 
       const rolUsuario     = AuthService.usuario.rol;
-      const tipoFormulario = (rolUsuario === 'maestro' || rolUsuario === 'admin') ? 'administrativo' : 'estudiante';
+      const tipoFormulario = (rolUsuario === 'maestro' || rolUsuario === 'admin' || rolUsuario === 'administrativo') ? (rolUsuario === 'maestro' ? 'maestro' : 'administrativo') : 'estudiante';
       StudentView.seleccionarRol(tipoFormulario);
 
       const modal = document.getElementById('modalReserva');
@@ -1045,7 +1301,6 @@
       }
     },
 
-    // ── Tabs ──
     cambiarTab(tab) {
       const tabs = ['reservas', 'calendario', 'usuarios'];
       const vistas = {
@@ -1076,7 +1331,6 @@
       }
     },
 
-    // ── Calendario Digital con FullCalendar ──
     _inicializarCalendario() {
       const contenedor = document.getElementById('contenedorCalendario');
       if (!contenedor) return;
@@ -1091,7 +1345,6 @@
         return;
       }
 
-      // Llenar selectores de filtro
       const espacioSelect = document.getElementById('filtroCalendarioEspacio');
       if (espacioSelect) {
         const espaciosUnicos = [...new Set(this.todasLasReservas.map(r => r.coworking))].sort();
@@ -1192,67 +1445,136 @@
       eventos.forEach(e => this._calendarioInstance.addEvent(e));
     },
 
-    // ── Usuarios ──
     async cargarUsuarios(adminCorreo) {
       try {
         const res = await GasApi.ejecutar('obtenerListaUsuarios', adminCorreo);
         if (res.exito) {
           this.todosLosUsuarios = res.usuarios;
-          this._renderizarTablaUsuarios(this.todosLosUsuarios);
+          this._renderizarTablaAdmins(this.todosLosUsuarios);
         }
       } catch (e) {
-        console.error('[AdminDashboard] Error al cargar usuarios:', e);
+        console.error('[AdminDashboard] Error al cargar admins:', e);
       }
     },
 
-    _renderizarTablaUsuarios(usuarios) {
-      const cuerpo = document.getElementById('cuerpoTablaUsuarios');
+    _renderizarTablaAdmins(admins) {
+      const cuerpo = document.getElementById('cuerpoTablaAdmins');
       if (!cuerpo) return;
 
-      if (usuarios.length === 0) {
-        cuerpo.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-slate-500 text-sm">No hay usuarios registrados.</td></tr>`;
+      if (admins.length === 0) {
+        cuerpo.innerHTML = `<tr><td colspan="3" class="text-center p-4 text-slate-500 text-sm">No hay administradores registrados.</td></tr>`;
         return;
       }
 
-      cuerpo.innerHTML = usuarios.map(u => {
-        const isAdmin   = u.rol === 'admin';
-        const isMaestro = u.rol === 'maestro';
-        let badgeClass  = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
-        if (isAdmin)   badgeClass = 'bg-purple-50 text-purple-700 border border-purple-200';
-        else if (isMaestro) badgeClass = 'bg-blue-50 text-blue-700 border border-blue-200';
+      const miCorreo = AuthService.usuario?.correo || '';
 
-        const nextRol      = isAdmin ? (u.correo.includes('@alumnos') ? 'alumno' : 'maestro') : 'admin';
-        const actionText   = isAdmin ? 'Quitar Admin' : 'Hacer Admin';
-        const actionColor  = isAdmin
-          ? 'text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200'
-          : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200';
+      cuerpo.innerHTML = admins.map(u => {
+        const badgeClass = 'bg-purple-50 text-purple-700 border border-purple-200';
+        const nextRol    = u.correo.includes('@alumnos') ? 'alumno' : 'maestro';
+
+        const esMiCuenta = String(u.correo).toLowerCase() === String(miCorreo).toLowerCase();
+        const btnAccion = esMiCuenta
+          ? `<span class="text-[10px] font-bold text-slate-400 uppercase"><i class="fa-solid fa-lock mr-1"></i>Tu cuenta (Protegida)</span>`
+          : `<button onclick="AdminDashboard.cambiarRolUsuario('${this._escapar(u.id)}', '${this._escapar(nextRol)}')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200">Quitar Admin</button>`;
 
         return `
           <tr class="hover:bg-slate-50 transition-colors">
-            <td class="p-4 text-xs font-mono text-slate-500">${this._escapar(u.id)}</td>
-            <td class="p-4 text-sm font-semibold text-slate-800">${this._escapar(u.correo)}</td>
-            <td class="p-4 text-sm text-slate-600">${this._escapar(u.codigo)}</td>
             <td class="p-4">
+              <div class="font-bold text-slate-800 text-sm">${this._escapar(u.correo)}</div>
+              <div class="text-xs font-mono text-slate-500">${this._escapar(u.codigo)}</div>
+            </td>
+            <td class="p-4 text-center">
               <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${badgeClass}">${u.rol}</span>
             </td>
             <td class="p-4 text-right pr-6">
-              <button onclick="AdminDashboard.cambiarRolUsuario('${this._escapar(u.id)}', '${this._escapar(nextRol)}')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm ${actionColor}">
-                ${actionText}
-              </button>
+              ${btnAccion}
             </td>
           </tr>
         `;
       }).join('');
     },
 
+    async buscarUsuariosSistema() {
+      const inputEl = document.getElementById('inputBusquedaUsuario');
+      const msgEl   = document.getElementById('mensajeResultadosUsuarios');
+      const listaEl = document.getElementById('listaResultadosUsuarios');
+      const query   = inputEl?.value.trim() || '';
+      const adminCorreo = AuthService.usuario?.correo || '';
+
+      if (!query) {
+        if(msgEl) { msgEl.classList.remove('hidden'); msgEl.innerHTML = '<i class="fa-solid fa-users text-3xl mb-2 opacity-50"></i><span>Escribe un correo o código.</span>'; }
+        if(listaEl) listaEl.classList.add('hidden');
+        return;
+      }
+
+      if(msgEl) { msgEl.classList.remove('hidden'); msgEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-2xl text-[#002f5c] mb-2"></i><span>Buscando en la base de datos...</span>'; }
+      if(listaEl) listaEl.classList.add('hidden');
+
+      try {
+        const res = await GasApi.ejecutar('buscarUsuariosSistema', query, adminCorreo);
+        if (res.exito) {
+          this._renderizarResultadosBusquedaUsuarios(res.usuarios);
+        } else {
+          if(msgEl) { msgEl.classList.remove('hidden'); msgEl.innerHTML = `<span class="text-rose-500"><i class="fa-solid fa-triangle-exclamation mb-1 text-xl block"></i>${res.mensaje}</span>`; }
+        }
+      } catch (e) {
+        if(msgEl) { msgEl.classList.remove('hidden'); msgEl.innerHTML = `<span class="text-rose-500"><i class="fa-solid fa-triangle-exclamation mb-1 text-xl block"></i>Error de conexión.</span>`; }
+      }
+    },
+
+    _renderizarResultadosBusquedaUsuarios(usuarios) {
+      const msgEl   = document.getElementById('mensajeResultadosUsuarios');
+      const listaEl = document.getElementById('listaResultadosUsuarios');
+      if(!msgEl || !listaEl) return;
+
+      if (usuarios.length === 0) {
+        msgEl.classList.remove('hidden');
+        listaEl.classList.add('hidden');
+        msgEl.innerHTML = '<i class="fa-solid fa-user-xmark text-3xl mb-2 opacity-50"></i><span>No se encontraron usuarios.</span>';
+        return;
+      }
+
+      msgEl.classList.add('hidden');
+      listaEl.classList.remove('hidden');
+
+      listaEl.innerHTML = usuarios.map(u => {
+        const isAdmin = u.rol === 'admin';
+        let badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        if (isAdmin) badgeClass = 'bg-purple-50 text-purple-700 border-purple-200';
+        else if (u.rol === 'maestro') badgeClass = 'bg-blue-50 text-blue-700 border-blue-200';
+
+        const btnAccion = isAdmin
+          ? `<span class="text-[10px] font-bold text-slate-400 uppercase"><i class="fa-solid fa-check mr-1"></i>Ya es Admin</span>`
+          : `<button onclick="AdminDashboard.cambiarRolUsuario('${this._escapar(u.id)}', 'admin')" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors shadow-sm bg-[#002f5c] text-white hover:bg-[#001f3f]"><i class="fa-solid fa-arrow-up mr-1"></i>Hacer Admin</button>`;
+
+        return `
+          <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0">
+            <div class="min-w-0 pr-2">
+              <p class="text-sm font-bold text-slate-800 truncate">${this._escapar(u.correo)}</p>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-xs font-mono text-slate-500">${this._escapar(u.codigo)}</span>
+                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase border ${badgeClass}">${u.rol}</span>
+              </div>
+            </div>
+            <div class="flex-shrink-0">
+              ${btnAccion}
+            </div>
+          </div>
+        `;
+      }).join('');
+    },
+
     async cambiarRolUsuario(idUsuario, nuevoRol) {
       const adminCorreo = AuthService.usuario?.correo || '';
-      if (!confirm(`¿Confirmas cambiar el rol a "${nuevoRol.toUpperCase()}"?`)) return;
+      if (!confirm(`¿Estás seguro de cambiar el rol a "${nuevoRol.toUpperCase()}"?`)) return;
       try {
         const res = await GasApi.ejecutar('actualizarRolUsuario', idUsuario, nuevoRol, adminCorreo);
         if (res.exito) {
-          alert('✅ Rol actualizado correctamente.');
           this.cargarUsuarios(adminCorreo);
+          const inputBusqueda = document.getElementById('inputBusquedaUsuario');
+          if (inputBusqueda && inputBusqueda.value.trim() !== '') {
+            this.buscarUsuariosSistema();
+          }
         } else {
           alert('❌ Error: ' + res.mensaje);
         }
@@ -1261,7 +1583,6 @@
       }
     },
 
-    // ── Métricas ──
     _renderizarMetricas(metricas) {
       const contenedor = document.getElementById('tarjetasMetricas');
       if (!contenedor) return;
@@ -1286,7 +1607,6 @@
       `).join('');
     },
 
-    // ── Gráficas ──
     _renderizarGraficas(dataEstados, dataEspacios) {
       Object.values(this._charts).forEach(c => { if (c) c.destroy(); });
       this._charts = {};
@@ -1357,7 +1677,6 @@
       }
     },
 
-    // ── Tabla de Reservas ──
     _renderizarTabla(reservas) {
       const spinner      = document.getElementById('spinnerTabla');
       const contenedor   = document.getElementById('contenedorTabla');
@@ -1432,14 +1751,12 @@
       this._renderizarTabla(filtradas);
     },
 
-    // ── Modal de Detalle (profesional) ──
     abrirModal(idReserva) {
       const reserva = this.todasLasReservas.find(r => r.idReserva === idReserva);
       if (!reserva) return;
 
       this._reservaEnModal = reserva;
 
-      // Estado badge
       const estadoEl = document.getElementById('modalAdminEstado');
       if (estadoEl) {
         estadoEl.className   = `text-xs font-bold px-3 py-1 rounded-full ${this._obtenerClaseBadge(reserva.estado)}`;
@@ -1451,7 +1768,6 @@
       const [yyyy, mm, dd] = (reserva.fecha || '').split('-');
       const fechaLegible   = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : reserva.fecha;
 
-      // ── Tarjeta Solicitante ──
       const datosSolicitante = [
         { label: 'Nombre Completo', valor: reserva.nombreCompleto },
         { label: 'Correo',          valor: reserva.correo },
@@ -1471,14 +1787,14 @@
         `).join('');
       }
 
-      // ── Tarjeta Reserva ──
       const datosReserva = [
         { label: 'Espacio',      valor: reserva.coworking },
         { label: 'Fecha',        valor: fechaLegible },
         { label: 'Horario',      valor: `${reserva.horaInicio} – ${reserva.horaFin}` },
         { label: 'Tipo',         valor: reserva.tipoActividad || 'No especificado' },
         { label: 'Registrado',   valor: reserva.fechaRegistro },
-        { label: 'Responsable',  valor: reserva.correoResponsable || '—' }
+        { label: 'Responsable',  valor: [reserva.nombreEncargado || '', reserva.apellidosEncargado || ''].filter(Boolean).join(' ') || '—' },
+        { label: 'Correo responsable', valor: reserva.correoEncargado || reserva.correoResponsable || '—' }
       ];
 
       const reservaEl = document.getElementById('modalAdminDatosReserva');
@@ -1491,7 +1807,6 @@
         `).join('');
       }
 
-      // Actividad, Tipo, ODS y descripción
       this._setTextoModal('modalAdminActividad', reserva.actividad || 'Sin actividad');
 
       const tipoEl = document.getElementById('modalAdminTipoActividad');
@@ -1504,7 +1819,6 @@
       this._setTextoModal('modalAdminOds',  reserva.ods && reserva.ods !== 'Ninguno seleccionado' ? reserva.ods : 'Sin ODS vinculados');
       this._setTextoModal('modalAdminDesc', reserva.descripcion || 'Sin descripción');
 
-      // ── Archivos adjuntos ──
       const secArchivos = document.getElementById('seccionArchivosAdmin');
       const listaArch   = document.getElementById('listaArchivosAdmin');
       if (reserva.archivosUrls && reserva.archivosUrls.length > 0) {
@@ -1521,14 +1835,12 @@
         secArchivos?.classList.add('hidden');
       }
 
-      // Panel de rechazo: ocultar por defecto
       document.getElementById('panelRechazo')?.classList.add('hidden');
       const inputMotivo = document.getElementById('inputMotivoRechazo');
       if (inputMotivo) inputMotivo.value = '';
       const checkReenvio = document.getElementById('checkPermitirReenvio');
       if (checkReenvio) checkReenvio.checked = false;
 
-      // Renderizar botones según estado
       this._renderizarBotonesModal(reserva);
 
       const modal = document.getElementById('modalDetalleAdmin');
@@ -1536,18 +1848,42 @@
       document.body.style.overflow = 'hidden';
     },
 
-    _renderizarBotonesModal(reserva) {
+  _renderizarBotonesModal(reserva) {
       const accionesEl = document.getElementById('modalAdminAcciones');
       if (!accionesEl) return;
 
       if (reserva.estado === 'Pendiente') {
+        const inicioNuevo = StudentView._horaAMinutos(reserva.horaInicio);
+        const finNuevo    = StudentView._horaAMinutos(reserva.horaFin);
+
+        const empalme = this.todasLasReservas.find(r =>
+          r.idReserva !== reserva.idReserva &&
+          r.estado === 'Aceptada' &&
+          r.coworking === reserva.coworking &&
+          r.fecha === reserva.fecha &&
+          (inicioNuevo < StudentView._horaAMinutos(r.horaFin) && finNuevo > StudentView._horaAMinutos(r.horaInicio))
+        );
+
+        let alertaVisual = '';
+
+        if (empalme) {
+          alertaVisual = `
+            <div class="w-full text-left p-3 mb-3 bg-amber-50 text-amber-800 rounded-xl text-xs font-semibold border border-amber-200 flex items-start gap-2">
+              <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+              <span><b>¡Advertencia!</b> Este horario choca con la reserva aprobada <b>${empalme.idReserva}</b>. Queda a tu discreción aprobarla.</span>
+            </div>`;
+        }
+
         accionesEl.innerHTML = `
-          <button onclick="AdminDashboard.mostrarPanelRechazo()" class="flex-1 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 px-5 py-3 rounded-xl text-sm font-bold transition-colors shadow-sm">
-            <i class="fa-solid fa-ban mr-1"></i> Rechazar o Devolver
-          </button>
-          <button onclick="AdminDashboard.cambiarEstado('${this._escId(reserva.idReserva)}', 'Aceptada')" class="flex-1 bg-emerald-600 text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/30">
-            <i class="fa-solid fa-check mr-1"></i> Aprobar Solicitud
-          </button>
+          ${alertaVisual}
+          <div class="flex flex-col sm:flex-row gap-3 w-full">
+            <button onclick="AdminDashboard.mostrarPanelRechazo()" class="flex-1 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 px-5 py-3 rounded-xl text-sm font-bold transition-colors shadow-sm">
+              <i class="fa-solid fa-ban mr-1"></i> Rechazar o Devolver
+            </button>
+            <button onclick="AdminDashboard.cambiarEstado('${this._escId(reserva.idReserva)}', 'Aceptada')" class="flex-1 bg-emerald-600 text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/30">
+              <i class="fa-solid fa-check mr-1"></i> Aprobar Solicitud
+            </button>
+          </div>
         `;
       } else if (reserva.estado === 'Aceptada') {
         accionesEl.innerHTML = `
@@ -1570,7 +1906,6 @@
     mostrarPanelRechazo() {
       document.getElementById('panelRechazo')?.classList.remove('hidden');
       document.getElementById('panelRechazo')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      // Ocultar botones de acción mientras se muestra el panel
       const accionesEl = document.getElementById('modalAdminAcciones');
       if (accionesEl) accionesEl.classList.add('hidden');
     },
@@ -1597,7 +1932,6 @@
 
       if (!idReserva) return;
 
-      // Mostrar cargando en el panel
       const panelRechazo = document.getElementById('panelRechazo');
       if (panelRechazo) {
         panelRechazo.innerHTML = `
@@ -1636,14 +1970,12 @@
         );
 
         if (resultado.exito) {
-          // Actualizar en memoria
           const idx = this.todasLasReservas.findIndex(r => r.idReserva === idReserva);
           if (idx !== -1) {
             this.todasLasReservas[idx].estado = nuevoEstado;
             if (motivoRechazo) this.todasLasReservas[idx].motivoRechazo = motivoRechazo;
           }
 
-          // Actualizar badge del estado en el modal
           const estadoEl = document.getElementById('modalAdminEstado');
           if (estadoEl) {
             estadoEl.className   = `text-xs font-bold px-3 py-1 rounded-full ${this._obtenerClaseBadge(nuevoEstado)}`;
@@ -1700,7 +2032,6 @@
       }
     },
 
-    // ── Buscador ──
     async buscar() {
       const inputEl     = document.getElementById('inputBusqueda');
       const resultadoEl = document.getElementById('resultadoBusqueda');
@@ -1847,13 +2178,11 @@
     }
   };
 
-  // Constructor de fecha auxiliar para calendario si SpreadsheetApp no está disponible en frontend
   var SpreadsheetApp = window.SpreadsheetApp || {
     getActiveSpreadsheet: () => null,
     getSpreadsheetTimeZone: () => 'America/Mexico_City'
   };
 
-  // ── Exponer módulos globalmente ──
   global.GasApi          = GasApi;
   global.AuthService     = AuthService;
   global.StudentView     = StudentView;
@@ -1865,5 +2194,4 @@
   });
 
 })(window);
-
 </script>
