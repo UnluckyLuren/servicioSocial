@@ -1,0 +1,578 @@
+/**
+ * Función requerida por Apps Script para servir la aplicación web.
+ */
+function doGet(e) {
+  return HtmlService.createHtmlOutputFromFile('Index')
+    .setTitle('Coordinación INCO - Portal')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/**
+ * Genera un ID único para la base de datos (Ej: USR-8f7a2b)
+ */
+function generarIdUnico(prefijo = 'USR-') {
+  return prefijo + Math.random().toString(36).substr(2, 6);
+}
+
+/**
+ * Función para autenticar al usuario contra la hoja "Usuarios".
+ * @param {string} codigo - Código del estudiante/docente.
+ * @param {string} nip - Contraseña o NIP.
+ */
+function autenticarUsuario(codigo, nip) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Usuarios");
+    const data = sheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      // Sanitizamos los datos de entrada para evitar fallos de coincidencia
+      if (row[1].toString().trim() === codigo.toString().trim() && row[5].toString().trim() === nip.toString().trim()) {
+        return {
+          exito: true,
+          usuario: {
+            idInterno: row[0].toString(), 
+            code: row[1].toString().trim(),
+            name: row[2].toString().trim(),
+            // ELIMINAMOS ESPACIOS OCULTOS DEL ROL AL INICIAR SESIÓN
+            role: row[3].toString().trim(),
+            email: row[4].toString().trim(),
+            photo: row[6] || null,
+            career: "Ingeniería en Computación (INCO)",
+            gpa: 90.5,
+            credits: 200,
+            totalCredits: 380,
+            integralHours: 40,
+            requiredHours: 60,
+            status: "Activo Regular",
+            cycle: "2026B"
+          }
+        };
+      }
+    }
+    return { exito: false, mensaje: "Código o NIP incorrectos. Verifica tus datos." };
+  } catch (error) {
+    return { exito: false, mensaje: "Error de servidor: " + error.toString() };
+  }
+}
+
+/**
+ * Función para registrar un nuevo usuario desde el Frontend.
+ */
+function registrarUsuario(datosUsuario) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Usuarios");
+    const nuevoId = generarIdUnico('USR-'); 
+    
+    // Verificación simple: ¿Ya existe el código?
+    const data = sheet.getDataRange().getValues();
+    for(let i = 1; i < data.length; i++){
+       if(data[i][1].toString() === datosUsuario.code.toString()){
+          return { exito: false, mensaje: "El código ingresado ya está registrado." };
+       }
+    }
+
+    // Insertamos la fila (debe coincidir con las columnas de Google Sheets)
+    sheet.appendRow([
+      nuevoId,               // A: ID_Usuario
+      datosUsuario.code,     // B: Codigo
+      datosUsuario.name,     // C: Nombre
+      datosUsuario.role,     // D: Rol
+      datosUsuario.email,    // E: Email
+      datosUsuario.nip,      // F: NIP
+      datosUsuario.photo     // G: Foto
+    ]);
+    
+    return { 
+      exito: true, 
+      usuario: { ...datosUsuario, idInterno: nuevoId, photo: datosUsuario.photo || null } 
+    };
+    
+  } catch(error) {
+    return { exito: false, mensaje: "Error al registrar: " + error.toString() };
+  }
+}
+
+/**
+ * Carga Tickets, Avisos y Justificantes al iniciar sesión con límite de seguridad.
+ * @param {string} codigoUsuario - Código UdG del usuario logueado.
+ * @param {string} rol - Rol del usuario ('Estudiante', 'Docente' o 'Coordinacion').
+ * @param {number} limiteMaximo - Cantidad máxima de registros a retornar (por defecto 100).
+ */
+function obtenerDatosPlataforma(codigoUsuario, rol, limiteMaximo = 100) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let tickets = [];
+    let avisos = [];
+    let justificantes = [];
+
+    const rolLimpio = String(rol).trim();
+    const codigoLimpio = String(codigoUsuario).trim();
+
+    // 1. Cargar Tickets
+    const hojaTickets = ss.getSheetByName("Tickets");
+    if (hojaTickets) {
+      const dataTickets = hojaTickets.getDataRange().getValues();
+      for (let i = 1; i < dataTickets.length; i++) {
+        const fila = dataTickets[i];
+        if (fila[0] && String(fila[0]).trim() !== "") {
+          if (rolLimpio === 'Coordinacion' || String(fila[1]).trim() === codigoLimpio) {
+            let fechaTicket = fila[7] instanceof Date ? fila[7].toLocaleDateString('es-MX') : String(fila[7]);
+            tickets.push({
+              id: String(fila[0]), 
+              code: String(fila[1]).trim(), 
+              student: String(fila[2]),
+              subject: String(fila[3]), 
+              details: String(fila[4]), 
+              status: String(fila[5]),
+              reply: String(fila[6]), 
+              date: fechaTicket
+            });
+          }
+        }
+      }
+    }
+
+    // 2. Cargar Avisos
+    const hojaAvisos = ss.getSheetByName("Avisos");
+    if (hojaAvisos) {
+      const dataAvisos = hojaAvisos.getDataRange().getValues();
+      for (let i = 1; i < dataAvisos.length; i++) {
+        const fila = dataAvisos[i];
+        if (fila[0] && String(fila[0]).trim() !== "") {
+          let fechaAviso = fila[2] instanceof Date ? fila[2].toLocaleDateString('es-MX') : String(fila[2]);
+          avisos.push({
+            id: String(fila[0]), 
+            title: String(fila[1]), 
+            date: fechaAviso, 
+            cat: String(fila[3]), 
+            urgent: String(fila[4]).trim() === 'Sí', 
+            desc: String(fila[5])
+          });
+        }
+      }
+    }
+
+    // 3. Cargar Justificantes
+    const hojaJustificantes = ss.getSheetByName("Justificantes");
+    if (hojaJustificantes) {
+      const dataJus = hojaJustificantes.getDataRange().getValues();
+      for (let i = 1; i < dataJus.length; i++) {
+        const fila = dataJus[i];
+        if (fila[0] && String(fila[0]).trim() !== "") {
+          if (rolLimpio === 'Coordinacion' || String(fila[1]).trim() === codigoLimpio) {
+            let fechaJus = fila[9] instanceof Date ? fila[9].toLocaleDateString('es-MX') : String(fila[9]);
+            justificantes.push({
+              id: String(fila[0]),
+              code: String(fila[1]).trim(),
+              student: String(fila[2]),
+              reason: String(fila[3]),
+              teachers: String(fila[4]),
+              startDate: String(fila[5]),
+              endDate: String(fila[6]),
+              fileName: String(fila[7]),
+              status: String(fila[8]),
+              date: fechaJus
+            });
+          }
+        }
+      }
+    }
+
+    // 4. Cargar Horas Integrales
+    let horas = [];
+    const hojaHoras = ss.getSheetByName("HorasIntegrales");
+    if (hojaHoras) {
+      const dataHoras = hojaHoras.getDataRange().getValues();
+      for (let i = 1; i < dataHoras.length; i++) {
+        const fila = dataHoras[i];
+        if (fila[0] && String(fila[0]).trim() !== "") {
+          if (rolLimpio === 'Coordinacion' || String(fila[1]).trim() === codigoLimpio) {
+           horas.push({
+              id: String(fila[0]),
+              code: String(fila[1]).trim(),
+              student: String(fila[2]),
+              confirmo64: String(fila[3]) === 'Sí',
+              files: String(fila[4]),
+              status: String(fila[5]),
+              date: String(fila[6]),
+              horasAprobadas: Number(fila[7]) || 0 // NUEVA LÍNEA: Lee la columna H
+            });
+          }
+        }
+      }
+    }
+
+   return { 
+      exito: true, 
+      tickets: tickets.reverse().slice(0, limiteMaximo), 
+      avisos: avisos.reverse().slice(0, limiteMaximo),
+      justificantes: justificantes.reverse().slice(0, limiteMaximo),
+      horas: horas.reverse() 
+    };
+  } catch (error) {
+    return { exito: false, mensaje: "Error cargando la base de datos: " + error.toString() };
+  }
+}
+/**
+ * Envía un código de 6 dígitos al correo proporcionado para verificar la cuenta.
+ */
+function enviarCodigoVerificacion(email, nombre) {
+  try {
+    // Genera un código aleatorio de 6 dígitos (ej. 482910)
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    const asunto = "Código de Verificación - Coordinación INCO";
+    const cuerpo = `Hola ${nombre},\n\nTu código de verificación para completar tu registro en el portal de la Coordinación INCO es:\n\n👉 ${codigo} 👈\n\nSi no solicitaste este código, puedes ignorar este mensaje.\n\nSaludos,\nCoordinación de Computación CUCEI.`;
+    
+    // Enviamos el correo usando los servidores de Google
+    MailApp.sendEmail({
+      to: email,
+      subject: asunto,
+      body: cuerpo
+    });
+    
+    // Retornamos el código al frontend para que React pueda validarlo
+    return { exito: true, codigoGenerado: codigo };
+  } catch (error) {
+    return { exito: false, mensaje: "Error al enviar el correo: " + error.toString() };
+  }
+}
+function forzarPermisosDeCorreo() {
+  // Función exclusiva para que Google detecte el permiso
+  MailApp.sendEmail(Session.getActiveUser().getEmail(), "Autorización", "Éxito");
+}
+
+/**
+ * Registra un nuevo ticket de atención en la hoja "Tickets".
+ */
+function registrarNuevoTicket(datos) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Tickets");
+    const nuevoId = generarIdUnico('INC-');
+    
+    // Obtenemos la fecha actual en formato legible (Ej: 25/09/2026)
+    const fechaActual = new Date().toLocaleDateString('es-MX');
+
+    // Insertamos la fila en el orden exacto de las columnas de la hoja
+    sheet.appendRow([
+      nuevoId,               // A: ID_Ticket
+      datos.code,            // B: Codigo_Estudiante
+      datos.student,         // C: Nombre_Estudiante
+      datos.subject,         // D: Asunto
+      datos.details,         // E: Detalles
+      "Pendiente",           // F: Estatus
+      "",                    // G: Respuesta (inicia vacía)
+      fechaActual            // H: Fecha
+    ]);
+
+    // Retornamos el ticket formateado para que React lo dibuje de inmediato
+    return { 
+      exito: true, 
+      ticket: {
+        id: nuevoId,
+        code: datos.code,
+        student: datos.student,
+        subject: datos.subject,
+        details: datos.details,
+        status: "Pendiente",
+        reply: "",
+        date: fechaActual
+      }
+    };
+  } catch(error) {
+    return { exito: false, mensaje: "Error al guardar el ticket: " + error.toString() };
+  }
+}
+
+/**
+ * Guarda la respuesta del administrador y cambia el estatus a "Atendido".
+ */
+function responderTicketAdmin(ticketId, respuestaAdmin) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Tickets");
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0].toString() === ticketId.toString()) {
+        // Encontramos la fila (sumamos 1 porque la matriz inicia en 0 y Google Sheets en 1)
+        const numeroFila = i + 1;
+        
+        // Columna 6 = Estatus, Columna 7 = Respuesta
+        sheet.getRange(numeroFila, 6).setValue("Atendido");
+        sheet.getRange(numeroFila, 7).setValue(respuestaAdmin);
+        
+        return { exito: true };
+      }
+    }
+    return { exito: false, mensaje: "El ticket no se encontró en la base de datos." };
+  } catch(error) {
+    return { exito: false, mensaje: "Error al procesar la respuesta: " + error.toString() };
+  }
+}
+
+/**
+ * Registra un nuevo justificante en la hoja Google Sheets y lo guarda en la carpeta específica.
+ */
+function registrarJustificante(datos) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Justificantes");
+    const nuevoId = generarIdUnico('JUS-');
+    const fechaActual = new Date().toLocaleDateString('es-MX');
+
+    let fileUrl = "Sin archivo";
+
+    if (datos.fileData && datos.fileName) {
+      const splitBase = datos.fileData.split(',');
+      const type = splitBase[0].split(';')[0].replace('data:', '');
+      const byteCharacters = Utilities.base64Decode(splitBase[1]);
+      
+      // 1. Extraer la extensión del archivo original (ej: pdf, jpg)
+      const extension = datos.fileName.split('.').pop();
+      
+      // 2. Formatear el texto para el nombre (quitar espacios en blanco del nombre y cambiar / por - en fecha)
+      const nombreLimpio = datos.student.replace(/\s+/g, '');
+      const fechaLimpia = fechaActual.replace(/\//g, '-');
+      
+      // 3. Crear el nombre inteligente estandarizado
+      const nombreInteligente = `${datos.code}_${nombreLimpio}_${datos.reason}_${fechaLimpia}.${extension}`;
+      
+      const blob = Utilities.newBlob(byteCharacters, type, nombreInteligente);
+      
+      // 4. GUARDAR EN LA SUBCARPETA "JUSTIFICANTES"
+      // Sustituye el texto entre comillas por el ID real de tu subcarpeta en Drive
+      const folderIdJustificantes = "1FYLyqOiFs90s337WMALx763R5iTxg9LW"; 
+      const folder = DriveApp.getFolderById(folderIdJustificantes);
+      
+      // Crea el archivo dentro de esa subcarpeta en lugar de la raíz
+      const file = folder.createFile(blob);
+      
+      // Otorga permisos de lectura y extrae la URL para la base de datos
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      fileUrl = file.getUrl();
+    }
+
+    sheet.appendRow([
+      nuevoId,               // A: ID_Justificante
+      datos.code,            // B: Codigo_Estudiante
+      datos.student,         // C: Nombre_Estudiante
+      datos.reason,          // D: Motivo
+      datos.teachers,        // E: Materias
+      datos.startDate,       // F: Fecha_Inicio_Falta
+      datos.endDate || datos.startDate, // G: Fecha_Fin_Falta
+      fileUrl,               // H: URL DEL ARCHIVO EN DRIVE
+      "Pendiente",           // I: Estatus
+      fechaActual            // J: Fecha_Solicitud
+    ]);
+
+    return { 
+      exito: true, 
+      justificante: {
+        id: nuevoId, 
+        code: datos.code, 
+        student: datos.student, 
+        reason: datos.reason, 
+        teachers: datos.teachers, 
+        startDate: datos.startDate, 
+        endDate: datos.endDate || datos.startDate,
+        fileName: fileUrl, 
+        status: "Pendiente", 
+        date: fechaActual
+      }
+    };
+  } catch(error) {
+    return { exito: false, mensaje: "Error al guardar el justificante: " + error.toString() };
+  }
+}
+
+/**
+ * Función exclusiva para forzar la ventana de autorización de Google Drive
+ */
+function forzarPermisosDeDrive() {
+  DriveApp.getRootFolder();
+}
+
+/**
+ * Dictamina (Aprobar/Rechazar) un justificante. Resuelve el error de red en el Administrador.
+ */
+function dictaminarJustificante(justificanteId, nuevoEstatus) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Justificantes");
+    if (!sheet) return { exito: false, mensaje: "No existe la pestaña Justificantes en la base de datos." };
+
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(justificanteId).trim()) {
+        const numeroFila = i + 1;
+        // Columna 9 = Estatus (I)
+        sheet.getRange(numeroFila, 9).setValue(nuevoEstatus);
+        return { exito: true };
+      }
+    }
+    return { exito: false, mensaje: "Justificante no encontrado en la base de datos." };
+  } catch(error) {
+    return { exito: false, mensaje: "Error al actualizar estatus: " + error.toString() };
+  }
+}
+
+/**
+ * Función exclusiva para forzar la ventana de autorización de Google Drive
+ */
+function forzarPermisosDeDrive() {
+  DriveApp.getRootFolder();
+}
+
+/**
+ * Envía una nueva solicitud de Horas Integrales con múltiples archivos.
+ */
+function registrarSolicitudHoras(datos) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("HorasIntegrales");
+    if(!sheet) return { exito: false, mensaje: "No existe la hoja HorasIntegrales" };
+
+    const nuevoId = generarIdUnico('HRS-');
+    const fechaActual = new Date().toLocaleDateString('es-MX');
+    
+    // ID DE LA CARPETA DONDE SE GUARDARÁN LAS EVIDENCIAS DE HORAS INTEGRALES
+    const folderIdHoras = "15Qc4mLLaDB0TYxonEiqKEmtoAZKF-NNf"; 
+    const folder = DriveApp.getFolderById(folderIdHoras);
+    
+    let urls = [];
+    
+    // Guardar múltiples archivos
+    if (datos.archivos && datos.archivos.length > 0) {
+      for (let i = 0; i < datos.archivos.length; i++) {
+        let fileObj = datos.archivos[i];
+        let splitBase = fileObj.data.split(',');
+        let type = splitBase[0].split(';')[0].replace('data:', '');
+        let byteCharacters = Utilities.base64Decode(splitBase[1]);
+        
+        let extension = fileObj.name.split('.').pop();
+        let nombreLimpio = datos.student.replace(/\s+/g, '');
+        let nombreArchivo = `${datos.code}_${nombreLimpio}_Evidencia${i+1}_${fechaActual.replace(/\//g, '-')}.${extension}`;
+        
+        let blob = Utilities.newBlob(byteCharacters, type, nombreArchivo);
+        let file = folder.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        urls.push(file.getUrl());
+      }
+    }
+
+    const urlsString = urls.join(', ');
+
+    sheet.appendRow([
+      nuevoId, datos.code, datos.student, datos.confirma64 ? "Sí" : "No", 
+      urlsString, "Pendiente", fechaActual
+    ]);
+
+    return { exito: true, solicitud: { id: nuevoId, code: datos.code, student: datos.student, confirmo64: datos.confirma64, files: urlsString, status: "Pendiente", date: fechaActual }};
+  } catch(e) {
+    return { exito: false, mensaje: "Error al guardar: " + e.toString() };
+  }
+}
+
+/**
+ * Agrega más archivos a una solicitud devuelta y la regresa a estado 'Pendiente'
+ */
+function agregarArchivosHoras(id, nuevosArchivos) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("HorasIntegrales");
+    const data = sheet.getDataRange().getValues();
+    
+    const folderIdHoras = "15Qc4mLLaDB0TYxonEiqKEmtoAZKF-NNf"; 
+    const folder = DriveApp.getFolderById(folderIdHoras);
+    const fechaActual = new Date().toLocaleDateString('es-MX');
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(id).trim()) {
+        let urlsExistentes = data[i][4] ? String(data[i][4]).trim() : "";
+        let nuevasUrls = [];
+        
+        for (let j = 0; j < nuevosArchivos.length; j++) {
+          let fileObj = nuevosArchivos[j];
+          let splitBase = fileObj.data.split(',');
+          let type = splitBase[0].split(';')[0].replace('data:', '');
+          let byteCharacters = Utilities.base64Decode(splitBase[1]);
+          let extension = fileObj.name.split('.').pop();
+          
+          let nombreArchivo = `${data[i][1]}_AnexoExtra_${fechaActual.replace(/\//g, '-')}_${Math.floor(Math.random()*1000)}.${extension}`;
+          let blob = Utilities.newBlob(byteCharacters, type, nombreArchivo);
+          let file = folder.createFile(blob);
+          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          nuevasUrls.push(file.getUrl());
+        }
+        
+        const stringFinalUrls = urlsExistentes ? (urlsExistentes + ", " + nuevasUrls.join(', ')) : nuevasUrls.join(', ');
+        
+        sheet.getRange(i + 1, 5).setValue(stringFinalUrls); // Actualizar URLs
+        sheet.getRange(i + 1, 6).setValue("Pendiente");      // Regresar estatus a Pendiente
+        
+        return { exito: true, nuevasUrls: stringFinalUrls };
+      }
+    }
+    return { exito: false, mensaje: "Solicitud no encontrada" };
+  } catch(e) {
+    return { exito: false, mensaje: "Error al actualizar: " + e.toString() };
+  }
+}
+
+/**
+ * El admin aprueba o devuelve la solicitud
+ */
+function dictaminarHoras(id, nuevoEstatus, horasOtorgadas = 0) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("HorasIntegrales");
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(id).trim()) {
+        sheet.getRange(i + 1, 6).setValue(nuevoEstatus); // Actualiza estatus en F
+        
+        // Si se aprueba, guardamos la cantidad de horas en la columna H
+        if (nuevoEstatus === 'Aprobado') {
+          sheet.getRange(i + 1, 8).setValue(horasOtorgadas);
+        }
+        return { exito: true };
+      }
+    }
+    return { exito: false, mensaje: "No encontrado" };
+  } catch(e) { return { exito: false, mensaje: e.toString() }; }
+}
+
+/**
+ * Publica un nuevo aviso en la plataforma
+ */
+function publicarNuevoAviso(datos) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Avisos");
+    if (!sheet) return { exito: false, mensaje: "No existe la hoja Avisos en la base de datos." };
+
+    const nuevoId = generarIdUnico('AVS-');
+    const fechaActual = new Date().toLocaleDateString('es-MX');
+
+    sheet.appendRow([
+      nuevoId,
+      datos.title,
+      fechaActual,
+      datos.cat,
+      datos.urgent ? "Sí" : "No", // El frontend manda un booleano, lo guardamos como texto
+      datos.desc
+    ]);
+
+    // Retornamos el objeto para que React lo dibuje inmediatamente sin recargar
+    return {
+      exito: true,
+      aviso: {
+        id: nuevoId,
+        title: datos.title,
+        date: fechaActual,
+        cat: datos.cat,
+        urgent: datos.urgent,
+        desc: datos.desc
+      }
+    };
+  } catch (e) {
+    return { exito: false, mensaje: "Error al publicar: " + e.toString() };
+  }
+}
