@@ -95,9 +95,12 @@ function registrarUsuario(datosUsuario) {
 }
 
 /**
- * Obtiene toda la información necesaria al iniciar sesión (Tickets y Avisos).
+ * Carga Tickets, Avisos y Justificantes al iniciar sesión con límite de seguridad.
+ * @param {string} codigoUsuario - Código UdG del usuario logueado.
+ * @param {string} rol - Rol del usuario ('Estudiante', 'Docente' o 'Coordinacion').
+ * @param {number} limiteMaximo - Cantidad máxima de registros a retornar (por defecto 100).
  */
-function obtenerDatosPlataforma(codigoUsuario, rol) {
+function obtenerDatosPlataforma(codigoUsuario, rol, limiteMaximo = 100) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let tickets = [];
@@ -136,15 +139,16 @@ function obtenerDatosPlataforma(codigoUsuario, rol) {
     if (hojaAvisos) {
       const dataAvisos = hojaAvisos.getDataRange().getValues();
       for (let i = 1; i < dataAvisos.length; i++) {
-        if (dataAvisos[i][0] && String(dataAvisos[i][0]).trim() !== "") {
-          let fechaAviso = dataAvisos[i][2] instanceof Date ? dataAvisos[i][2].toLocaleDateString('es-MX') : String(dataAvisos[i][2]);
+        const fila = dataAvisos[i];
+        if (fila[0] && String(fila[0]).trim() !== "") {
+          let fechaAviso = fila[2] instanceof Date ? fila[2].toLocaleDateString('es-MX') : String(fila[2]);
           avisos.push({
-            id: String(dataAvisos[i][0]), 
-            title: String(dataAvisos[i][1]), 
+            id: String(fila[0]), 
+            title: String(fila[1]), 
             date: fechaAviso, 
-            cat: String(dataAvisos[i][3]), 
-            urgent: String(dataAvisos[i][4]).trim() === 'Sí', 
-            desc: String(dataAvisos[i][5])
+            cat: String(fila[3]), 
+            urgent: String(fila[4]).trim() === 'Sí', 
+            desc: String(fila[5])
           });
         }
       }
@@ -158,7 +162,7 @@ function obtenerDatosPlataforma(codigoUsuario, rol) {
         const fila = dataJus[i];
         if (fila[0] && String(fila[0]).trim() !== "") {
           if (rolLimpio === 'Coordinacion' || String(fila[1]).trim() === codigoLimpio) {
-            let fechaJus = fila[8] instanceof Date ? fila[8].toLocaleDateString('es-MX') : String(fila[8]);
+            let fechaJus = fila[9] instanceof Date ? fila[9].toLocaleDateString('es-MX') : String(fila[9]);
             justificantes.push({
               id: String(fila[0]),
               code: String(fila[1]).trim(),
@@ -166,8 +170,9 @@ function obtenerDatosPlataforma(codigoUsuario, rol) {
               reason: String(fila[3]),
               teachers: String(fila[4]),
               startDate: String(fila[5]),
-              fileName: String(fila[6]),
-              status: String(fila[7]),
+              endDate: String(fila[6]),
+              fileName: String(fila[7]),
+              status: String(fila[8]),
               date: fechaJus
             });
           }
@@ -177,15 +182,14 @@ function obtenerDatosPlataforma(codigoUsuario, rol) {
 
     return { 
       exito: true, 
-      tickets: tickets.reverse(), 
-      avisos: avisos.reverse(),
-      justificantes: justificantes.reverse() 
+      tickets: tickets.reverse().slice(0, limiteMaximo), 
+      avisos: avisos.reverse().slice(0, limiteMaximo),
+      justificantes: justificantes.reverse().slice(0, limiteMaximo) 
     };
   } catch (error) {
     return { exito: false, mensaje: "Error cargando la base de datos: " + error.toString() };
   }
 }
-
 /**
  * Envía un código de 6 dígitos al correo proporcionado para verificar la cuenta.
  */
@@ -284,7 +288,7 @@ function responderTicketAdmin(ticketId, respuestaAdmin) {
 }
 
 /**
- * Registra un nuevo justificante y guarda el archivo en Google Drive.
+ * Registra un nuevo justificante en la hoja Google Sheets y lo guarda en la carpeta específica.
  */
 function registrarJustificante(datos) {
   try {
@@ -294,18 +298,32 @@ function registrarJustificante(datos) {
 
     let fileUrl = "Sin archivo";
 
-    // Si el usuario adjuntó un archivo (PDF/Imagen)
     if (datos.fileData && datos.fileName) {
-      // Separar los metadatos de la cadena base64
       const splitBase = datos.fileData.split(',');
       const type = splitBase[0].split(';')[0].replace('data:', '');
       const byteCharacters = Utilities.base64Decode(splitBase[1]);
       
-      // Crear el archivo físico
-      const blob = Utilities.newBlob(byteCharacters, type, datos.fileName);
-      const file = DriveApp.createFile(blob);
+      // 1. Extraer la extensión del archivo original (ej: pdf, jpg)
+      const extension = datos.fileName.split('.').pop();
       
-      // Darle permisos para que el administrador (y el alumno) puedan verlo con el enlace
+      // 2. Formatear el texto para el nombre (quitar espacios en blanco del nombre y cambiar / por - en fecha)
+      const nombreLimpio = datos.student.replace(/\s+/g, '');
+      const fechaLimpia = fechaActual.replace(/\//g, '-');
+      
+      // 3. Crear el nombre inteligente estandarizado
+      const nombreInteligente = `${datos.code}_${nombreLimpio}_${datos.reason}_${fechaLimpia}.${extension}`;
+      
+      const blob = Utilities.newBlob(byteCharacters, type, nombreInteligente);
+      
+      // 4. GUARDAR EN LA SUBCARPETA "JUSTIFICANTES"
+      // Sustituye el texto entre comillas por el ID real de tu subcarpeta en Drive
+      const folderIdJustificantes = "1FYLyqOiFs90s337WMALx763R5iTxg9LW"; 
+      const folder = DriveApp.getFolderById(folderIdJustificantes);
+      
+      // Crea el archivo dentro de esa subcarpeta en lugar de la raíz
+      const file = folder.createFile(blob);
+      
+      // Otorga permisos de lectura y extrae la URL para la base de datos
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       fileUrl = file.getUrl();
     }
@@ -316,22 +334,61 @@ function registrarJustificante(datos) {
       datos.student,         // C: Nombre_Estudiante
       datos.reason,          // D: Motivo
       datos.teachers,        // E: Materias
-      datos.startDate,       // F: Fecha_Falta
-      fileUrl,               // G: URL DEL ARCHIVO EN DRIVE
-      "Pendiente",           // H: Estatus
-      fechaActual            // I: Fecha_Solicitud
+      datos.startDate,       // F: Fecha_Inicio_Falta
+      datos.endDate || datos.startDate, // G: Fecha_Fin_Falta
+      fileUrl,               // H: URL DEL ARCHIVO EN DRIVE
+      "Pendiente",           // I: Estatus
+      fechaActual            // J: Fecha_Solicitud
     ]);
 
     return { 
       exito: true, 
       justificante: {
-        id: nuevoId, code: datos.code, student: datos.student, 
-        reason: datos.reason, teachers: datos.teachers, startDate: datos.startDate, 
-        fileName: fileUrl, status: "Pendiente", date: fechaActual
+        id: nuevoId, 
+        code: datos.code, 
+        student: datos.student, 
+        reason: datos.reason, 
+        teachers: datos.teachers, 
+        startDate: datos.startDate, 
+        endDate: datos.endDate || datos.startDate,
+        fileName: fileUrl, 
+        status: "Pendiente", 
+        date: fechaActual
       }
     };
   } catch(error) {
     return { exito: false, mensaje: "Error al guardar el justificante: " + error.toString() };
+  }
+}
+
+/**
+ * Función exclusiva para forzar la ventana de autorización de Google Drive
+ */
+function forzarPermisosDeDrive() {
+  DriveApp.getRootFolder();
+}
+
+/**
+ * Dictamina (Aprobar/Rechazar) un justificante. Resuelve el error de red en el Administrador.
+ */
+function dictaminarJustificante(justificanteId, nuevoEstatus) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Justificantes");
+    if (!sheet) return { exito: false, mensaje: "No existe la pestaña Justificantes en la base de datos." };
+
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(justificanteId).trim()) {
+        const numeroFila = i + 1;
+        // Columna 9 = Estatus (I)
+        sheet.getRange(numeroFila, 9).setValue(nuevoEstatus);
+        return { exito: true };
+      }
+    }
+    return { exito: false, mensaje: "Justificante no encontrado en la base de datos." };
+  } catch(error) {
+    return { exito: false, mensaje: "Error al actualizar estatus: " + error.toString() };
   }
 }
 
