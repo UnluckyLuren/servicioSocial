@@ -180,11 +180,36 @@ function obtenerDatosPlataforma(codigoUsuario, rol, limiteMaximo = 100) {
       }
     }
 
-    return { 
+    // 4. Cargar Horas Integrales
+    let horas = [];
+    const hojaHoras = ss.getSheetByName("HorasIntegrales");
+    if (hojaHoras) {
+      const dataHoras = hojaHoras.getDataRange().getValues();
+      for (let i = 1; i < dataHoras.length; i++) {
+        const fila = dataHoras[i];
+        if (fila[0] && String(fila[0]).trim() !== "") {
+          if (rolLimpio === 'Coordinacion' || String(fila[1]).trim() === codigoLimpio) {
+           horas.push({
+              id: String(fila[0]),
+              code: String(fila[1]).trim(),
+              student: String(fila[2]),
+              confirmo64: String(fila[3]) === 'Sí',
+              files: String(fila[4]),
+              status: String(fila[5]),
+              date: String(fila[6]),
+              horasAprobadas: Number(fila[7]) || 0 // NUEVA LÍNEA: Lee la columna H
+            });
+          }
+        }
+      }
+    }
+
+   return { 
       exito: true, 
       tickets: tickets.reverse().slice(0, limiteMaximo), 
       avisos: avisos.reverse().slice(0, limiteMaximo),
-      justificantes: justificantes.reverse().slice(0, limiteMaximo) 
+      justificantes: justificantes.reverse().slice(0, limiteMaximo),
+      horas: horas.reverse() 
     };
   } catch (error) {
     return { exito: false, mensaje: "Error cargando la base de datos: " + error.toString() };
@@ -397,4 +422,157 @@ function dictaminarJustificante(justificanteId, nuevoEstatus) {
  */
 function forzarPermisosDeDrive() {
   DriveApp.getRootFolder();
+}
+
+/**
+ * Envía una nueva solicitud de Horas Integrales con múltiples archivos.
+ */
+function registrarSolicitudHoras(datos) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("HorasIntegrales");
+    if(!sheet) return { exito: false, mensaje: "No existe la hoja HorasIntegrales" };
+
+    const nuevoId = generarIdUnico('HRS-');
+    const fechaActual = new Date().toLocaleDateString('es-MX');
+    
+    // ID DE LA CARPETA DONDE SE GUARDARÁN LAS EVIDENCIAS DE HORAS INTEGRALES
+    const folderIdHoras = "15Qc4mLLaDB0TYxonEiqKEmtoAZKF-NNf"; 
+    const folder = DriveApp.getFolderById(folderIdHoras);
+    
+    let urls = [];
+    
+    // Guardar múltiples archivos
+    if (datos.archivos && datos.archivos.length > 0) {
+      for (let i = 0; i < datos.archivos.length; i++) {
+        let fileObj = datos.archivos[i];
+        let splitBase = fileObj.data.split(',');
+        let type = splitBase[0].split(';')[0].replace('data:', '');
+        let byteCharacters = Utilities.base64Decode(splitBase[1]);
+        
+        let extension = fileObj.name.split('.').pop();
+        let nombreLimpio = datos.student.replace(/\s+/g, '');
+        let nombreArchivo = `${datos.code}_${nombreLimpio}_Evidencia${i+1}_${fechaActual.replace(/\//g, '-')}.${extension}`;
+        
+        let blob = Utilities.newBlob(byteCharacters, type, nombreArchivo);
+        let file = folder.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        urls.push(file.getUrl());
+      }
+    }
+
+    const urlsString = urls.join(', ');
+
+    sheet.appendRow([
+      nuevoId, datos.code, datos.student, datos.confirma64 ? "Sí" : "No", 
+      urlsString, "Pendiente", fechaActual
+    ]);
+
+    return { exito: true, solicitud: { id: nuevoId, code: datos.code, student: datos.student, confirmo64: datos.confirma64, files: urlsString, status: "Pendiente", date: fechaActual }};
+  } catch(e) {
+    return { exito: false, mensaje: "Error al guardar: " + e.toString() };
+  }
+}
+
+/**
+ * Agrega más archivos a una solicitud devuelta y la regresa a estado 'Pendiente'
+ */
+function agregarArchivosHoras(id, nuevosArchivos) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("HorasIntegrales");
+    const data = sheet.getDataRange().getValues();
+    
+    const folderIdHoras = "15Qc4mLLaDB0TYxonEiqKEmtoAZKF-NNf"; 
+    const folder = DriveApp.getFolderById(folderIdHoras);
+    const fechaActual = new Date().toLocaleDateString('es-MX');
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(id).trim()) {
+        let urlsExistentes = data[i][4] ? String(data[i][4]).trim() : "";
+        let nuevasUrls = [];
+        
+        for (let j = 0; j < nuevosArchivos.length; j++) {
+          let fileObj = nuevosArchivos[j];
+          let splitBase = fileObj.data.split(',');
+          let type = splitBase[0].split(';')[0].replace('data:', '');
+          let byteCharacters = Utilities.base64Decode(splitBase[1]);
+          let extension = fileObj.name.split('.').pop();
+          
+          let nombreArchivo = `${data[i][1]}_AnexoExtra_${fechaActual.replace(/\//g, '-')}_${Math.floor(Math.random()*1000)}.${extension}`;
+          let blob = Utilities.newBlob(byteCharacters, type, nombreArchivo);
+          let file = folder.createFile(blob);
+          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          nuevasUrls.push(file.getUrl());
+        }
+        
+        const stringFinalUrls = urlsExistentes ? (urlsExistentes + ", " + nuevasUrls.join(', ')) : nuevasUrls.join(', ');
+        
+        sheet.getRange(i + 1, 5).setValue(stringFinalUrls); // Actualizar URLs
+        sheet.getRange(i + 1, 6).setValue("Pendiente");      // Regresar estatus a Pendiente
+        
+        return { exito: true, nuevasUrls: stringFinalUrls };
+      }
+    }
+    return { exito: false, mensaje: "Solicitud no encontrada" };
+  } catch(e) {
+    return { exito: false, mensaje: "Error al actualizar: " + e.toString() };
+  }
+}
+
+/**
+ * El admin aprueba o devuelve la solicitud
+ */
+function dictaminarHoras(id, nuevoEstatus, horasOtorgadas = 0) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("HorasIntegrales");
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(id).trim()) {
+        sheet.getRange(i + 1, 6).setValue(nuevoEstatus); // Actualiza estatus en F
+        
+        // Si se aprueba, guardamos la cantidad de horas en la columna H
+        if (nuevoEstatus === 'Aprobado') {
+          sheet.getRange(i + 1, 8).setValue(horasOtorgadas);
+        }
+        return { exito: true };
+      }
+    }
+    return { exito: false, mensaje: "No encontrado" };
+  } catch(e) { return { exito: false, mensaje: e.toString() }; }
+}
+
+/**
+ * Publica un nuevo aviso en la plataforma
+ */
+function publicarNuevoAviso(datos) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Avisos");
+    if (!sheet) return { exito: false, mensaje: "No existe la hoja Avisos en la base de datos." };
+
+    const nuevoId = generarIdUnico('AVS-');
+    const fechaActual = new Date().toLocaleDateString('es-MX');
+
+    sheet.appendRow([
+      nuevoId,
+      datos.title,
+      fechaActual,
+      datos.cat,
+      datos.urgent ? "Sí" : "No", // El frontend manda un booleano, lo guardamos como texto
+      datos.desc
+    ]);
+
+    // Retornamos el objeto para que React lo dibuje inmediatamente sin recargar
+    return {
+      exito: true,
+      aviso: {
+        id: nuevoId,
+        title: datos.title,
+        date: fechaActual,
+        cat: datos.cat,
+        urgent: datos.urgent,
+        desc: datos.desc
+      }
+    };
+  } catch (e) {
+    return { exito: false, mensaje: "Error al publicar: " + e.toString() };
+  }
 }

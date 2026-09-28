@@ -123,6 +123,7 @@
       const [globalTickets, setGlobalTickets] = useState([]);
       const [notices, setNotices] = useState([]); 
       const [globalJustificantes, setGlobalJustificantes] = useState([]);
+      const [globalHoras, setGlobalHoras] = useState([]);
 
       // Cargar datos reales al iniciar sesión
       useEffect(() => {
@@ -133,6 +134,7 @@
                 setGlobalTickets(res.tickets);
                 setNotices(res.avisos);
                 setGlobalJustificantes(res.justificantes || []);
+                setGlobalHoras(res.horas || []);
               }
             })
             .catch(err => console.error("Error de red cargando datos", err));
@@ -141,6 +143,7 @@
           setNotices([]);
           setNotifications([]);
           setGlobalJustificantes([]);
+          setGlobalHoras([]);
         }
       }, [isLoggedIn, user]);
 
@@ -239,6 +242,8 @@
                 { id: 'admin_justificantes', label: 'Aprobar Justificantes (Art. 53)', icon: 'shield-check', badge: 'Revisión' },
                 { id: 'avisos', label: 'Publicar Avisos Oficiales', icon: 'bell', badge: null },
                 { id: 'dudas', label: 'Preguntas Frecuentes FAQ', icon: 'help-circle', badge: null },
+                { id: 'admin_horas', label: 'Revisión Horas Integrales', icon: 'award', badge: 'Revisión' },
+                
               ]
             }
           ];
@@ -682,24 +687,54 @@
 
                 {isLoggedIn && user.role === 'Estudiante' && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-4 border-t border-slate-100 dark:border-slate-700/80 text-xs">
-                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                    
+                    {/* 1. Promedio General */}
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 flex flex-col justify-between">
                       <span className="text-slate-400 block text-[10px] uppercase font-bold">Promedio General</span>
                       <span className="text-lg font-black text-udg-navy dark:text-blue-400">{user.gpa} <span className="text-xs font-normal text-slate-400">/ 100</span></span>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Créditos Avance</span>
-                      <span className="text-lg font-black text-slate-800 dark:text-slate-100">{user.credits} <span className="text-xs font-normal text-slate-400">({Math.round((user.credits/user.totalCredits)*100)}%)</span></span>
+                    
+                    {/* 2. Créditos Avance con Indicador de Servicio Social */}
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 flex flex-col justify-between">
+                      <div>
+                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Créditos Avance</span>
+                        <span className="text-lg font-black text-slate-800 dark:text-slate-100 leading-none block mt-1">
+                          {user.credits} <span className="text-xs font-normal text-slate-400">({Math.round((user.credits/user.totalCredits)*100)}%)</span>
+                        </span>
+                      </div>
+                      
+                      {/* Badge Dinámico de Servicio y Prácticas */}
+                      <div className={`mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider w-max border ${
+                        (user.credits / user.totalCredits) >= 0.60 
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800/50' 
+                          : 'bg-slate-200 text-slate-500 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+                      }`}>
+                        <LucideIcon 
+                          name={(user.credits / user.totalCredits) >= 0.60 ? "check-circle" : "lock"} 
+                          className="w-3 h-3" 
+                        />
+                        {(user.credits / user.totalCredits) >= 0.60 ? "Apto SS y Prácticas" : "SS Bloqueado (<60%)"}
+                      </div>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                    
+                    {/* 3. Horas Integrales */}
+                    {/* 3. Horas Integrales Dinámicas */}
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 flex flex-col justify-between">
                       <span className="text-slate-400 block text-[10px] uppercase font-bold">Horas Integrales</span>
-                      <span className="text-lg font-black text-udg-gold">{user.integralHours} <span className="text-xs font-normal text-slate-400">/ {user.requiredHours}h</span></span>
+                      <span className="text-lg font-black text-udg-gold">
+                        {globalHoras.filter(h => h.code === user.code && h.status === 'Aprobado').reduce((sum, h) => sum + (Number(h.horasAprobadas) || 0), 0)} 
+                        <span className="text-xs font-normal text-slate-400"> / 64h</span>
+                      </span>
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                    
+                    {/* 4. Estatus SIIAU */}
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 flex flex-col justify-between">
                       <span className="text-slate-400 block text-[10px] uppercase font-bold">Estatus SIIAU</span>
                       <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
                         <LucideIcon name="check-circle-2" className="w-4 h-4" /> {user.status}
                       </span>
                     </div>
+
                   </div>
                 )}
               </div>
@@ -752,9 +787,10 @@
               {activeTab === 'modulares' && <ProyectosModularesModule showToast={showToast} user={user} />}
               {activeTab === 'ajuste' && <AjusteMateriasModule showToast={showToast} addNotification={addNotification} />}
               {activeTab === 'art33_35' && <ArticulosReglamentoModule user={user} showToast={showToast} addNotification={addNotification} />}
-              {activeTab === 'horas' && <HorasIntegralesModule user={user} showToast={showToast} />}
               {activeTab === 'malla' && <MallaCurricularModule />}
-              {activeTab === 'avisos' && <AvisosModule notices={notices} user={user} showToast={showToast} />}
+              {activeTab === 'avisos' && <AvisosModule notices={notices} setNotices={setNotices} user={user} showToast={showToast} addNotification={addNotification} />}
+              {activeTab === 'horas' && <HorasIntegralesModule user={user} showToast={showToast} addNotification={addNotification} globalHoras={globalHoras} setGlobalHoras={setGlobalHoras} />}
+              {activeTab === 'admin_horas' && <AdminHorasModule globalHoras={globalHoras} setGlobalHoras={setGlobalHoras} showToast={showToast} addNotification={addNotification} />}
 
               {activeTab === 'admin_panel' && (
                 <AdminPanelTickets 
@@ -1382,6 +1418,341 @@
   );
 }
 
+
+// ==========================================
+// MÓDULO ALUMNO: HORAS INTEGRALES
+// ==========================================
+function HorasIntegralesModule({ user, showToast, addNotification, globalHoras, setGlobalHoras }) {
+  const [files, setFiles] = useState([]);
+  const [confirmed, setConfirmed] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Buscar solicitudes de este alumno
+  const myRequests = globalHoras.filter(h => h.code === user.code);
+  const isApproved = myRequests.find(h => h.status === 'Aprobado');
+  const activeRequest = myRequests.find(h => h.status === 'Pendiente' || h.status === 'Devuelta');
+
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    
+    setFiles(prevFiles => {
+      // Validamos peso y evitamos archivos duplicados en la misma lista
+      const validFiles = selectedFiles.filter(f => {
+        if(f.size > 3 * 1024 * 1024) { 
+          showToast(`El archivo ${f.name} supera los 3MB`, "error"); 
+          return false; 
+        }
+        if(prevFiles.some(existing => existing.name === f.name)) {
+          showToast(`El archivo ${f.name} ya está en la lista`, "error"); 
+          return false;
+        }
+        return true;
+      });
+      // Acumulamos los nuevos con los que ya estaban
+      return [...prevFiles, ...validFiles];
+    });
+
+    // Limpiamos el input para que permita volver a seleccionar el mismo archivo si el usuario lo borra y se arrepiente
+    e.target.value = null; 
+  };
+
+  // Función para quitar un archivo de la lista antes de enviarlo
+  const handleRemoveFile = (indexToRemove) => {
+    setFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
+  };
+
+  const procesarArchivosB64 = async (archivosArray) => {
+    return Promise.all(archivosArray.map(file => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve({ name: file.name, data: reader.result });
+        reader.readAsDataURL(file);
+      });
+    }));
+  };
+
+  const handleSubmitNuevo = async (e) => {
+    e.preventDefault();
+    if(!confirmed) return showToast("Debes confirmar que completaste las horas.", "error");
+    if(files.length === 0) return showToast("Sube al menos una evidencia.", "error");
+    
+    setLoading(true);
+    const archivosProcesados = await procesarArchivosB64(files);
+    
+    try {
+      const res = await server.registrarSolicitudHoras({
+        code: user.code, student: user.name, confirma64: confirmed, archivos: archivosProcesados
+      });
+      if(res.exito) {
+        setGlobalHoras([res.solicitud, ...globalHoras]);
+        showToast("Archivos enviados a revisión correctamente.");
+        addNotification("Horas Integrales", "Tu solicitud fue recibida.", "info");
+      } else { showToast(res.mensaje, "error"); }
+    } catch(err) { showToast("Error de conexión", "error"); }
+    setLoading(false);
+  };
+
+  const handleSubirCorrecion = async () => {
+    if(files.length === 0) return showToast("Selecciona los archivos faltantes.", "error");
+    setLoading(true);
+    const archivosProcesados = await procesarArchivosB64(files);
+    try {
+      const res = await server.agregarArchivosHoras(activeRequest.id, archivosProcesados);
+      if(res.exito) {
+        const updated = globalHoras.map(h => h.id === activeRequest.id ? { ...h, status: 'Pendiente', files: res.nuevasUrls } : h);
+        setGlobalHoras(updated);
+        showToast("Archivos actualizados. Solicitud enviada a revisión.");
+        setFiles([]);
+      } else { showToast(res.mensaje, "error"); }
+    } catch(err) { showToast("Error de red", "error"); }
+    setLoading(false);
+  };
+
+  // VISTA 1: APROBADO (Completado)
+  if (isApproved) {
+    return (
+      <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl p-8 border border-emerald-200 dark:border-emerald-800 text-center space-y-4">
+        <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-lg text-white">
+          <LucideIcon name="check-circle" className="w-10 h-10" />
+        </div>
+        <h2 className="text-2xl font-black text-emerald-800 dark:text-emerald-400 font-display">¡Horas Integrales Completadas!</h2>
+        <p className="text-emerald-700 dark:text-emerald-200 text-sm max-w-md mx-auto">
+          La Coordinación ha validado satisfactoriamente tus evidencias. Has cumplido con el requisito de 64 horas integrales.
+        </p>
+      </div>
+    );
+  }
+
+  // VISTA 2: PENDIENTE O DEVUELTA
+  if (activeRequest) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+            <LucideIcon name="award" className="w-5 h-5 text-udg-gold" /> Estado de Trámite
+          </h3>
+          <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider ${activeRequest.status === 'Devuelta' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-amber-100 text-amber-700 border border-amber-300'}`}>
+            {activeRequest.status}
+          </span>
+        </div>
+
+        {activeRequest.status === 'Pendiente' ? (
+          <div className="bg-blue-50 dark:bg-slate-900/60 p-5 rounded-2xl border border-blue-200 dark:border-slate-700 flex items-center gap-4">
+            <LucideIcon name="clock" className="w-8 h-8 text-udg-blue shrink-0" />
+            <div>
+              <h4 className="font-bold text-slate-900 dark:text-white">Archivos en Revisión</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">El personal administrativo está validando tus constancias. Recibirás una notificación cuando cambie tu estatus.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="bg-red-50 dark:bg-red-900/20 p-5 rounded-2xl border border-red-200 dark:border-red-800 text-sm">
+              <h4 className="font-bold text-red-800 dark:text-red-400 flex items-center gap-2 mb-1"><LucideIcon name="alert-triangle" className="w-4 h-4"/> Solicitud Devuelta por Coordinación</h4>
+              <p className="text-red-700 dark:text-red-200 text-xs">Faltan evidencias o hay documentos incorrectos. Sube aquí los archivos adicionales para corregir tu trámite.</p>
+            </div>
+            
+            <div className="p-4 border border-dashed border-slate-300 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-900 space-y-3">
+              <label className="block font-bold text-sm text-slate-700 dark:text-slate-300">Añadir más constancias (Puedes subir una por una)</label>
+              <input type="file" multiple accept=".pdf,image/*" onChange={handleFileChange} className="w-full text-xs" />
+              
+              {/* LISTA DE ARCHIVOS CORRECCIÓN */}
+              {files.length > 0 && (
+                <div className="mt-2 space-y-1.5">
+                  {files.map((f, i) => (
+                    <div key={i} className="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px]">
+                      <span className="truncate max-w-[85%] font-medium text-slate-700 dark:text-slate-300">
+                        <LucideIcon name="file" className="w-3 h-3 inline mr-1 text-udg-blue" />
+                        {f.name}
+                      </span>
+                      <button type="button" onClick={() => handleRemoveFile(i)} className="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/40 p-1.5 rounded-md transition-colors" title="Eliminar">
+                        <LucideIcon name="trash-2" className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <button onClick={handleSubirCorrecion} disabled={loading || files.length === 0} className="w-full bg-udg-navy hover:bg-udg-blue text-white font-bold py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-xs disabled:opacity-50 mt-2">
+                {loading ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="upload-cloud" className="w-4 h-4" />} Enviar Corrección
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // VISTA 3: NUEVA SOLICITUD
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
+      <div className="border-b border-slate-100 dark:border-slate-700 pb-4">
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+          <LucideIcon name="award" className="w-5 h-5 text-udg-blue" />
+          Acreditación de Horas Integrales
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Sube todos tus reconocimientos, diplomas o constancias para juntar las 64 horas obligatorias.</p>
+      </div>
+
+      <form onSubmit={handleSubmitNuevo} className="space-y-4 text-xs">
+        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1 w-4 h-4 text-udg-blue rounded" />
+            <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
+              Declaro bajo protesta de decir verdad que la sumatoria de las constancias que voy a adjuntar cubre un mínimo de 64 horas integrales.
+            </span>
+          </label>
+        </div>
+
+        <div className="space-y-2">
+          <label className="block font-bold text-slate-700 dark:text-slate-300">Evidencias Digitales (Puedes subir una por una)</label>
+          <input type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp" onChange={handleFileChange} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2 text-slate-500 file:mr-3 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300" />
+          
+          {/* LISTA DE ARCHIVOS ACUMULADOS */}
+          {files.length > 0 && (
+            <div className="mt-3 space-y-2 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+              <p className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px] mb-2">
+                <LucideIcon name="check" className="w-3 h-3 inline mr-1"/> {files.length} archivo(s) listo(s) para enviar:
+              </p>
+              <ul className="space-y-1.5">
+                {files.map((f, i) => (
+                  <li key={i} className="flex justify-between items-center bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] shadow-sm">
+                    <span className="truncate max-w-[80%] font-medium text-slate-700 dark:text-slate-300">
+                      <LucideIcon name="file" className="w-3.5 h-3.5 inline mr-1.5 text-udg-blue dark:text-blue-400"/>
+                      {f.name} <span className="text-slate-400">({(f.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </span>
+                    <button type="button" onClick={() => handleRemoveFile(i)} className="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/40 p-1.5 rounded-md transition-colors" title="Eliminar de la lista">
+                      <LucideIcon name="trash-2" className="w-4 h-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-3 flex justify-end">
+          <button type="submit" disabled={loading || files.length === 0} className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-8 py-3 rounded-xl flex items-center gap-2 shadow-md transition-all disabled:opacity-50 text-sm">
+            {loading ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="send" className="w-4 h-4" />} Enviar Evidencias
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+// ==========================================
+// MÓDULO ADMIN: REVISIÓN DE HORAS
+// ==========================================
+function AdminHorasModule({ globalHoras, setGlobalHoras, showToast, addNotification }) {
+  const [loadingId, setLoadingId] = useState(null);
+  const [filter, setFilter] = useState('Pendiente'); // Pendiente, Aprobado, Devuelta
+
+  // NUEVO: Función para limpiar y formatear la fecha que viene de Google Sheets
+  const formatFechaLimpia = (fechaStr) => {
+    if (!fechaStr) return 'Fecha desconocida';
+    
+    const d = new Date(fechaStr);
+    // Si la fecha es válida, la formateamos a un texto corto y elegante (Ej: 28 sept 2026)
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('es-MX', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric' 
+      }); 
+    }
+    
+    // Fallback de seguridad por si el backend mandó la fecha en otro formato de texto
+    return String(fechaStr).split('T')[0];
+  };
+
+  const handleAction = async (id, accionEstatus, studentName) => {
+    setLoadingId(id);
+    try {
+      const res = await server.dictaminarHoras(id, accionEstatus);
+      if(res.exito) {
+        const updated = globalHoras.map(h => h.id === id ? { ...h, status: accionEstatus } : h);
+        setGlobalHoras(updated);
+        showToast(`Trámite ${accionEstatus} correctamente`);
+        addNotification("Dictamen Realizado", `Horas de ${studentName} han sido marcadas como ${accionEstatus}`, "success");
+      } else { showToast(res.mensaje, "error"); }
+    } catch(e) { showToast("Error de red", "error"); }
+    setLoadingId(null);
+  };
+
+  const listaFiltrada = globalHoras.filter(h => h.status === filter);
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5 text-xs">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+            <LucideIcon name="award" className="w-5 h-5 text-udg-gold" />
+            Dictamen de Horas Integrales
+          </h3>
+          <p className="text-slate-500 text-[11px] mt-1">Revisa las constancias enviadas por los alumnos para validar sus horas.</p>
+        </div>
+        
+        <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl shrink-0 overflow-x-auto">
+          {['Pendiente', 'Devuelta', 'Aprobado'].map(f => (
+            <button key={f} onClick={() => setFilter(f)} className={`px-4 py-1.5 rounded-lg font-bold transition-all ${filter === f ? 'bg-udg-navy text-white shadow' : 'text-slate-600 dark:text-slate-400'}`}>
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4 pt-2">
+        {listaFiltrada.length === 0 ? (
+          <p className="text-center py-6 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 bg-slate-50 dark:bg-slate-900/40">No hay trámites en estado: {filter}.</p>
+        ) : (
+          listaFiltrada.map(h => (
+            <div key={h.id} className="p-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 shadow-sm space-y-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-udg-blue dark:text-blue-400 font-bold">#{h.id}</span>
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white font-display">{h.student}</h4>
+                    <span className="text-slate-500 font-mono">(Cód: {h.code})</span>
+                  </div>
+                  <p className="text-[11px] font-semibold flex items-center gap-1.5">
+                    {h.confirmo64 ? <LucideIcon name="check-square" className="w-3.5 h-3.5 text-emerald-600"/> : <LucideIcon name="square" className="w-3.5 h-3.5 text-slate-400"/>}
+                    <span className={h.confirmo64 ? "text-emerald-700 dark:text-emerald-400" : "text-slate-500"}>Confirma contar con las 64 horas</span>
+                    
+                    {/* AQUÍ APLICAMOS LA FUNCIÓN DE FORMATEO DE FECHA */}
+                    <span className="text-slate-400 ml-2">• Enviado: {formatFechaLimpia(h.date)}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+                <span className="font-bold text-slate-700 dark:text-slate-300 block mb-2">Archivos de Evidencia:</span>
+                <div className="flex flex-wrap gap-2">
+                  {h.files.split(', ').map((url, i) => url && (
+                    <a key={i} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:border-udg-blue px-3 py-1.5 rounded-lg text-udg-navy dark:text-blue-400 font-semibold shadow-sm transition-all">
+                      <LucideIcon name="external-link" className="w-3.5 h-3.5" /> Archivo {i + 1}
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              {(filter === 'Pendiente' || filter === 'Devuelta') && (
+                <div className="flex justify-end gap-3 pt-2">
+                  <button onClick={() => handleAction(h.id, 'Devuelta', h.student)} disabled={loadingId === h.id} className="bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-500 border border-amber-200 dark:border-amber-800 hover:bg-amber-50 font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all disabled:opacity-50">
+                    <LucideIcon name="alert-triangle" className="w-4 h-4" /> Devolver Solicitud
+                  </button>
+                  <button onClick={() => handleAction(h.id, 'Aprobado', h.student)} disabled={loadingId === h.id} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow transition-all disabled:opacity-50">
+                    {loadingId === h.id ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin"/> : <LucideIcon name="check-circle" className="w-4 h-4" />}
+                    Aprobar Horas
+                  </button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
     function ConstanciasDocenteModule({ user, showToast }) {
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
@@ -1994,26 +2365,6 @@ function AdminJustificantesModule({ showToast, addNotification, globalJustifican
       );
     }
 
-    function HorasIntegralesModule({ user }) {
-      const percentage = Math.min(100, Math.round(((user.integralHours || 52) / (user.requiredHours || 60)) * 100));
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <LucideIcon name="award" className="w-5 h-5 text-udg-gold" />
-            Horas Integrales ({user.integralHours || 52} / {user.requiredHours || 60} hrs)
-          </h3>
-          <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
-            <div className="flex justify-between font-semibold">
-              <span>Porcentaje de cumplimiento</span>
-              <span className="text-udg-navy dark:text-blue-400 font-mono font-bold">{percentage}%</span>
-            </div>
-            <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div className="h-full bg-udg-gold transition-all" style={{ width: `${percentage}%` }}></div>
-            </div>
-          </div>
-        </div>
-      );
-    }
 
     function MallaCurricularModule() {
       return (
@@ -2027,49 +2378,122 @@ function AdminJustificantesModule({ showToast, addNotification, globalJustifican
       );
     }
 
-    function AvisosModule({ notices, user, showToast }) {
-      const [newTitle, setNewTitle] = useState('');
-      const [newDesc, setNewDesc] = useState('');
+function AvisosModule({ notices, setNotices, user, showToast, addNotification }) {
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newCat, setNewCat] = useState('Académico');
+  const [newUrgent, setNewUrgent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-      const handleAddNotice = (e) => {
-        e.preventDefault();
-        if (!newTitle.trim()) return;
-        showToast("Nuevo aviso oficial publicado correctamente");
-        setNewTitle('');
-        setNewDesc('');
-      };
+  // ESTADOS PARA PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5; // Mostrar 5 avisos por página
+  
+  const totalPages = Math.ceil(notices.length / itemsPerPage) || 1;
+  const currentNotices = notices.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <LucideIcon name="bell" className="w-5 h-5 text-udg-gold" />
-            Tablón de Avisos Oficiales
-          </h3>
+  const handleAddNotice = async (e) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newDesc.trim()) return showToast("El título y la descripción son obligatorios", "error");
 
-          {user.role === 'Coordinacion' && (
-            <form onSubmit={handleAddNotice} className="p-4 bg-amber-50 dark:bg-slate-900/80 rounded-xl border border-amber-200 dark:border-slate-700 space-y-2 mb-4">
-              <h4 className="font-bold text-amber-900 dark:text-amber-300">Publicar Nuevo Aviso Institucional:</h4>
-              <input type="text" placeholder="Título del aviso" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="w-full p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700" />
-              <textarea placeholder="Descripción del aviso" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="w-full p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"></textarea>
-              <button type="submit" className="bg-udg-gold text-white font-bold px-4 py-1.5 rounded-lg">Publicar Aviso</button>
-            </form>
-          )}
+    setLoading(true);
+    try {
+      const res = await server.publicarNuevoAviso({ title: newTitle, desc: newDesc, cat: newCat, urgent: newUrgent });
+      if (res.exito) {
+        setNotices([res.aviso, ...notices]); // Agrega el nuevo aviso al inicio de la lista
+        showToast("Aviso publicado correctamente");
+        if(addNotification && newUrgent) addNotification("Aviso Urgente", newTitle, "error");
+        
+        // Limpiar formulario y resetear página
+        setNewTitle(''); setNewDesc(''); setNewCat('Académico'); setNewUrgent(false);
+        setCurrentPage(1); 
+      } else {
+        showToast(res.mensaje, "error");
+      }
+    } catch (err) {
+      showToast("Error de conexión al publicar", "error");
+    }
+    setLoading(false);
+  };
 
-          <div className="space-y-3">
-            {notices.map(n => (
-              <div key={n.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 space-y-1">
-                <span className="text-[10px] font-bold text-udg-navy dark:text-blue-400">{n.cat} • {n.date}</span>
-                <h4 className="font-bold text-slate-900 dark:text-white font-display">{n.title}</h4>
-                <p className="text-slate-500">{n.desc}</p>
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5 text-xs">
+      <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
+        <LucideIcon name="bell" className="w-5 h-5 text-udg-gold" />
+        Tablón de Avisos Oficiales
+      </h3>
+
+      {/* FORMULARIO SOLO VISIBLE PARA EL ADMINISTRADOR */}
+      {user.role === 'Coordinacion' && (
+        <form onSubmit={handleAddNotice} className="p-5 bg-amber-50 dark:bg-slate-900/80 rounded-xl border border-amber-200 dark:border-slate-700 space-y-3 mb-6">
+          <h4 className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-2 text-sm">
+            <LucideIcon name="megaphone" className="w-4 h-4" /> Publicar Nuevo Aviso
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="md:col-span-2">
+              <input type="text" placeholder="Título corto y claro del aviso..." value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 outline-none focus:ring-2 focus:ring-udg-gold" />
+            </div>
+            <div>
+              <select value={newCat} onChange={(e) => setNewCat(e.target.value)} className="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 outline-none focus:ring-2 focus:ring-udg-gold font-semibold">
+                <option value="Académico">Académico</option>
+                <option value="Trámites">Trámites</option>
+                <option value="Eventos">Eventos y Becas</option>
+                <option value="Servicio Social">Servicio Social</option>
+              </select>
+            </div>
+          </div>
+          <textarea placeholder="Redacta los detalles, fechas límite o instrucciones del aviso..." rows="3" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="w-full p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 outline-none focus:ring-2 focus:ring-udg-gold"></textarea>
+          
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2 border-t border-amber-200/50 dark:border-slate-700">
+            <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300 font-bold bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600">
+              <input type="checkbox" checked={newUrgent} onChange={(e) => setNewUrgent(e.target.checked)} className="rounded text-red-500 focus:ring-red-500 w-4 h-4" />
+              <span className={newUrgent ? "text-red-600 dark:text-red-400" : ""}>Marcar como Alta Prioridad / Urgente</span>
+            </label>
+            <button type="submit" disabled={loading} className="w-full sm:w-auto bg-udg-gold hover:bg-udg-goldHover text-white font-bold px-8 py-2.5 rounded-xl shadow transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
+              {loading ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="send" className="w-4 h-4" />} Publicar Aviso
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* LISTA DE AVISOS */}
+      <div className="space-y-4">
+        {currentNotices.length === 0 ? (
+          <div className="py-10 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/40">
+             <LucideIcon name="inbox" className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+             <p className="text-slate-500 font-medium">No hay comunicados oficiales en este momento.</p>
+          </div>
+        ) : (
+          currentNotices.map(n => (
+            <div key={n.id} className={`p-5 rounded-2xl border shadow-sm transition-all hover:shadow-md ${n.urgent ? 'bg-red-50 border-red-200 dark:bg-red-900/10 dark:border-red-900/50' : 'bg-slate-50 border-slate-200 dark:bg-slate-900/40 dark:border-slate-700'}`}>
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2">
+                  <span className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${n.urgent ? 'bg-red-600 text-white shadow-sm' : 'bg-udg-navy text-white dark:bg-blue-900 shadow-sm'}`}>{n.cat}</span>
+                  <span className="text-xs font-bold text-slate-400 font-mono">• {n.date}</span>
+                </div>
+                {n.urgent && <span className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 border border-red-200 dark:border-red-800"><LucideIcon name="alert-triangle" className="w-3 h-3 animate-pulse" /> URGENTE</span>}
               </div>
-            ))}
-            {notices.length === 0 && (
-              <p className="text-slate-400 py-4 text-center">No hay avisos recientes publicados.</p>
-            )}
+              <h4 className={`font-black font-display text-base mb-2 ${n.urgent ? 'text-red-900 dark:text-red-300' : 'text-slate-900 dark:text-white'}`}>{n.title}</h4>
+              <p className={`leading-relaxed whitespace-pre-wrap ${n.urgent ? 'text-red-800 dark:text-red-200' : 'text-slate-600 dark:text-slate-300'}`}>{n.desc}</p>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* PAGINACIÓN */}
+      {notices.length > itemsPerPage && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-5 border-t border-slate-100 dark:border-slate-700 text-slate-500 font-medium">
+          <span>Mostrando {((currentPage - 1) * itemsPerPage) + 1} al {Math.min(currentPage * itemsPerPage, notices.length)} de {notices.length} avisos</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-left" className="w-4 h-4" /></button>
+            <span className="px-3 font-bold text-slate-800 dark:text-slate-200">Página {currentPage} de {totalPages}</span>
+            <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-right" className="w-4 h-4" /></button>
           </div>
         </div>
-      );
-    }
+      )}
+    </div>
+  );
+}
 
     function DudasBuzonModule({ faqList }) {
       return (
