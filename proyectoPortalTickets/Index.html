@@ -43,44 +43,40 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
     
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-    
-    h1, h2, h3, h4, .font-display {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
+    body { font-family: 'Inter', sans-serif; }
+    h1, h2, h3, h4, .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-    .glass-card {
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(12px);
-    }
-    .dark .glass-card {
-      background: rgba(30, 41, 59, 0.85);
-      backdrop-filter: blur(12px);
-    }
+    .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); }
+    .dark .glass-card { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(12px); }
 
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 9999px;
-    }
-    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #334155;
-    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
   </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useRef } = React;
+
+    // === SOLUCIÓN DEFINITIVA PARA LOS ÍCONOS DE LUCIDE ===
+    // Este componente aisla las mutaciones del DOM para que React nunca arroje el error "removeChild"
+    const LucideIcon = ({ name, className }) => {
+      const iconRef = useRef(null);
+      useEffect(() => {
+        if (iconRef.current && window.lucide) {
+          iconRef.current.innerHTML = ''; // Limpiamos para evitar duplicados
+          const i = document.createElement('i');
+          i.setAttribute('data-lucide', name);
+          if (className) i.setAttribute('class', className);
+          iconRef.current.appendChild(i);
+          window.lucide.createIcons({ root: iconRef.current });
+        }
+      }, [name, className]);
+      return <span ref={iconRef} style={{ display: 'contents' }}></span>;
+    };
 
     const FAQ_LIST = [
       { q: "¿Cómo abro un ticket de atención con la Coordinación?", a: "Accede al módulo 'Mesa de Ayuda y Soporte' (primer elemento del menú) y redacta tu asunto. Recibirás respuesta directa en tu buzón de notificaciones." },
@@ -126,6 +122,7 @@
       const [notifications, setNotifications] = useState([]);
       const [globalTickets, setGlobalTickets] = useState([]);
       const [notices, setNotices] = useState([]); 
+      const [globalJustificantes, setGlobalJustificantes] = useState([]);
 
       // Cargar datos reales al iniciar sesión
       useEffect(() => {
@@ -135,6 +132,7 @@
               if (res.exito) {
                 setGlobalTickets(res.tickets);
                 setNotices(res.avisos);
+                setGlobalJustificantes(res.justificantes || []);
               }
             })
             .catch(err => console.error("Error de red cargando datos", err));
@@ -142,6 +140,7 @@
           setGlobalTickets([]);
           setNotices([]);
           setNotifications([]);
+          setGlobalJustificantes([]);
         }
       }, [isLoggedIn, user]);
 
@@ -159,12 +158,6 @@
           document.documentElement.classList.remove('dark');
         }
       }, [darkMode]);
-
-      useEffect(() => {
-        if (window.lucide) {
-          window.lucide.createIcons();
-        }
-      });
 
       const showToast = (message, type = 'success') => {
         setToast({ message, type });
@@ -308,7 +301,7 @@
                 ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-950/90 dark:border-red-800 dark:text-red-200' 
                 : 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/90 dark:border-emerald-800 dark:text-emerald-200'
             }`}>
-              <i data-lucide={toast.type === 'error' ? 'alert-circle' : 'check-circle-2'} className="w-5 h-5 shrink-0"></i>
+              <LucideIcon name={toast.type === 'error' ? 'alert-circle' : 'check-circle-2'} className="w-5 h-5 shrink-0" />
               <span>{toast.message}</span>
             </div>
           )}
@@ -336,7 +329,7 @@
                   onClick={() => setMobileNavOpen(!mobileNavOpen)}
                   className="lg:hidden p-2 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700"
                 >
-                  <i data-lucide="menu" className="w-5 h-5"></i>
+                  <LucideIcon name="menu" className="w-5 h-5" />
                 </button>
 
                 <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveTab(user.role === 'Coordinacion' ? 'admin_panel' : 'tickets')}>
@@ -367,7 +360,7 @@
                     className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all relative flex items-center justify-center"
                     title="Bandeja de Notificaciones"
                   >
-                    <i data-lucide="bell" className="w-4 h-4 text-udg-gold"></i>
+                    <LucideIcon name="bell" className="w-4 h-4 text-udg-gold" />
                     {unreadCount > 0 && (
                       <span className="absolute -top-1 -right-1 bg-red-600 text-white font-bold text-[10px] w-4 h-4 rounded-full flex items-center justify-center shadow animate-bounce">
                         {unreadCount}
@@ -379,7 +372,7 @@
                     <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 py-3 z-50 text-slate-800 dark:text-slate-100 text-xs animate-in fade-in slide-in-from-top-2">
                       <div className="px-4 pb-2 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                          <i data-lucide="bell-ring" className="w-4 h-4 text-udg-gold"></i>
+                          <LucideIcon name="bell-ring" className="w-4 h-4 text-udg-gold" />
                           <h4 className="font-bold text-sm font-display">Notificaciones en Vivo</h4>
                         </div>
                         {unreadCount > 0 && (
@@ -420,7 +413,7 @@
                   className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all text-xs flex items-center gap-1.5"
                   title="Cambiar Contraste"
                 >
-                  <i data-lucide={darkMode ? 'sun' : 'moon'} className="w-4 h-4 text-udg-gold"></i>
+                  <LucideIcon name={darkMode ? 'sun' : 'moon'} className="w-4 h-4 text-udg-gold" />
                   <span className="hidden md:inline text-[11px] font-medium">{darkMode ? 'Claro' : 'Oscuro'}</span>
                 </button>
 
@@ -449,7 +442,7 @@
                           {user.role}
                         </span>
                       </div>
-                      <i data-lucide="chevron-down" className="w-4 h-4 text-slate-400"></i>
+                      <LucideIcon name="chevron-down" className="w-4 h-4 text-slate-400" />
                     </button>
 
                     {userDropdown && (
@@ -473,7 +466,7 @@
                           onClick={() => { setActiveModal('edit_profile'); setUserDropdown(false); }}
                           className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/60 flex items-center gap-2.5 text-udg-navy dark:text-blue-300 font-semibold"
                         >
-                          <i data-lucide="camera" className="w-4 h-4 text-udg-gold"></i>
+                          <LucideIcon name="camera" className="w-4 h-4 text-udg-gold" />
                           <span>Cambiar Foto y Editar Datos</span>
                         </button>
 
@@ -484,11 +477,11 @@
                             setUser(GUEST_USER);
                             setActiveTab('dudas');
                             setUserDropdown(false);
-                            showToast("Sesión cerrada correctamente"); 
+                            showToast("Sesión cerrada correctamente", "error"); 
                           }}
                           className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2.5 font-semibold"
                         >
-                          <i data-lucide="log-out" className="w-4 h-4"></i>
+                          <LucideIcon name="log-out" className="w-4 h-4" />
                           <span>Cerrar Sesión</span>
                         </button>
                       </div>
@@ -500,14 +493,14 @@
                       onClick={() => setActiveModal('register')}
                       className="bg-udg-gold hover:bg-udg-goldHover text-white font-bold px-3.5 py-2 rounded-xl transition-all text-xs flex items-center gap-1.5 shadow-sm"
                     >
-                      <i data-lucide="user-plus" className="w-4 h-4"></i>
+                      <LucideIcon name="user-plus" className="w-4 h-4" />
                       <span>Registrarse</span>
                     </button>
                     <button 
                       onClick={() => setActiveModal('login')}
                       className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-3.5 py-2 rounded-xl border border-slate-700 transition-all text-xs flex items-center gap-1.5"
                     >
-                      <i data-lucide="log-in" className="w-4 h-4 text-udg-gold"></i>
+                      <LucideIcon name="log-in" className="w-4 h-4 text-udg-gold" />
                       <span>Ingresar</span>
                     </button>
                   </div>
@@ -544,7 +537,7 @@
                         className="absolute bottom-0 right-0 bg-udg-gold hover:bg-udg-goldHover text-white p-1.5 rounded-full shadow border-2 border-white dark:border-slate-800 transition-transform hover:scale-110"
                         title="Editar Foto o Datos"
                       >
-                        <i data-lucide="camera" className="w-3.5 h-3.5"></i>
+                        <LucideIcon name="camera" className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
@@ -570,7 +563,7 @@
                       onClick={() => setActiveModal('edit_profile')}
                       className="w-full mt-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors flex items-center justify-center gap-1.5"
                     >
-                      <i data-lucide="user-cog" className="w-3.5 h-3.5 text-udg-gold"></i>
+                      <LucideIcon name="user-cog" className="w-3.5 h-3.5 text-udg-gold" />
                       <span>Editar Perfil</span>
                     </button>
                   </div>
@@ -578,7 +571,7 @@
               ) : (
                 <div className="bg-gradient-to-br from-udg-navy to-slate-900 rounded-2xl p-5 text-white shadow-md space-y-3 border border-slate-800">
                   <div className="w-10 h-10 rounded-xl bg-udg-gold text-white flex items-center justify-center font-bold">
-                    <i data-lucide="shield-alert" className="w-5 h-5"></i>
+                    <LucideIcon name="shield-alert" className="w-5 h-5" />
                   </div>
                   <h3 className="font-bold text-sm font-display">Ingreso de Usuarios</h3>
                   <p className="text-xs text-slate-300 leading-relaxed">
@@ -602,8 +595,8 @@
               )}
 
               <nav className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
-                {getNavSections().map((sec) => (
-                  <div key={sec.group} className="space-y-1">
+                {getNavSections().map((sec, idx) => (
+                  <div key={idx} className="space-y-1">
                     <p className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
                       {sec.group}
                     </p>
@@ -623,7 +616,7 @@
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <i data-lucide={item.icon} className={`w-4 h-4 ${isActive ? 'text-udg-gold' : 'text-slate-400 dark:text-slate-400'}`}></i>
+                            <LucideIcon name={item.icon} className={`w-4 h-4 ${isActive ? 'text-udg-gold' : 'text-slate-400 dark:text-slate-400'}`} />
                             <span>{item.label}</span>
                           </div>
                           {item.badge && (
@@ -644,7 +637,7 @@
 
               <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 text-xs space-y-2">
                 <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
-                  <i data-lucide="clock" className="w-4 h-4 text-udg-gold"></i>
+                  <LucideIcon name="clock" className="w-4 h-4 text-udg-gold" />
                   <span>Atención Presencial M202</span>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -681,7 +674,7 @@
                       onClick={() => setActiveModal('login')}
                       className="self-start md:self-auto bg-udg-gold hover:bg-udg-goldHover text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all shadow-md"
                     >
-                      <i data-lucide="log-in" className="w-4 h-4"></i>
+                      <LucideIcon name="log-in" className="w-4 h-4" />
                       <span>Ingresar con Mi Código</span>
                     </button>
                   )}
@@ -704,7 +697,7 @@
                     <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
                       <span className="text-slate-400 block text-[10px] uppercase font-bold">Estatus SIIAU</span>
                       <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
-                        <i data-lucide="check-circle-2" className="w-4 h-4"></i> {user.status}
+                        <LucideIcon name="check-circle-2" className="w-4 h-4" /> {user.status}
                       </span>
                     </div>
                   </div>
@@ -712,7 +705,7 @@
               </div>
 
               <div className="relative">
-                <i data-lucide="search" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                <LucideIcon name="search" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Buscar cualquier servicio... (Ej: Ticket, Preguntas Frecuentes, Justificante, Promedio, EGEL)"
@@ -722,7 +715,7 @@
                 />
                 {searchQuery && (
                   <button onClick={() => setSearchQuery('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                    <i data-lucide="x" className="w-4 h-4"></i>
+                    <LucideIcon name="x" className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -745,10 +738,11 @@
 
               {activeTab === 'justificantes' && (
                 <JustificantesModule 
-                  showToast={showToast} 
-                  addNotification={addNotification} 
-                  isLoggedIn={isLoggedIn} 
-                  setActiveModal={setActiveModal} 
+                  showToast={showToast} addNotification={addNotification} 
+                  isLoggedIn={isLoggedIn} setActiveModal={setActiveModal} 
+                  user={user} 
+                  globalJustificantes={globalJustificantes} 
+                  setGlobalJustificantes={setGlobalJustificantes}
                 />
               )}
 
@@ -772,7 +766,11 @@
               )}
 
               {activeTab === 'admin_justificantes' && (
-                <AdminJustificantesModule showToast={showToast} addNotification={addNotification} />
+                <AdminJustificantesModule 
+                  showToast={showToast} addNotification={addNotification} 
+                  globalJustificantes={globalJustificantes} 
+                  setGlobalJustificantes={setGlobalJustificantes} 
+                />
               )}
 
             </main>
@@ -796,7 +794,7 @@
                     </div>
                   </div>
                   <button onClick={() => setChatOpen(false)} className="text-slate-300 hover:text-white p-1">
-                    <i data-lucide="x" className="w-4 h-4"></i>
+                    <LucideIcon name="x" className="w-4 h-4" />
                   </button>
                 </div>
 
@@ -815,7 +813,7 @@
                   {chatLoading && (
                     <div className="flex justify-start">
                       <div className="bg-slate-100 dark:bg-slate-700 p-3 rounded-xl rounded-tl-none flex items-center gap-2 text-slate-500 dark:text-slate-300 text-xs">
-                        <i data-lucide="loader-2" className="w-3.5 h-3.5 animate-spin text-udg-blue"></i>
+                        <LucideIcon name="loader-2" className="w-3.5 h-3.5 animate-spin text-udg-blue" />
                         <span>Consultando reglamentos...</span>
                       </div>
                     </div>
@@ -848,7 +846,7 @@
                     disabled={chatLoading}
                     className="bg-udg-navy hover:bg-udg-blue text-white font-medium p-2 rounded-xl transition-all disabled:opacity-50"
                   >
-                    <i data-lucide="send" className="w-4 h-4"></i>
+                    <LucideIcon name="send" className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -857,7 +855,7 @@
                 onClick={() => setChatOpen(true)}
                 className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-4 py-3 rounded-full shadow-2xl border border-slate-700 flex items-center gap-2.5 transition-all text-xs"
               >
-                <i data-lucide="message-square" className="w-4 h-4 text-udg-gold"></i>
+                <LucideIcon name="message-square" className="w-4 h-4 text-udg-gold" />
                 <span className="font-semibold font-display">Asistente Virtual INCO</span>
               </button>
             )}
@@ -943,36 +941,47 @@
       );
     }
 
-    function TicketsModule({ user, showToast, addNotification, globalTickets, setGlobalTickets }) {
+   function TicketsModule({ user, showToast, addNotification, globalTickets, setGlobalTickets }) {
       const [subject, setSubject] = useState('');
       const [details, setDetails] = useState('');
+      const [loading, setLoading] = useState(false);
       
       const userTickets = globalTickets.filter(t => t.student === user.name || user.role !== 'Estudiante');
 
-      const handleCreateTicket = (e) => {
+      const handleCreateTicket = async (e) => {
         e.preventDefault();
         if (!subject.trim() || !details.trim()) {
           showToast("Ingresa el asunto y los detalles del ticket", "error");
           return;
         }
 
-        const newId = `INC-${Math.floor(100 + Math.random() * 900)}`;
-        const newTicket = {
-          id: newId,
+        setLoading(true);
+        const datosNuevoTicket = {
           student: user.name,
           code: user.code,
           subject: subject,
-          status: 'Pendiente',
-          date: 'Hoy',
-          reply: ''
+          details: details
         };
 
-        setGlobalTickets([newTicket, ...globalTickets]);
-        setSubject('');
-        setDetails('');
-        showToast(`Ticket #${newId} registrado correctamente. En revisión por Coordinación.`);
-        
-        addNotification("Ticket Registrado", `Se generó tu ticket #${newId}. Recibirás respuesta de la Coordinación en este portal.`, "ticket");
+        try {
+          // Llamada real al backend
+          const respuesta = await server.registrarNuevoTicket(datosNuevoTicket);
+          
+          if (respuesta.exito) {
+            // Actualizamos la interfaz inyectando el ticket real devuelto por Sheets
+            setGlobalTickets([respuesta.ticket, ...globalTickets]);
+            setSubject('');
+            setDetails('');
+            showToast(`Ticket #${respuesta.ticket.id} registrado correctamente.`);
+            addNotification("Ticket Registrado", `Se generó tu ticket #${respuesta.ticket.id}. Recibirás respuesta pronto.`, "ticket");
+          } else {
+            showToast(respuesta.mensaje, "error");
+          }
+        } catch (error) {
+          showToast("Error de conexión al generar el ticket.", "error");
+        } finally {
+          setLoading(false);
+        }
       };
 
       return (
@@ -980,10 +989,10 @@
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
             <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
               <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold">
-                <i data-lucide="life-buoy" className="w-5 h-5"></i>
+                <LucideIcon name="life-buoy" className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Mesa de Ayuda y Tickets de Atención Directa</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Mesa de Ayuda y Tickets</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Canal prioritario de comunicación con la Coordinación de Computación (Edificio M202).</p>
               </div>
             </div>
@@ -992,29 +1001,21 @@
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Asunto de la Solicitud o Aclaración *</label>
                 <input 
-                  type="text" 
-                  placeholder="Ej: Problema con cruce de horarios en SIIAU o Duda de Proyecto Modular" 
-                  value={subject} 
-                  onChange={(e) => setSubject(e.target.value)} 
+                  type="text" placeholder="Ej: Duda con Servicio Social" value={subject} onChange={(e) => setSubject(e.target.value)} 
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl focus:ring-2 focus:ring-udg-blue outline-none" 
                 />
               </div>
-
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Descripción Detallada *</label>
                 <textarea 
-                  rows="3" 
-                  placeholder="Escribe los detalles específicos (NRCs, códigos, profesores o antecedentes)..." 
-                  value={details} 
-                  onChange={(e) => setDetails(e.target.value)} 
+                  rows="3" placeholder="Escribe los detalles específicos..." value={details} onChange={(e) => setDetails(e.target.value)} 
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl focus:ring-2 focus:ring-udg-blue outline-none"
                 ></textarea>
               </div>
-
               <div className="flex justify-end pt-1">
-                <button type="submit" className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-md transition-all">
-                  <i data-lucide="send" className="w-4 h-4"></i>
-                  <span>Aperturar Nuevo Ticket</span>
+                <button type="submit" disabled={loading} className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-md transition-all disabled:opacity-70">
+                  {loading ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="send" className="w-4 h-4" />}
+                  <span>{loading ? 'Enviando...' : 'Aperturar Nuevo Ticket'}</span>
                 </button>
               </div>
             </form>
@@ -1022,7 +1023,7 @@
 
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
             <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
-              <i data-lucide="history" className="w-4 h-4 text-udg-gold"></i>
+              <LucideIcon name="history" className="w-4 h-4 text-udg-gold" />
               Mis Tickets de Atención Solicitados ({userTickets.length})
             </h4>
 
@@ -1038,27 +1039,24 @@
                         <span className="text-slate-400">•</span>
                         <span className="text-slate-500 font-medium">{t.date}</span>
                       </div>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        t.status === 'Atendido' 
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                      }`}>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${t.status === 'Atendido' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
                         {t.status}
                       </span>
                     </div>
 
                     <h5 className="font-bold text-slate-900 dark:text-white text-sm">{t.subject}</h5>
+                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-2">{t.details}</p>
 
                     {t.reply ? (
                       <div className="bg-blue-50 dark:bg-slate-800 p-3 rounded-xl border border-blue-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 space-y-1 mt-2">
                         <div className="flex items-center gap-1.5 text-udg-blue dark:text-blue-400 font-bold text-[11px]">
-                          <i data-lucide="check-circle" className="w-3.5 h-3.5"></i>
+                          <LucideIcon name="check-circle" className="w-3.5 h-3.5" />
                           <span>Respuesta Oficial de Coordinación:</span>
                         </div>
                         <p className="text-xs leading-relaxed">{t.reply}</p>
                       </div>
                     ) : (
-                      <p className="text-slate-400 italic text-[11px]">En espera de revisión por el personal de la Coordinación INCO...</p>
+                      <p className="text-slate-400 italic text-[11px] mt-2">En espera de revisión por el personal de la Coordinación INCO...</p>
                     )}
                   </div>
                 ))
@@ -1071,41 +1069,57 @@
 
     function AdminPanelTickets({ globalTickets, setGlobalTickets, showToast, addNotification }) {
       const [replyTexts, setReplyTexts] = useState({});
+      const [loadingId, setLoadingId] = useState(null); // Rastrear qué ticket se está enviando
 
-      const handleReply = (ticketId, studentName) => {
+      const handleReply = async (ticketId, studentName) => {
         const text = replyTexts[ticketId];
         if (!text || !text.trim()) {
           showToast("Escribe un mensaje de respuesta", "error");
           return;
         }
 
-        const updated = globalTickets.map(t => {
-          if (t.id === ticketId) {
-            return { ...t, status: 'Atendido', reply: text };
+        setLoadingId(ticketId);
+        try {
+          // Llamada real al backend para actualizar la hoja
+          const respuesta = await server.responderTicketAdmin(ticketId, text);
+          
+          if(respuesta.exito) {
+            // Actualizamos la vista local
+            const updated = globalTickets.map(t => {
+              if (t.id === ticketId) {
+                return { ...t, status: 'Atendido', reply: text };
+              }
+              return t;
+            });
+            setGlobalTickets(updated);
+            setReplyTexts(prev => ({ ...prev, [ticketId]: '' }));
+            showToast(`Respuesta enviada y guardada para el ticket #${ticketId}`);
+            
+            // Simula notificar al alumno
+            addNotification(
+              "Respuesta Enviada", 
+              `Se ha dictaminado el ticket #${ticketId} del alumno ${studentName}.`,
+              "success"
+            );
+          } else {
+            showToast(respuesta.mensaje, "error");
           }
-          return t;
-        });
-
-        setGlobalTickets(updated);
-        setReplyTexts(prev => ({ ...prev, [ticketId]: '' }));
-        showToast(`Respuesta enviada para el ticket #${ticketId}`);
-
-        addNotification(
-          "Respuesta de Coordinación", 
-          `Dra. Laura Morales ha respondido al ticket #${ticketId} de ${studentName}.`,
-          "success"
-        );
+        } catch (error) {
+          showToast("Error de conexión al responder el ticket.", "error");
+        } finally {
+          setLoadingId(null);
+        }
       };
 
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5 text-xs">
           <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
             <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 flex items-center justify-center font-bold">
-              <i data-lucide="shield-check" className="w-5 h-5"></i>
+              <LucideIcon name="shield-check" className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Panel de Administración de Tickets (Coordinación INCO)</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Atiende y responde las solicitudes enviadas por los alumnos en tiempo real.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Atiende y responde las solicitudes en tiempo real.</p>
             </div>
           </div>
 
@@ -1116,66 +1130,112 @@
                   <div>
                     <span className="font-mono font-bold text-udg-navy dark:text-blue-400 text-sm">#{t.id}</span>
                     <h4 className="font-bold text-slate-900 dark:text-white text-sm">{t.subject}</h4>
-                    <p className="text-slate-500 text-[11px]">Solicitante: <span className="font-semibold text-slate-700 dark:text-slate-300">{t.student}</span> (Cód: {t.code})</p>
+                    <p className="text-slate-500 text-[11px] mt-0.5">Solicitante: <span className="font-semibold text-slate-700 dark:text-slate-300">{t.student}</span> (Cód: {t.code} • Fecha: {t.date})</p>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    t.status === 'Atendido' 
-                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
-                      : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                  }`}>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${t.status === 'Atendido' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
                     {t.status}
                   </span>
+                </div>
+                
+                {/* Mostramos los detalles que escribió el alumno para que el Admin los lea */}
+                <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300">
+                  {t.details}
                 </div>
 
                 {t.reply ? (
                   <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                    <p className="font-bold text-emerald-800 dark:text-emerald-300">Respuesta Brindada:</p>
+                    <p className="font-bold text-emerald-800 dark:text-emerald-300">Dictamen de Coordinación:</p>
                     <p className="text-slate-700 dark:text-slate-200 mt-0.5">{t.reply}</p>
                   </div>
                 ) : (
                   <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                     <textarea 
-                      rows="2"
-                      placeholder="Escribe la solución oficial o dictamen de Coordinación..."
-                      value={replyTexts[t.id] || ''}
-                      onChange={(e) => setReplyTexts({ ...replyTexts, [t.id]: e.target.value })}
+                      rows="2" placeholder="Escribe el dictamen o la solución oficial..." 
+                      value={replyTexts[t.id] || ''} onChange={(e) => setReplyTexts({ ...replyTexts, [t.id]: e.target.value })}
                       className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-udg-blue outline-none"
                     ></textarea>
                     <button 
                       onClick={() => handleReply(t.id, t.student)}
-                      className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow"
+                      disabled={loadingId === t.id}
+                      className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow disabled:opacity-70"
                     >
-                      <i data-lucide="send" className="w-3.5 h-3.5"></i>
-                      <span>Enviar Respuesta y Notificar Alumno</span>
+                      {loadingId === t.id ? <LucideIcon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : <LucideIcon name="send" className="w-3.5 h-3.5" />}
+                      <span>{loadingId === t.id ? 'Guardando respuesta...' : 'Enviar y Guardar Dictamen'}</span>
                     </button>
                   </div>
                 )}
               </div>
             ))}
+            {globalTickets.length === 0 && <p className="text-center text-slate-500 py-4">No hay tickets registrados en el sistema.</p>}
           </div>
         </div>
       );
     }
 
-    function AdminJustificantesModule({ showToast, addNotification }) {
+  function AdminJustificantesModule({ showToast, addNotification, globalJustificantes = [], setGlobalJustificantes }) {
+      const [loadingId, setLoadingId] = useState(null);
+
+      const handleDictamen = async (id, estatus, studentName) => {
+        setLoadingId(id);
+        try {
+          const respuesta = await server.dictaminarJustificante(id, estatus);
+          if (respuesta.exito) {
+            if (typeof setGlobalJustificantes === 'function') {
+               const updated = globalJustificantes.map(j => j.id === id ? { ...j, status: estatus } : j);
+               setGlobalJustificantes(updated);
+            }
+            showToast(`Justificante marcado como ${estatus}`);
+            addNotification(`Justificante ${estatus}`, `El justificante de ${studentName} ha sido ${estatus.toLowerCase()}.`, estatus === 'Aprobado' ? 'success' : 'error');
+          } else {
+            showToast(respuesta.mensaje, "error");
+          }
+        } catch(e) {
+          showToast("Error de conexión", "error");
+        } finally {
+          setLoadingId(null);
+        }
+      };
+
+      const pendientes = globalJustificantes.filter(j => j.status === 'Pendiente');
+
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="shield-check" className="w-5 h-5 text-udg-gold"></i>
-            Validación de Justificantes Médicos u Oficiales (Art. 53)
+            <LucideIcon name="shield-check" className="w-5 h-5 text-udg-gold" />
+            Validación de Justificantes Pendientes ({pendientes.length})
           </h3>
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex justify-between items-center">
-            <div>
-              <h4 className="font-bold text-slate-900 dark:text-white text-sm">Alejandro González Ramírez (Cód: 219845123)</h4>
-              <p className="text-slate-500">Motivo: Incapacidad Médica IMSS • Materias: Redes de Computadoras</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => {
-                showToast("Justificante aprobado con sello digital");
-                addNotification("Justificante Aprobado", "Tu justificante fue validado oficialmente.", "success");
-              }} className="bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-xl">Aprobar</button>
-              <button onClick={() => showToast("Justificante rechazado por falta de firma", "error")} className="bg-red-600 text-white font-bold px-3 py-1.5 rounded-xl">Rechazar</button>
-            </div>
+          
+          <div className="space-y-3">
+            {pendientes.length === 0 ? <p className="text-center text-slate-500 py-4">No hay justificantes pendientes por revisar.</p> : 
+              pendientes.map(j => (
+                <div key={j.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+                  <div className="flex-1">
+                    <span className="font-mono font-bold text-udg-blue text-[10px]">#{j.id} • Solicitado el {j.date}</span>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm">{j.student} (Cód: {j.code})</h4>
+                    <p className="text-slate-600 dark:text-slate-300 mt-1"><b>Motivo:</b> {j.reason} • <b>Falta:</b> {j.startDate}</p>
+                    <p className="text-slate-600 dark:text-slate-300"><b>Materias Afectadas:</b> {j.teachers}</p>
+                    
+                    {/* VALIDACIÓN SEGURA DEL ARCHIVO */}
+                    {j.fileName && j.fileName.startsWith('http') ? (
+                      <a href={j.fileName} target="_blank" className="mt-2 inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg transition-colors font-semibold">
+                        <LucideIcon name="file-search" className="w-3.5 h-3.5 text-udg-gold" /> Revisar Documento Adjunto
+                      </a>
+                    ) : (
+                      <p className="text-slate-500 text-[10px] mt-1 italic"><LucideIcon name="paperclip" className="w-3 h-3 inline mr-1" /> Sin archivo digitalizado</p>
+                    )}
+
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => handleDictamen(j.id, 'Aprobado', j.student)} disabled={loadingId === j.id} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 disabled:opacity-50">
+                      {loadingId === j.id ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="check" className="w-4 h-4" />} Aprobar
+                    </button>
+                    <button onClick={() => handleDictamen(j.id, 'Rechazado', j.student)} disabled={loadingId === j.id} className="bg-red-100 dark:bg-red-950/50 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 disabled:opacity-50 border border-red-200 dark:border-red-800">
+                      <LucideIcon name="x" className="w-4 h-4" /> Rechazar
+                    </button>
+                  </div>
+                </div>
+              ))
+            }
           </div>
         </div>
       );
@@ -1185,7 +1245,7 @@
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="file-text" className="w-5 h-5 text-emerald-600"></i>
+            <LucideIcon name="file-text" className="w-5 h-5 text-emerald-600" />
             Módulo Docente - Emisión de Constancias de Asignación y Carga Horaria
           </h3>
           <p className="text-slate-500">Estimado profesor {user.name}, desde aquí puede solicitar y descargar sus constancias institucionales de adscripción al Departamento de Computación.</p>
@@ -1225,7 +1285,7 @@
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
-                <i data-lucide="layout-grid" className="w-5 h-5 text-udg-blue"></i>
+                <LucideIcon name="layout-grid" className="w-5 h-5 text-udg-blue" />
                 Catálogo de Servicios y Módulos de Atención
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">Servicios ordenados prioritariamente para dar agilidad a tus dudas</p>
@@ -1242,7 +1302,7 @@
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold group-hover:bg-udg-navy group-hover:text-white transition-colors">
-                      <i data-lucide={item.icon} className="w-5 h-5"></i>
+                      <LucideIcon name={item.icon} className="w-5 h-5" />
                     </div>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
                       {item.badge}
@@ -1261,7 +1321,7 @@
 
                 <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs font-semibold text-udg-navy dark:text-blue-400">
                   <span>Acceder al trámite</span>
-                  <i data-lucide="chevron-right" className="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+                  <LucideIcon name="chevron-right" className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
             ))}
@@ -1270,83 +1330,162 @@
       );
     }
 
-    function JustificantesModule({ showToast, addNotification, isLoggedIn, setActiveModal }) {
-      const [reason, setReason] = useState('Salud');
-      const [startDate, setStartDate] = useState('');
-      const [teachers, setTeachers] = useState('');
-      const [fileName, setFileName] = useState('');
+    function JustificantesModule({ 
+  showToast, 
+  addNotification, 
+  isLoggedIn, 
+  setActiveModal, 
+  user, 
+  globalJustificantes = [], 
+  setGlobalJustificantes = () => {} 
+}) {
+  const [reason, setReason] = useState('Salud');
+  const [startDate, setStartDate] = useState('');
+  const [teachers, setTeachers] = useState('');
+  const [fileObj, setFileObj] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-      const handleSubmit = (e) => {
-        e.preventDefault();
-        if (!isLoggedIn) {
-          setActiveModal('login');
-          return;
-        }
-        if (!startDate || !teachers) {
-          showToast("Ingresa la fecha y las materias afectadas", "error");
-          return;
-        }
-        showToast("Solicitud de justificante registrada correctamente para revisión");
-        addNotification("Solicitud de Justificante", "Tu justificante fue recibido y enviado a revisión por el coordinador.", "info");
-        setStartDate('');
-        setTeachers('');
-        setFileName('');
+  // Garantía contra undefined mientras se consulta el backend de Apps Script
+  const listaJustificantes = Array.isArray(globalJustificantes) ? globalJustificantes : [];
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast("El archivo es demasiado grande. Máximo 5MB.", "error");
+        e.target.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFileObj({ name: file.name, data: reader.result });
       };
-
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
-          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
-            <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold">
-              <i data-lucide="shield-check" className="w-5 h-5"></i>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Justificante de Faltas (Reglamento Art. 53)</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Plazo máximo de entrega: 5 días hábiles posteriores a la fecha de la falta médica u oficial.</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Motivo del Justificante</label>
-              <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5">
-                <option value="Salud">Incapacidad Médica (IMSS / Salud Pública / Particular)</option>
-                <option value="Comision">Comisión Institucional o Evento Representativo CUCEI</option>
-                <option value="Personal">Fuerza Mayor / Asunto Grave Familiar</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Materias y Profesores Afectados</label>
-              <input type="text" placeholder="Ej. Redes (Dr. Pérez), BD (Mtra. Silva)" value={teachers} onChange={(e) => setTeachers(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5" />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Fecha de Inicio de Incapacidad</label>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5" />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Anexo Digital (PDF / Comprobante)</label>
-              <input type="file" onChange={(e) => setFileName(e.target.files[0]?.name || '')} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2 text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-udg-navy file:text-white" />
-            </div>
-
-            <div className="md:col-span-2 pt-2 flex justify-end">
-              <button type="submit" className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-md">
-                <i data-lucide="send" className="w-4 h-4"></i>
-                <span>Enviar Solicitud de Justificante</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      );
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!isLoggedIn) return setActiveModal('login');
+    if (!startDate || !teachers) return showToast("Ingresa la fecha y las materias afectadas", "error");
+    if (!fileObj) return showToast("Debes adjuntar obligatoriamente un comprobante médico u oficial.", "error");
+
+    setLoading(true);
+    const datos = {
+      code: user.code, student: user.name, reason, teachers, startDate, 
+      fileName: fileObj.name, fileData: fileObj.data
+    };
+
+    try {
+      const respuesta = await server.registrarJustificante(datos);
+      if (respuesta.exito) {
+        if (typeof setGlobalJustificantes === 'function') {
+          setGlobalJustificantes([respuesta.justificante, ...listaJustificantes]);
+        }
+        showToast("Solicitud enviada. Archivo guardado en la nube institucional.");
+        addNotification("Justificante Registrado", "Tu justificante fue recibido y enviado a revisión.", "info");
+        setStartDate(''); 
+        setTeachers(''); 
+        setFileObj(null);
+        const fileInput = document.getElementById('file-upload');
+        if (fileInput) fileInput.value = '';
+      } else {
+        showToast(respuesta.mensaje, "error");
+      }
+    } catch (error) {
+      showToast("Error de conexión al subir el archivo.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
+        <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+          <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold">
+            <LucideIcon name="shield-check" className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Justificante de Faltas (Reglamento Art. 53)</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Plazo máximo de entrega: 5 días hábiles posteriores a la fecha de la falta.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div>
+            <label className="block font-semibold mb-1">Motivo del Justificante</label>
+            <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue">
+              <option value="Salud">Incapacidad Médica (IMSS / Salud Pública / Particular)</option>
+              <option value="Comision">Comisión Institucional o Evento Representativo</option>
+              <option value="Personal">Fuerza Mayor / Asunto Grave Familiar</option>
+            </select>
+          </div>
+          <div>
+            <label className="block font-semibold mb-1">Materias y Profesores Afectados</label>
+            <input type="text" placeholder="Ej. Redes (Dr. Pérez)" value={teachers} onChange={(e) => setTeachers(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue dark:bg-slate-900 dark:border-slate-700" />
+          </div>
+          <div>
+            <label className="block font-semibold mb-1">Fecha de Inicio de Incapacidad</label>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue dark:bg-slate-900 dark:border-slate-700" />
+          </div>
+          <div>
+            <label className="block font-semibold mb-1">Anexo Digital (PDF / Imagen JPG)</label>
+            <input id="file-upload" type="file" accept=".pdf,image/*" onChange={handleFileChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-udg-navy file:text-white dark:bg-slate-900 dark:border-slate-700" />
+          </div>
+          <div className="md:col-span-2 pt-2 flex justify-end">
+            <button type="submit" disabled={loading} className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-md disabled:opacity-70">
+              {loading ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="upload-cloud" className="w-4 h-4" />}
+              <span>{loading ? 'Subiendo archivo seguro...' : 'Enviar Solicitud con Adjunto'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+        <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+          <LucideIcon name="history" className="w-4 h-4 text-udg-gold" />
+          Mi Historial de Justificantes ({listaJustificantes.length})
+        </h4>
+
+        <div className="space-y-3 text-xs">
+          {listaJustificantes.length === 0 ? (
+            <p className="text-slate-400 py-2 text-center">No has enviado solicitudes de justificantes.</p>
+          ) : (
+            listaJustificantes.map(j => (
+              <div key={j.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex justify-between items-start sm:items-center">
+                <div>
+                  <span className="font-mono font-bold text-udg-navy dark:text-blue-400">#{j.id}</span>
+                  <span className="text-slate-500 ml-2">Falta: {j.startDate}</span>
+                  <p className="font-bold mt-1 text-slate-800 dark:text-white">{j.reason} <span className="font-normal text-slate-500">({j.teachers})</span></p>
+
+                  {j.fileName && j.fileName.startsWith('http') && (
+                    <a href={j.fileName} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-udg-blue dark:text-blue-400 hover:underline">
+                      <LucideIcon name="external-link" className="w-3 h-3" /> Ver mi comprobante adjunto
+                    </a>
+                  )}
+                </div>
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold mt-2 sm:mt-0 ${
+                  j.status === 'Aprobado' ? 'bg-emerald-100 text-emerald-800' : j.status === 'Rechazado' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {j.status}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
     function TitulacionModule({ showToast }) {
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
           <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
             <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold">
-              <i data-lucide="graduation-cap" className="w-5 h-5"></i>
+              <LucideIcon name="graduation-cap" className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Modalidades de Titulación - INCO</h3>
@@ -1374,7 +1513,7 @@
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="file-text" className="w-5 h-5 text-udg-blue"></i>
+            <LucideIcon name="file-text" className="w-5 h-5 text-udg-blue" />
             Kardex de Calificaciones y Constancias Oficiales
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
@@ -1403,7 +1542,7 @@
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="layers" className="w-5 h-5 text-udg-blue"></i>
+            <LucideIcon name="layers" className="w-5 h-5 text-udg-blue" />
             Proyectos Modulares (INCO)
           </h3>
           <p className="text-xs text-slate-500">Gestión de anteproyectos y cartas de tutoría para Proyectos Modulares I, II y III.</p>
@@ -1426,7 +1565,7 @@
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="sliders" className="w-5 h-5 text-udg-blue"></i>
+            <LucideIcon name="sliders" className="w-5 h-5 text-udg-blue" />
             Solicitud de Ajuste de Materias y Cupos SIIAU
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1447,7 +1586,7 @@
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="scale" className="w-5 h-5 text-udg-gold"></i>
+            <LucideIcon name="scale" className="w-5 h-5 text-udg-gold" />
             Carta Petición a la Comisión de Educación (Art. 33 y 35)
           </h3>
           <textarea rows="4" placeholder="Redacta los motivos o causas justificables de tu petición dirigidas al Consejo Divisional..." className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3"></textarea>
@@ -1466,7 +1605,7 @@
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="award" className="w-5 h-5 text-udg-gold"></i>
+            <LucideIcon name="award" className="w-5 h-5 text-udg-gold" />
             Horas Integrales ({user.integralHours || 52} / {user.requiredHours || 60} hrs)
           </h3>
           <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
@@ -1486,7 +1625,7 @@
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="grid" className="w-5 h-5 text-udg-blue"></i>
+            <LucideIcon name="grid" className="w-5 h-5 text-udg-blue" />
             Malla Curricular Plan INCO
           </h3>
           <p className="text-slate-500">Plan de estudios oficial de la carrera de Ingeniería en Computación de CUCEI.</p>
@@ -1509,7 +1648,7 @@
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="bell" className="w-5 h-5 text-udg-gold"></i>
+            <LucideIcon name="bell" className="w-5 h-5 text-udg-gold" />
             Tablón de Avisos Oficiales
           </h3>
 
@@ -1542,7 +1681,7 @@
       return (
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5 text-xs">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="help-circle" className="w-5 h-5 text-udg-blue"></i>
+            <LucideIcon name="help-circle" className="w-5 h-5 text-udg-blue" />
             Preguntas Frecuentes (FAQ)
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1584,11 +1723,11 @@
             
             <div className="bg-udg-navy p-5 text-white flex justify-between items-center">
               <div className="flex items-center gap-2.5">
-                <i data-lucide="user-cog" className="w-5 h-5 text-udg-gold"></i>
+                <LucideIcon name="user-cog" className="w-5 h-5 text-udg-gold" />
                 <h3 className="font-bold text-base font-display">Actualizar Datos de Perfil</h3>
               </div>
               <button onClick={onClose} className="text-slate-300 hover:text-white p-1">
-                <i data-lucide="x" className="w-5 h-5"></i>
+                <LucideIcon name="x" className="w-5 h-5" />
               </button>
             </div>
 
@@ -1603,7 +1742,7 @@
                   )}
                 </div>
                 <label className="cursor-pointer bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5">
-                  <i data-lucide="upload" className="w-3.5 h-3.5 text-udg-gold"></i>
+                  <LucideIcon name="upload" className="w-3.5 h-3.5 text-udg-gold" />
                   <span>Seleccionar Nueva Foto</span>
                   <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                 </label>
@@ -1655,13 +1794,18 @@
       );
     }
     
-    function RegisterModal({ onClose, onRegister, onOpenLogin }) {
+function RegisterModal({ onClose, onRegister, onOpenLogin }) {
+      const [step, setStep] = useState(1); // Controla en qué pantalla estamos (1: Datos, 2: Código)
+      const [generatedCode, setGeneratedCode] = useState(''); // Guarda el código enviado
+      const [inputCode, setInputCode] = useState(''); // Lo que el usuario teclea
+      
       const [name, setName] = useState('');
       const [code, setCode] = useState('');
       const [email, setEmail] = useState('');
       const [phone, setPhone] = useState('');
       const [nip, setNip] = useState('');
       const [photoPreview, setPhotoPreview] = useState(null);
+      
       const [errorMsg, setErrorMsg] = useState('');
       const [loading, setLoading] = useState(false);
 
@@ -1669,14 +1813,13 @@
         const file = e.target.files[0];
         if (file) {
           const reader = new FileReader();
-          reader.onloadend = () => {
-            setPhotoPreview(reader.result);
-          };
+          reader.onloadend = () => { setPhotoPreview(reader.result); };
           reader.readAsDataURL(file);
         }
       };
 
-      const handleSubmit = async (e) => {
+      // PASO 1: Validar datos y enviar el correo con el código
+      const handleSendCode = async (e) => {
         e.preventDefault();
         setErrorMsg('');
 
@@ -1685,160 +1828,159 @@
           return;
         }
 
+        setLoading(true);
+        try {
+          const respuesta = await server.enviarCodigoVerificacion(email, name);
+          if (respuesta.exito) {
+            setGeneratedCode(respuesta.codigoGenerado);
+            setStep(2); // Avanzamos a la pantalla de verificación
+            setLoading(false);
+          } else {
+            setErrorMsg(respuesta.mensaje);
+            setLoading(false);
+          }
+        } catch (error) {
+          setErrorMsg("Error al intentar enviar el correo de verificación.");
+          setLoading(false);
+        }
+      };
+
+      // PASO 2: Verificar el código ingresado y guardar en base de datos
+      const handleVerifyAndRegister = async () => {
+        setErrorMsg('');
+        if (inputCode !== generatedCode) {
+          setErrorMsg('El código ingresado es incorrecto.');
+          return;
+        }
+
         const nuevoUsuario = {
-          code: code,
-          name: name,
-          role: "Estudiante",
-          email: email,
-          nip: nip,
-          photo: photoPreview || null
+          code: code, name: name, role: "Estudiante", email: email, nip: nip, photo: photoPreview || null
         };
 
         setLoading(true);
         try {
           const respuesta = await server.registrarUsuario(nuevoUsuario);
           if (respuesta.exito) {
-            onRegister(respuesta.usuario); // Éxito: cerramos el modal
+            onRegister(respuesta.usuario);
           } else {
             setErrorMsg(respuesta.mensaje);
-            setLoading(false); // Falla: apagamos la carga
+            // Si el error es por código UDG duplicado, lo regresamos al paso 1
+            if(respuesta.mensaje.includes('registrado')) {
+              setTimeout(() => setStep(1), 2000);
+            }
+            setLoading(false);
           }
         } catch (error) {
-          setErrorMsg("Error al conectar con el servidor.");
-          setLoading(false); // Falla: apagamos la carga
+          setErrorMsg("Error al conectar con la base de datos.");
+          setLoading(false);
         }
       };
+
+      // RENDERIZADO DEL PASO 2 (Pantalla de Verificación de Correo)
+      if (step === 2) {
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full border border-slate-200 dark:border-slate-700 shadow-2xl relative text-slate-800 dark:text-slate-100 p-8 text-center flex flex-col items-center">
+              
+              <div className="w-16 h-16 bg-blue-50 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4 border-4 border-blue-100 dark:border-slate-600">
+                <LucideIcon name="mail" className="w-8 h-8 text-udg-blue dark:text-blue-400" />
+              </div>
+              
+              <h3 className="font-bold text-xl font-display mb-2">Revisa tu correo</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                Hemos enviado un código de seguridad de 6 dígitos a <br/><b className="text-slate-800 dark:text-slate-200">{email}</b>
+              </p>
+              
+              <div className={`p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold w-full flex items-center justify-center gap-2 mb-4 ${errorMsg ? 'flex' : 'hidden'}`}>
+                <LucideIcon name="alert-circle" className="w-4 h-4 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+
+              <input 
+                type="text" 
+                maxLength="6" 
+                value={inputCode} 
+                onChange={(e) => setInputCode(e.target.value)} 
+                placeholder="000000" 
+                className="w-full text-center text-3xl tracking-[0.5em] font-mono bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-4 rounded-xl mb-6 outline-none focus:ring-2 focus:ring-udg-blue" 
+              />
+              
+              <button 
+                onClick={handleVerifyAndRegister} 
+                disabled={loading || inputCode.length !== 6} 
+                className="w-full bg-udg-navy hover:bg-udg-blue text-white font-bold py-3.5 rounded-xl shadow-md disabled:opacity-50 transition-all mb-3 flex items-center justify-center gap-2"
+              >
+                {loading ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="check-circle" className="w-4 h-4" />}
+                <span>{loading ? 'Creando cuenta...' : 'Verificar y Registrar'}</span>
+              </button>
+              
+              <button 
+                onClick={() => { setStep(1); setInputCode(''); setErrorMsg(''); }} 
+                disabled={loading} 
+                className="text-xs text-slate-500 font-semibold hover:text-slate-800 dark:hover:text-slate-300"
+              >
+                Corregir correo o datos
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // RENDERIZADO DEL PASO 1 (Formulario de Datos - Original)
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden relative text-slate-800 dark:text-slate-100 max-h-[90vh] flex flex-col">
             
             <div className="bg-udg-navy p-5 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-udg-gold text-white flex items-center justify-center font-black text-xs shadow-md">
-                  UDG
-                </div>
+                <div className="w-10 h-10 rounded-xl bg-udg-gold text-white flex items-center justify-center font-black text-xs shadow-md">UDG</div>
                 <div>
-                  <h3 className="font-bold text-base font-display">Registro de Estudiante INCO</h3>
-                  <p className="text-[11px] text-slate-300">Coordinación de Ingeniería en Computación • CUCEI</p>
+                  <h3 className="font-bold text-base font-display">Registro de Estudiante</h3>
+                  <p className="text-[11px] text-slate-300">Paso 1 de 2: Datos Generales</p>
                 </div>
               </div>
-              <button onClick={onClose} className="text-slate-300 hover:text-white p-1">
-                <i data-lucide="x" className="w-5 h-5"></i>
-              </button>
+              <button onClick={onClose} className="text-slate-300 hover:text-white p-1"><LucideIcon name="x" className="w-5 h-5" /></button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-xs custom-scrollbar">
+            <form onSubmit={handleSendCode} className="p-6 overflow-y-auto space-y-4 text-xs custom-scrollbar">
               
-              {errorMsg && (
-                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 font-semibold flex items-center gap-2">
-                  <i data-lucide="alert-circle" className="w-4 h-4 shrink-0"></i>
-                  <span>{errorMsg}</span>
-                </div>
-              )}
+              <div className={`p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 font-semibold flex items-center gap-2 ${errorMsg ? 'flex' : 'hidden'}`}>
+                <LucideIcon name="alert-circle" className="w-4 h-4 shrink-0" /><span>{errorMsg}</span>
+              </div>
 
               <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
                 <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-800 border-2 border-white dark:border-slate-700 shadow-sm flex items-center justify-center text-slate-400 mb-2">
-                  {photoPreview ? (
-                    <img src={photoPreview} alt="Vista Previa" className="w-full h-full object-cover" />
-                  ) : (
-                    <i data-lucide="user" className="w-8 h-8"></i>
-                  )}
+                  {photoPreview ? <img src={photoPreview} className="w-full h-full object-cover" /> : <LucideIcon name="user" className="w-8 h-8" />}
                 </div>
                 <label className="cursor-pointer bg-udg-navy hover:bg-udg-blue text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5">
-                  <i data-lucide="camera" className="w-4 h-4 text-udg-gold"></i>
-                  <span>{photoPreview ? 'Cambiar Foto' : 'Subir Foto de Perfil'}</span>
+                  <LucideIcon name="camera" className="w-4 h-4 text-udg-gold" /><span>{photoPreview ? 'Cambiar Foto' : 'Subir Foto'}</span>
                   <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                 </label>
               </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre Completo *</label>
-                <input
-                  type="text"
-                  placeholder="Ej: Alejandro González Ramírez"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-udg-blue outline-none"
-                />
-              </div>
-
+              <div><label className="block font-semibold mb-1">Nombre Completo *</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-udg-blue" /></div>
+              
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Código de Alumno UdG *</label>
-                  <input
-                    type="text"
-                    placeholder="Ej: 219845123"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono text-xs focus:ring-2 focus:ring-udg-blue outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teléfono Móvil *</label>
-                  <input
-                    type="tel"
-                    placeholder="Ej: 33 1425 8990"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono text-xs focus:ring-2 focus:ring-udg-blue outline-none"
-                  />
-                </div>
+                <div><label className="block font-semibold mb-1">Código UdG *</label><input type="text" value={code} onChange={(e) => setCode(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono outline-none focus:ring-2 focus:ring-udg-blue" /></div>
+                <div><label className="block font-semibold mb-1">Teléfono Móvil *</label><input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono outline-none focus:ring-2 focus:ring-udg-blue" /></div>
               </div>
+              
+              <div><label className="block font-semibold mb-1">Correo Institucional / Personal *</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-udg-blue" /></div>
+              <div><label className="block font-semibold mb-1">NIP SIIAU *</label><input type="password" value={nip} onChange={(e) => setNip(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono outline-none focus:ring-2 focus:ring-udg-blue" /></div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Correo Institucional / Personal *</label>
-                <input
-                  type="email"
-                  placeholder="ejemplo@alumnos.udg.mx"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-udg-blue outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">NIP del Sistema SIIAU *</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={nip}
-                  onChange={(e) => setNip(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono text-xs focus:ring-2 focus:ring-udg-blue outline-none"
-                />
-              </div>
-
-           <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-udg-gold hover:bg-udg-goldHover text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mt-2 font-display disabled:opacity-70"
-              >
-                {loading ? (
-                  <span key="loading-state" className="flex items-center gap-2">
-                    <i data-lucide="loader-2" className="w-4 h-4 animate-spin"></i> Registrando...
-                  </span>
-                ) : (
-                  <span key="ready-state" className="flex items-center gap-2">
-                    <i data-lucide="user-check" className="w-4 h-4"></i> Completar Registro
-                  </span>
-                )}
+              <button type="submit" disabled={loading} className="w-full bg-udg-gold hover:bg-udg-goldHover text-white font-bold py-3 rounded-xl transition-all shadow-md font-display disabled:opacity-70 mt-2 flex items-center justify-center gap-2">
+                {loading ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="send" className="w-4 h-4" />}
+                <span>{loading ? 'Enviando código...' : 'Continuar al Paso 2'}</span>
               </button>
 
               <div className="text-center pt-2">
-                <button
-                  type="button"
-                  onClick={onOpenLogin}
-                  className="text-udg-blue dark:text-blue-400 font-semibold hover:underline"
-                >
-                  ¿Ya tienes cuenta? Inicia sesión aquí
-                </button>
+                <button type="button" onClick={onOpenLogin} className="text-udg-blue dark:text-blue-400 font-semibold hover:underline">¿Ya tienes cuenta? Inicia sesión aquí</button>
               </div>
             </form>
           </div>
         </div>
       );
     }
-    
     function LoginModal({ onClose, onLogin, onOpenRegister }) {
       const [roleType, setRoleType] = useState('Estudiante');
       const [code, setCode] = useState('');
@@ -1859,23 +2001,24 @@
         try {
           const respuesta = await server.autenticarUsuario(code, nip);
           if (respuesta.exito) {
-            onLogin(respuesta.usuario); // Éxito: cerramos el modal
+            onLogin(respuesta.usuario);
           } else {
             setErrorMsg(respuesta.mensaje);
-            setLoading(false); // Falla: apagamos la carga
+            setLoading(false);
           }
         } catch (error) {
           setErrorMsg("Error de conexión con el servidor.");
-          setLoading(false); // Falla: apagamos la carga
+          setLoading(false);
         }
       };
+
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden relative text-slate-800 dark:text-slate-100">
             
             <div className="bg-udg-navy p-5 text-white relative">
               <button onClick={onClose} className="absolute top-4 right-4 text-slate-300 hover:text-white">
-                <i data-lucide="x" className="w-5 h-5"></i>
+                <LucideIcon name="x" className="w-5 h-5" />
               </button>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white text-udg-navy flex items-center justify-center font-black text-xs shadow-md">
@@ -1918,12 +2061,11 @@
               </div>
 
               <form onSubmit={handleAuth} className="space-y-4">
-                {errorMsg && (
-                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 font-semibold rounded-xl flex items-center gap-2 mb-2">
-                    <i data-lucide="alert-circle" className="w-4 h-4 shrink-0"></i>
-                    <span>{errorMsg}</span>
-                  </div>
-                )}
+                
+                <div className={`p-3 bg-red-50 border border-red-200 text-red-700 font-semibold rounded-xl flex items-center gap-2 mb-2 ${errorMsg ? 'flex' : 'hidden'}`}>
+                  <LucideIcon name="alert-circle" className="w-4 h-4 shrink-0" />
+                  <span>{errorMsg}</span>
+                </div>
                 
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Código UdG</label>
@@ -1945,18 +2087,12 @@
                   />
                 </div>
 
-              <button
+                <button
                   type="submit"
                   disabled={loading}
                   className="w-full bg-udg-navy hover:bg-udg-blue text-white font-bold py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 font-display disabled:opacity-70"
                 >
-                  {loading ? (
-                    <span key="loading-state" className="flex items-center gap-2">
-                      <i data-lucide="loader-2" className="w-4 h-4 animate-spin"></i> Autenticando...
-                    </span>
-                  ) : (
-                    <span key="ready-state">Ingresar como {roleType}</span>
-                  )}
+                  {loading ? 'Autenticando...' : `Ingresar como ${roleType}`}
                 </button>
               </form>
 

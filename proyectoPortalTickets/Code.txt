@@ -27,18 +27,18 @@ function autenticarUsuario(codigo, nip) {
     
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      // Índice 1 es Código, Índice 5 es NIP
-      if (row[1].toString() === codigo.toString() && row[5].toString() === nip.toString()) {
+      // Sanitizamos los datos de entrada para evitar fallos de coincidencia
+      if (row[1].toString().trim() === codigo.toString().trim() && row[5].toString().trim() === nip.toString().trim()) {
         return {
           exito: true,
           usuario: {
             idInterno: row[0].toString(), 
-            code: row[1].toString(),
-            name: row[2],
-            role: row[3],
-            email: row[4],
+            code: row[1].toString().trim(),
+            name: row[2].toString().trim(),
+            // ELIMINAMOS ESPACIOS OCULTOS DEL ROL AL INICIAR SESIÓN
+            role: row[3].toString().trim(),
+            email: row[4].toString().trim(),
             photo: row[6] || null,
-            // Simulamos datos de kardex restantes temporalmente
             career: "Ingeniería en Computación (INCO)",
             gpa: 90.5,
             credits: 200,
@@ -102,6 +102,10 @@ function obtenerDatosPlataforma(codigoUsuario, rol) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let tickets = [];
     let avisos = [];
+    let justificantes = [];
+
+    const rolLimpio = String(rol).trim();
+    const codigoLimpio = String(codigoUsuario).trim();
 
     // 1. Cargar Tickets
     const hojaTickets = ss.getSheetByName("Tickets");
@@ -109,12 +113,20 @@ function obtenerDatosPlataforma(codigoUsuario, rol) {
       const dataTickets = hojaTickets.getDataRange().getValues();
       for (let i = 1; i < dataTickets.length; i++) {
         const fila = dataTickets[i];
-        if (rol === 'Coordinacion' || fila[1].toString() === codigoUsuario.toString()) {
-          tickets.push({
-            id: fila[0], code: fila[1].toString(), student: fila[2],
-            subject: fila[3], details: fila[4], status: fila[5],
-            reply: fila[6], date: fila[7]
-          });
+        if (fila[0] && String(fila[0]).trim() !== "") {
+          if (rolLimpio === 'Coordinacion' || String(fila[1]).trim() === codigoLimpio) {
+            let fechaTicket = fila[7] instanceof Date ? fila[7].toLocaleDateString('es-MX') : String(fila[7]);
+            tickets.push({
+              id: String(fila[0]), 
+              code: String(fila[1]).trim(), 
+              student: String(fila[2]),
+              subject: String(fila[3]), 
+              details: String(fila[4]), 
+              status: String(fila[5]),
+              reply: String(fila[6]), 
+              date: fechaTicket
+            });
+          }
         }
       }
     }
@@ -124,15 +136,208 @@ function obtenerDatosPlataforma(codigoUsuario, rol) {
     if (hojaAvisos) {
       const dataAvisos = hojaAvisos.getDataRange().getValues();
       for (let i = 1; i < dataAvisos.length; i++) {
-        avisos.push({
-          id: dataAvisos[i][0], title: dataAvisos[i][1], date: dataAvisos[i][2], 
-          cat: dataAvisos[i][3], urgent: dataAvisos[i][4] === 'Sí', desc: dataAvisos[i][5]
-        });
+        if (dataAvisos[i][0] && String(dataAvisos[i][0]).trim() !== "") {
+          let fechaAviso = dataAvisos[i][2] instanceof Date ? dataAvisos[i][2].toLocaleDateString('es-MX') : String(dataAvisos[i][2]);
+          avisos.push({
+            id: String(dataAvisos[i][0]), 
+            title: String(dataAvisos[i][1]), 
+            date: fechaAviso, 
+            cat: String(dataAvisos[i][3]), 
+            urgent: String(dataAvisos[i][4]).trim() === 'Sí', 
+            desc: String(dataAvisos[i][5])
+          });
+        }
       }
     }
 
-    return { exito: true, tickets: tickets.reverse(), avisos: avisos.reverse() };
+    // 3. Cargar Justificantes
+    const hojaJustificantes = ss.getSheetByName("Justificantes");
+    if (hojaJustificantes) {
+      const dataJus = hojaJustificantes.getDataRange().getValues();
+      for (let i = 1; i < dataJus.length; i++) {
+        const fila = dataJus[i];
+        if (fila[0] && String(fila[0]).trim() !== "") {
+          if (rolLimpio === 'Coordinacion' || String(fila[1]).trim() === codigoLimpio) {
+            let fechaJus = fila[8] instanceof Date ? fila[8].toLocaleDateString('es-MX') : String(fila[8]);
+            justificantes.push({
+              id: String(fila[0]),
+              code: String(fila[1]).trim(),
+              student: String(fila[2]),
+              reason: String(fila[3]),
+              teachers: String(fila[4]),
+              startDate: String(fila[5]),
+              fileName: String(fila[6]),
+              status: String(fila[7]),
+              date: fechaJus
+            });
+          }
+        }
+      }
+    }
+
+    return { 
+      exito: true, 
+      tickets: tickets.reverse(), 
+      avisos: avisos.reverse(),
+      justificantes: justificantes.reverse() 
+    };
   } catch (error) {
     return { exito: false, mensaje: "Error cargando la base de datos: " + error.toString() };
   }
+}
+
+/**
+ * Envía un código de 6 dígitos al correo proporcionado para verificar la cuenta.
+ */
+function enviarCodigoVerificacion(email, nombre) {
+  try {
+    // Genera un código aleatorio de 6 dígitos (ej. 482910)
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    const asunto = "Código de Verificación - Coordinación INCO";
+    const cuerpo = `Hola ${nombre},\n\nTu código de verificación para completar tu registro en el portal de la Coordinación INCO es:\n\n👉 ${codigo} 👈\n\nSi no solicitaste este código, puedes ignorar este mensaje.\n\nSaludos,\nCoordinación de Computación CUCEI.`;
+    
+    // Enviamos el correo usando los servidores de Google
+    MailApp.sendEmail({
+      to: email,
+      subject: asunto,
+      body: cuerpo
+    });
+    
+    // Retornamos el código al frontend para que React pueda validarlo
+    return { exito: true, codigoGenerado: codigo };
+  } catch (error) {
+    return { exito: false, mensaje: "Error al enviar el correo: " + error.toString() };
+  }
+}
+function forzarPermisosDeCorreo() {
+  // Función exclusiva para que Google detecte el permiso
+  MailApp.sendEmail(Session.getActiveUser().getEmail(), "Autorización", "Éxito");
+}
+
+/**
+ * Registra un nuevo ticket de atención en la hoja "Tickets".
+ */
+function registrarNuevoTicket(datos) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Tickets");
+    const nuevoId = generarIdUnico('INC-');
+    
+    // Obtenemos la fecha actual en formato legible (Ej: 25/09/2026)
+    const fechaActual = new Date().toLocaleDateString('es-MX');
+
+    // Insertamos la fila en el orden exacto de las columnas de la hoja
+    sheet.appendRow([
+      nuevoId,               // A: ID_Ticket
+      datos.code,            // B: Codigo_Estudiante
+      datos.student,         // C: Nombre_Estudiante
+      datos.subject,         // D: Asunto
+      datos.details,         // E: Detalles
+      "Pendiente",           // F: Estatus
+      "",                    // G: Respuesta (inicia vacía)
+      fechaActual            // H: Fecha
+    ]);
+
+    // Retornamos el ticket formateado para que React lo dibuje de inmediato
+    return { 
+      exito: true, 
+      ticket: {
+        id: nuevoId,
+        code: datos.code,
+        student: datos.student,
+        subject: datos.subject,
+        details: datos.details,
+        status: "Pendiente",
+        reply: "",
+        date: fechaActual
+      }
+    };
+  } catch(error) {
+    return { exito: false, mensaje: "Error al guardar el ticket: " + error.toString() };
+  }
+}
+
+/**
+ * Guarda la respuesta del administrador y cambia el estatus a "Atendido".
+ */
+function responderTicketAdmin(ticketId, respuestaAdmin) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Tickets");
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0].toString() === ticketId.toString()) {
+        // Encontramos la fila (sumamos 1 porque la matriz inicia en 0 y Google Sheets en 1)
+        const numeroFila = i + 1;
+        
+        // Columna 6 = Estatus, Columna 7 = Respuesta
+        sheet.getRange(numeroFila, 6).setValue("Atendido");
+        sheet.getRange(numeroFila, 7).setValue(respuestaAdmin);
+        
+        return { exito: true };
+      }
+    }
+    return { exito: false, mensaje: "El ticket no se encontró en la base de datos." };
+  } catch(error) {
+    return { exito: false, mensaje: "Error al procesar la respuesta: " + error.toString() };
+  }
+}
+
+/**
+ * Registra un nuevo justificante y guarda el archivo en Google Drive.
+ */
+function registrarJustificante(datos) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Justificantes");
+    const nuevoId = generarIdUnico('JUS-');
+    const fechaActual = new Date().toLocaleDateString('es-MX');
+
+    let fileUrl = "Sin archivo";
+
+    // Si el usuario adjuntó un archivo (PDF/Imagen)
+    if (datos.fileData && datos.fileName) {
+      // Separar los metadatos de la cadena base64
+      const splitBase = datos.fileData.split(',');
+      const type = splitBase[0].split(';')[0].replace('data:', '');
+      const byteCharacters = Utilities.base64Decode(splitBase[1]);
+      
+      // Crear el archivo físico
+      const blob = Utilities.newBlob(byteCharacters, type, datos.fileName);
+      const file = DriveApp.createFile(blob);
+      
+      // Darle permisos para que el administrador (y el alumno) puedan verlo con el enlace
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      fileUrl = file.getUrl();
+    }
+
+    sheet.appendRow([
+      nuevoId,               // A: ID_Justificante
+      datos.code,            // B: Codigo_Estudiante
+      datos.student,         // C: Nombre_Estudiante
+      datos.reason,          // D: Motivo
+      datos.teachers,        // E: Materias
+      datos.startDate,       // F: Fecha_Falta
+      fileUrl,               // G: URL DEL ARCHIVO EN DRIVE
+      "Pendiente",           // H: Estatus
+      fechaActual            // I: Fecha_Solicitud
+    ]);
+
+    return { 
+      exito: true, 
+      justificante: {
+        id: nuevoId, code: datos.code, student: datos.student, 
+        reason: datos.reason, teachers: datos.teachers, startDate: datos.startDate, 
+        fileName: fileUrl, status: "Pendiente", date: fechaActual
+      }
+    };
+  } catch(error) {
+    return { exito: false, mensaje: "Error al guardar el justificante: " + error.toString() };
+  }
+}
+
+/**
+ * Función exclusiva para forzar la ventana de autorización de Google Drive
+ */
+function forzarPermisosDeDrive() {
+  DriveApp.getRootFolder();
 }
