@@ -474,42 +474,55 @@ function registrarSolicitudHoras(datos) {
 }
 
 /**
- * Agrega más archivos a una solicitud devuelta y la regresa a estado 'Pendiente'
+ * Agrega más archivos a una solicitud devuelta, actualiza la confirmación de 64h y los archivos previos que se mantienen.
  */
-function agregarArchivosHoras(id, nuevosArchivos) {
+function agregarArchivosHoras(id, nuevosArchivos, confirma64, urlsMantenidas) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("HorasIntegrales");
     const data = sheet.getDataRange().getValues();
     
+    // ID DE LA CARPETA DONDE SE GUARDAN LAS EVIDENCIAS
     const folderIdHoras = "15Qc4mLLaDB0TYxonEiqKEmtoAZKF-NNf"; 
     const folder = DriveApp.getFolderById(folderIdHoras);
     const fechaActual = new Date().toLocaleDateString('es-MX');
 
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim() === String(id).trim()) {
-        let urlsExistentes = data[i][4] ? String(data[i][4]).trim() : "";
+        
         let nuevasUrls = [];
         
-        for (let j = 0; j < nuevosArchivos.length; j++) {
-          let fileObj = nuevosArchivos[j];
-          let splitBase = fileObj.data.split(',');
-          let type = splitBase[0].split(';')[0].replace('data:', '');
-          let byteCharacters = Utilities.base64Decode(splitBase[1]);
-          let extension = fileObj.name.split('.').pop();
-          
-          let nombreArchivo = `${data[i][1]}_AnexoExtra_${fechaActual.replace(/\//g, '-')}_${Math.floor(Math.random()*1000)}.${extension}`;
-          let blob = Utilities.newBlob(byteCharacters, type, nombreArchivo);
-          let file = folder.createFile(blob);
-          file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-          nuevasUrls.push(file.getUrl());
+        // Guardamos los archivos nuevos si es que el alumno subió alguno
+        if (nuevosArchivos && nuevosArchivos.length > 0) {
+          for (let j = 0; j < nuevosArchivos.length; j++) {
+            let fileObj = nuevosArchivos[j];
+            let splitBase = fileObj.data.split(',');
+            let type = splitBase[0].split(';')[0].replace('data:', '');
+            let byteCharacters = Utilities.base64Decode(splitBase[1]);
+            let extension = fileObj.name.split('.').pop();
+            
+            let nombreArchivo = `${data[i][1]}_AnexoExtra_${fechaActual.replace(/\//g, '-')}_${Math.floor(Math.random()*1000)}.${extension}`;
+            let blob = Utilities.newBlob(byteCharacters, type, nombreArchivo);
+            let file = folder.createFile(blob);
+            file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+            nuevasUrls.push(file.getUrl());
+          }
         }
         
-        const stringFinalUrls = urlsExistentes ? (urlsExistentes + ", " + nuevasUrls.join(', ')) : nuevasUrls.join(', ');
+        // Combinar las URLs que el usuario decidió CONSERVAR con las nuevas que acaba de subir
+        let arrayFinal = [];
+        if (urlsMantenidas && String(urlsMantenidas).trim() !== "") {
+          arrayFinal.push(String(urlsMantenidas).trim());
+        }
+        if (nuevasUrls.length > 0) {
+          arrayFinal.push(nuevasUrls.join(', '));
+        }
+        const stringFinalUrls = arrayFinal.join(', ');
         
-        sheet.getRange(i + 1, 5).setValue(stringFinalUrls); // Actualizar URLs
-        sheet.getRange(i + 1, 6).setValue("Pendiente");      // Regresar estatus a Pendiente
+        sheet.getRange(i + 1, 4).setValue(confirma64 ? "Sí" : "No");
+        sheet.getRange(i + 1, 5).setValue(stringFinalUrls);
+        sheet.getRange(i + 1, 6).setValue("Pendiente"); 
         
-        return { exito: true, nuevasUrls: stringFinalUrls };
+        return { exito: true, nuevasUrls: stringFinalUrls, confirmo64: confirma64 };
       }
     }
     return { exito: false, mensaje: "Solicitud no encontrada" };
