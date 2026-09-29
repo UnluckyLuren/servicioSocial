@@ -100,7 +100,7 @@ function include(filename) {
 function inicializarHojas_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // Hoja Usuarios (Agregada la columna 10: Codigo_Verificacion)
+  // Hoja Usuarios
   const hU = obtenerOCrearHoja_(ss, CONFIG.SHEET_USUARIOS);
   if (hU.getLastRow() === 0) {
     hU.appendRow(['ID','Correo','Codigo','PasswordHash','Rol','Nombre','Fecha_Registro', 'Nombres', 'Apellidos', 'Codigo_Verificacion']);
@@ -173,7 +173,7 @@ function obtenerOCrearHoja_(ss, nombre) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// AUTENTICACIÓN
+// AUTENTICACIÓN Y REGISTRO (CON VERIFICACIÓN 2 PASOS)
 // ─────────────────────────────────────────────────────────────
 function hashPassword_(password) {
   const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password);
@@ -206,7 +206,7 @@ function registrarUsuarioCustom(correo, codigo, contrasenia, nombres, apellidos)
 
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][1]).toLowerCase() === cL) {
-        if (data[i][9]) { // Si tiene código de verificación, no está activado aún
+        if (data[i][9]) {
           return { exito: false, requiereVerificacion: true, correo: cL, mensaje: 'El correo ya está registrado pero falta verificarlo. Revisa tu bandeja.' };
         }
         return { exito: false, mensaje: 'El correo ya está registrado y activo.' };
@@ -221,7 +221,7 @@ function registrarUsuarioCustom(correo, codigo, contrasenia, nombres, apellidos)
     // Generar código de verificación 2SV (6 dígitos)
     const codigoVerificacion = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Guardar usuario con el código pendiente en la columna J (índice 9)
+    // Guardar usuario con el código pendiente
     sheet.appendRow([nuevoId, cL, coL, passHash, rol, nombreCompleto, new Date(), nombres, apellidos, codigoVerificacion]);
     registrarLog_(cL, 'REGISTRO_USUARIO_PENDIENTE', `Rol asignado: ${rol}`);
 
@@ -309,7 +309,6 @@ function verificarCodigoRegistro(correo, codigoIngresado) {
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][1]).toLowerCase() === cL) {
         if (String(data[i][9]) === codeStr) {
-          // Código correcto, se borra para activar la cuenta
           sheet.getRange(i + 1, 10).clearContent();
           registrarLog_(cL, 'CUENTA_VERIFICADA_ACTIVADA', 'El usuario completó el 2SV.');
 
@@ -1106,12 +1105,23 @@ function generarPlantillaCorporativa_(opciones) {
   </html>`;
 }
 
+// =========================================================================
+// MODIFICACIÓN PRINCIPAL: Enlaces embebidos en el correo (Sin attachments)
+// =========================================================================
 function enviarCorreoConfirmacion_(datos, nombreCompleto, odsTexto, idsReservas, fechasConHorario) {
   try {
     const fechasStr = (fechasConHorario || []).map(fh => {
       const [y, m, d] = fh.fecha.split('-');
       return `${d}/${m}/${y} (${fh.horaEntrada}–${fh.horaSalida})`;
     }).join('<br>');
+
+    // Preparamos el mensaje adicional dinámico para el Coworking 3
+    let mensajeExtra = null;
+    if (String(datos.coworking).includes('Coworking 3')) {
+      mensajeExtra = `<b>Importante:</b> Por favor revisa los siguientes manuales antes de usar el espacio:<br>
+      • <a href="https://drive.google.com/file/d/1Wirdun9VHA8zxfK6wekW_Jef3_raDcIU/view?usp=drive_link" target="_blank" style="color:#002f5c; text-decoration:underline;">Manual de Uso 1</a><br>
+      • <a href="https://drive.google.com/file/d/18ugbF8cIL7_Ilw0qthxWD3Qjfa-IsMQB/view?usp=drive_link" target="_blank" style="color:#002f5c; text-decoration:underline;">Manual de Uso 2</a>`;
+    }
 
     const html = generarPlantillaCorporativa_({
       titulo:           '¡Solicitud Recibida!',
@@ -1121,6 +1131,7 @@ function enviarCorreoConfirmacion_(datos, nombreCompleto, odsTexto, idsReservas,
       estadoColor:      '#d97706',
       estadoIcono:      '⏳',
       mensajePrincipal: 'Tu solicitud de reserva ha sido recibida y está siendo revisada por el equipo de administración.',
+      mensajeAdicional: mensajeExtra,
       detalles: [
         { etiqueta: 'ID(s) Reserva',  valor: idsReservas.join(', ') },
         { etiqueta: 'Espacio',        valor: datos.coworking },
@@ -1131,29 +1142,11 @@ function enviarCorreoConfirmacion_(datos, nombreCompleto, odsTexto, idsReservas,
       ]
     });
 
-    let opcionesCorreo = {
+    MailApp.sendEmail({
       to:       datos.correo,
       subject:  `📋 Solicitud Recibida – ${datos.coworking} | ${datos.actividad}`,
       htmlBody: html
-    };
-
-    // -- Modificación: Adición dinámica de manuales si es el Coworking 3 --
-    if (String(datos.coworking).includes('Coworking 3')) {
-      try {
-        // IMPORTANTE: Sustituir con los verdaderos IDs de Drive de tus PDFs
-        const idManual1 = "ID_DEL_MANUAL_1";
-        const idManual2 = "ID_DEL_MANUAL_2";
-
-        const blob1 = DriveApp.getFileById(idManual1).getBlob();
-        const blob2 = DriveApp.getFileById(idManual2).getBlob();
-
-        opcionesCorreo.attachments = [blob1, blob2];
-      } catch (errorArchivo) {
-        registrarLog_('SISTEMA', 'ERROR_ADJUNTAR_PDF', errorArchivo.toString());
-      }
-    }
-
-    MailApp.sendEmail(opcionesCorreo);
+    });
   } catch (e) {
     registrarLog_('SISTEMA', 'ERROR_CORREO_CONFIRMACION', e.toString());
   }
@@ -1209,6 +1202,9 @@ function notificarNuevaReservaAdmin_(datos, nombreCompleto, idsReservas, fechasC
   }
 }
 
+// =========================================================================
+// MODIFICACIÓN REFUERZO: Enlaces embebidos cuando la reserva se APRUEBA
+// =========================================================================
 function enviarNotificacionCambioEstado_(correoUsuario, idReserva, nuevoEstado, filaReserva, motivoRechazo) {
   try {
     const esAprobada = nuevoEstado === CONFIG.ESTADOS.ACEPTADA;
@@ -1246,6 +1242,15 @@ function enviarNotificacionCambioEstado_(correoUsuario, idReserva, nuevoEstado, 
       fechaStr = `${d}/${m}/${y}`;
     } catch (e) { /* ignore */ }
 
+    // Agregar los links de los manuales al mensaje adicional si fue aprobada y es para CW3
+    let mensajeExtra = motivoRechazo ? `Motivo especificado por el administrador: ${motivoRechazo}` : '';
+    if (esAprobada && String(coworking).includes('Coworking 3')) {
+      const linksManuales = `<br><br><b>Documentos importantes para tu uso:</b><br>
+      • <a href="https://drive.google.com/file/d/1Wirdun9VHA8zxfK6wekW_Jef3_raDcIU/view?usp=drive_link" target="_blank" style="color:#002f5c; text-decoration:underline;">Manual de Uso 1</a><br>
+      • <a href="https://drive.google.com/file/d/18ugbF8cIL7_Ilw0qthxWD3Qjfa-IsMQB/view?usp=drive_link" target="_blank" style="color:#002f5c; text-decoration:underline;">Manual de Uso 2</a>`;
+      mensajeExtra += linksManuales;
+    }
+
     const html = generarPlantillaCorporativa_({
       titulo,
       subtitulo,
@@ -1254,7 +1259,7 @@ function enviarNotificacionCambioEstado_(correoUsuario, idReserva, nuevoEstado, 
       estadoColor,
       estadoIcono,
       mensajePrincipal: mensajePpal,
-      mensajeAdicional: motivoRechazo ? `Motivo especificado por el administrador: ${motivoRechazo}` : null,
+      mensajeAdicional: mensajeExtra || null,
       detalles: [
         { etiqueta: 'ID Reserva', valor: idReserva },
         { etiqueta: 'Espacio',    valor: coworking },
