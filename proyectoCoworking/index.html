@@ -120,7 +120,7 @@
 
         <!-- Controles Logueados -->
         <div id="headerUsuarioLogueado" class="hidden items-center gap-4">
-          <button id="btnMisReservas" class="hidden items-center gap-2 text-sm text-blue-200 hover:text-white transition-colors" onclick="StudentView.abrirPanelMisReservas()" title="Ver reservas devueltas">
+          <button id="btnMisReservas" class="hidden items-center gap-2 text-sm text-blue-200 hover:text-white transition-colors" onclick="StudentView.abrirPanelMisReservas()" title="Ver todas mis reservas">
             <i class="fa-solid fa-folder-open"></i> Mis Reservas
             <span id="badgeReservasDevueltas" class="hidden bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">0</span>
           </button>
@@ -147,7 +147,7 @@
         </button>
       </div>
       <div class="p-6 modal-body-scroll">
-        <div class="flex bg-slate-100 rounded-lg p-1 mb-6 shrink-0">
+          <div id="authTabs" class="flex bg-slate-100 rounded-lg p-1 mb-6 shrink-0">
           <button id="btnTabLogin" onclick="AuthService.setAuthMode('login')" class="flex-1 text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c]">Ingresar</button>
           <button id="btnTabRegister" onclick="AuthService.setAuthMode('register')" class="flex-1 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700">Registrarse</button>
         </div>
@@ -169,8 +169,6 @@
         </form>
 
         <form id="formRegister" onsubmit="AuthService.procesarRegistro(event)" class="space-y-4 hidden">
-
-          <!-- AGREGAR ESTO DENTRO DE formRegister -->
           <div>
             <label class="block text-xs font-bold text-slate-500 mb-1">Nombres</label>
             <input type="text" id="regNombres" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
@@ -179,7 +177,6 @@
             <label class="block text-xs font-bold text-slate-500 mb-1">Apellidos</label>
             <input type="text" id="regApellidos" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
           </div>
-
           <div>
             <label class="block text-xs font-bold text-slate-500 mb-1">Correo Institucional</label>
             <input type="email" id="regEmail" required placeholder="@alumnos.udg.mx" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
@@ -194,6 +191,26 @@
           </div>
           <button type="submit" id="btnRegSubmit" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold transition-colors">
             Crear Cuenta
+          </button>
+        </form>
+        <!-- FORMULARIO DE VERIFICACIÓN 2 PASOS -->
+        <form id="formVerification" onsubmit="AuthService.procesarVerificacion(event)" class="space-y-4 hidden animate-fadeIn">
+          <div class="text-center mb-4">
+            <div class="w-16 h-16 bg-blue-50 text-[#002f5c] border border-blue-100 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+              <i class="fa-solid fa-envelope-open-text"></i>
+            </div>
+            <h4 class="text-lg font-bold text-slate-800">Verifica tu cuenta</h4>
+            <p class="text-xs text-slate-500 mt-1">Hemos enviado un código seguro de 6 dígitos a tu correo institucional.</p>
+            <p id="verifEmailDisplay" class="text-sm font-bold text-[#002f5c] mt-2"></p>
+          </div>
+          <div>
+            <input type="text" id="verifCode" required pattern="[0-9]{6}" maxlength="6" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-4 text-center text-2xl tracking-[0.5em] font-black focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 transition-all shadow-inner" placeholder="••••••">
+          </div>
+          <button type="submit" id="btnVerifSubmit" class="w-full bg-[#002f5c] hover:bg-[#001f3f] text-white py-3 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-[0.98]">
+            Verificar y Activar Cuenta
+          </button>
+          <button type="button" onclick="AuthService.setAuthMode('login')" class="w-full bg-white hover:bg-slate-50 text-slate-500 py-2 rounded-xl text-xs font-bold transition-colors border border-slate-200 mt-1">
+            Volver al inicio de sesión
           </button>
         </form>
       </div>
@@ -230,15 +247,15 @@
 
     <main class="max-w-7xl mx-auto px-4 py-12 w-full">
 
-      <!-- Panel de Mis Reservas Devueltas -->
+      <!-- Panel de Mis Reservas -->
       <div id="panelMisReservas" class="hidden mb-8">
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
             <div>
               <h3 class="text-lg font-bold text-[#002f5c] flex items-center gap-2">
-                <i class="fa-solid fa-pen-to-square text-amber-500"></i> Mis Reservas por Corregir
+                <i class="fa-solid fa-folder-open text-[#002f5c]"></i> Mis Reservas
               </h3>
-              <p class="text-xs text-slate-500 mt-1">Solicitudes devueltas para edición y reenvío.</p>
+              <p class="text-xs text-slate-500 mt-1">Aquí puedes consultar todas las reservas que has realizado y su estado.</p>
             </div>
             <button onclick="StudentView.cerrarPanelMisReservas()" class="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-lg border border-slate-200 shadow-sm transition-all"><i class="fa-solid fa-xmark text-lg"></i></button>
           </div>
@@ -285,13 +302,13 @@
         <!-- Coworking 3 -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col">
           <div class="h-48 bg-slate-200 relative overflow-hidden">
-            <img src="https://images.unsplash.com/photo-1556761175-5973dc0f32b7?auto=format&fit=crop&w=600&q=80" alt="Coworking Creación" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+            <img src="https://images.unsplash.com/photo-1581092335397-9583eb92d232?auto=format&fit=crop&w=600&q=80" alt="Coworking Creación" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
           </div>
           <div class="p-5 flex flex-col flex-grow">
-            <h4 class="text-lg font-bold text-slate-800 mb-2">Coworking 3 – Creación</h4>
-            <p class="text-slate-500 text-sm mb-6 flex-grow">Zona de máxima concentración con cabinas individuales y luz cálida ideal para exámenes y tesis.</p>
+            <h4 class="text-lg font-bold text-slate-800 mb-2">Coworking 3 – Creación y Maquinaria</h4>
+            <p class="text-slate-500 text-sm mb-6 flex-grow">Espacio adaptado para uso de maquinaria especializada como fresadoras CNC, impresoras 3D y grabadoras láser.</p>
             <button class="w-full bg-slate-100 hover:bg-[#002f5c] text-slate-700 hover:text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
-              data-coworking="Coworking 3 - Creación" data-desc="Zona de máxima concentración con cabinas individuales." data-cap="10 personas" data-img="https://images.unsplash.com/photo-1556761175-5973dc0f32b7?auto=format&fit=crop&w=600&q=80" data-specs='["Cabinas aisladas","Luz cálida de lectura","Contactos 110v y USB","Silencio absoluto"]' onclick="ModalController.abrir(this)">
+              data-coworking="Coworking 3 - Creación" data-desc="Espacio adaptado para uso de maquinaria e impresión 3D." data-cap="10 personas" data-img="https://images.unsplash.com/photo-1581092335397-9583eb92d232?auto=format&fit=crop&w=600&q=80" data-specs='["Acceso a maquinaria CNC y 3D","Mesas de trabajo técnico","Contactos 110v especializados","Iluminación focalizada"]' onclick="ModalController.abrir(this)">
               Ver detalles y reservar
             </button>
           </div>
@@ -327,10 +344,10 @@
         </button>
       </div>
 
-      <div class="flex flex-col md:flex-row flex-grow overflow-hidden modal-body-scroll">
-        <!-- Columna Izquierda (Info Espacio) -->
-        <div class="w-full md:w-1/3 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col shrink-0">
-          <img id="modalImagen" src="" alt="Espacio" class="w-full h-40 md:h-48 object-cover shrink-0">
+      <div class="flex flex-col md:flex-row flex-grow overflow-y-auto md:overflow-hidden">
+        <!-- Columna Izquierda (Info Espacio con Scroll Independiente) -->
+        <div class="w-full md:w-1/3 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col shrink-0 md:h-full md:overflow-y-auto">
+          <img id="modalImagen" src="" alt="Espacio" class="w-full h-48 md:h-56 object-cover object-center shrink-0 shadow-sm">
           <div class="p-6 flex-grow">
             <h4 id="modalTitulo" class="text-xl font-black text-slate-800 mb-2"></h4>
             <p id="modalDescripcion" class="text-sm text-slate-600 mb-4"></p>
@@ -338,12 +355,49 @@
               <i class="fa-solid fa-users text-[#002f5c]"></i> Capacidad: <span id="modalCapacidad" class="text-[#002f5c]"></span>
             </div>
             <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">¿Qué incluye?</h5>
-            <ul id="modalEspecificaciones" class="space-y-2"></ul>
+            <ul id="modalEspecificaciones" class="space-y-2 mb-4"></ul>
+
+            <!-- APARTADO DE MAQUINARIA (Exclusivo Coworking 3) -->
+            <div id="infoMaquinasCW3" class="hidden mt-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <h5 class="text-xs font-bold text-[#002f5c] uppercase tracking-wider mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-gears"></i> Maquinaria Disponible
+              </h5>
+              <div class="space-y-3 pr-1 text-xs">
+                <div class="p-2 bg-slate-50 border border-slate-100 rounded">
+                  <p class="font-bold text-slate-800">Fresadora CNC EMCO Concept Mill 55</p>
+                  <p class="text-slate-500">Sustractivo | Vol: 190x140x260 mm</p>
+                </div>
+                <div class="p-2 bg-slate-50 border border-slate-100 rounded">
+                  <p class="font-bold text-slate-800">Impresora Bambu Lab P1S</p>
+                  <p class="text-slate-500">FDM | Vol: 256x256x256 mm</p>
+                </div>
+                <div class="p-2 bg-slate-50 border border-slate-100 rounded">
+                  <p class="font-bold text-slate-800">Impresora Bambu Lab A1</p>
+                  <p class="text-slate-500">FDM | Vol: 256x256x256 mm</p>
+                </div>
+                <div class="p-2 bg-slate-50 border border-slate-100 rounded">
+                  <p class="font-bold text-slate-800">Sinterizadora Lisa Pro Rev.E</p>
+                  <p class="text-slate-500">SLS (PA12) | Vol: 106x154x224 mm</p>
+                </div>
+                <div class="p-2 bg-slate-50 border border-slate-100 rounded">
+                  <p class="font-bold text-slate-800">Fresadora Marks Super SV</p>
+                  <p class="text-slate-500">Manual | Vol: 500x200x300 mm</p>
+                </div>
+                <div class="p-2 bg-slate-50 border border-slate-100 rounded">
+                  <p class="font-bold text-slate-800">Impresora Raise3D Pro2 Plus</p>
+                  <p class="text-slate-500">FDM | Vol: 305x305x605 mm</p>
+                </div>
+                <div class="p-2 bg-slate-50 border border-slate-100 rounded">
+                  <p class="font-bold text-slate-800">Grabadora Láser Creality Falcon2 Pro 40W</p>
+                  <p class="text-slate-500">Diodo Láser | Área: 400x415 mm</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Columna Derecha (Formulario) -->
-        <div class="w-full md:w-2/3 p-6 md:p-8 bg-white relative">
+        <!-- Columna Derecha (Formulario con Scroll Independiente) -->
+        <div class="w-full md:w-2/3 p-6 md:p-8 bg-white relative md:h-full md:overflow-y-auto">
           <div id="contenedorFormulario" class="fade-in h-full flex flex-col">
 
             <!-- BANNER DE RESERVA DEVUELTA -->
@@ -392,7 +446,7 @@
               </div>
 
               <div id="campoExtension" class="hidden">
-                <label class="block text-xs font-bold text-slate-500 mb-1">Extensión Telefónica</label>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Extensión Telefónica <span class="text-slate-400 font-normal">(opcional)</span></label>
                 <input type="text" id="extension" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej. 1234">
               </div>
 
@@ -401,48 +455,109 @@
                 <input type="email" id="correo" required readonly class="w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-sm cursor-not-allowed">
               </div>
 
-              <!-- Responsable solo maestros -->
-              <div id="campoResponsable" class="hidden">
-                <label class="block text-xs font-bold text-slate-500 mb-1">Correo de un responsable (opcional)</label>
-                <input type="email" id="correoResponsable" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="correo.responsable@cucei.udg.mx">
-                <p class="text-[10px] text-slate-400 mt-1">Si dejas este campo lleno, se enviará copia de invitación a este correo.</p>
+              <!-- Encargado: solo para académicos y es opcional -->
+              <div id="campoResponsable" class="hidden space-y-4 pt-2">
+                <div class="border-t border-slate-100 pt-4">
+                  <p class="text-sm font-bold text-slate-800">Datos del encargado <span class="text-slate-400 font-normal text-xs">(opcional)</span></p>
+                  <p class="text-[10px] text-slate-400 mt-1">Si agregas un encargado, debes proporcionar los tres datos.</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Nombre(s) del encargado</label>
+                    <input type="text" id="nombreEncargado" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nombre(s)">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Apellidos del encargado</label>
+                    <input type="text" id="apellidosEncargado" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Apellidos">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 mb-1">Correo del encargado</label>
+                  <input type="email" id="correoEncargado" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="encargado@cucei.udg.mx">
+                  <p class="text-[10px] text-slate-400 mt-1">Permitidos: @alumnos.udg.mx, @academicos.udg.mx o @cucei.udg.mx</p>
+                </div>
               </div>
 
-              <!-- Tipo de actividad (Radio Cards) -->
-              <div id="tipoActividadContainer" class="pt-4 border-t border-slate-100">
-                <label class="block text-xs font-bold text-slate-500 mb-3">Tipo de actividad <span class="text-rose-500">*</span></label>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Conferencia">
-                    <input type="radio" name="tipoActividad" value="Conferencia" class="sr-only mt-1">
-                    <span class="text-2xl text-slate-400 mb-2 transition-colors"><i class="fa-solid fa-microphone"></i></span>
-                    <span class="font-bold text-sm text-slate-600 transition-colors">Conferencia</span>
+              <!-- CONTENEDOR DINÁMICO DE EVENTOS -->
+              <div id="seccionEventos">
+                <!-- Tipo de actividad (Radio Cards) -->
+                <div id="tipoActividadContainer" class="pt-4 border-t border-slate-100">
+                  <label class="block text-xs font-bold text-slate-500 mb-3">Tipo de actividad <span class="text-rose-500">*</span></label>
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Conferencia">
+                      <input type="radio" name="tipoActividad" value="Conferencia" class="sr-only mt-1">
+                      <span class="text-2xl text-slate-400 mb-2 transition-colors"><i class="fa-solid fa-microphone"></i></span>
+                      <span class="font-bold text-sm text-slate-600 transition-colors">Conferencia</span>
+                    </label>
+                    <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Taller">
+                      <input type="radio" name="tipoActividad" value="Taller" class="sr-only mt-1">
+                      <span class="text-2xl text-slate-400 mb-2 transition-colors"><i class="fa-solid fa-people-group"></i></span>
+                      <span class="font-bold text-sm text-slate-600 transition-colors">Taller</span>
+                    </label>
+                    <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Reunion">
+                      <input type="radio" name="tipoActividad" value="Reunion" class="sr-only mt-1">
+                      <span class="text-2xl text-slate-400 mb-2 transition-colors"><i class="fa-solid fa-chalkboard-user"></i></span>
+                      <span class="font-bold text-sm text-slate-600 transition-colors">Reunión</span>
+                    </label>
+                  </div>
+                  <p id="errorTipoActividad" class="hidden text-xs text-rose-500 mt-2"><i class="fa-solid fa-circle-exclamation mr-1"></i> Selecciona un tipo de actividad.</p>
+                </div>
+
+                <div class="mt-4">
+                  <label class="block text-xs font-bold text-slate-500 mb-1">Nombre del Evento o Actividad</label>
+                  <input type="text" id="actividad" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej. Reunión de proyecto modular">
+                </div>
+
+                <div class="mt-4">
+                  <label class="block text-xs font-bold text-slate-500 mb-1">Breve Descripción de la Actividad</label>
+                  <textarea id="descripcionActividad" required rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Descripción breve del evento de Innovación o Emprendimiento"></textarea>
+                </div>
+              </div>
+
+              <!-- CONTENEDOR DINÁMICO DE MÁQUINAS (Solo Coworking 3) -->
+              <div id="seccionMaquinasForm" class="hidden pt-4 border-t border-slate-100">
+                <label class="block text-xs font-bold text-slate-500 mb-3">Selecciona la(s) máquina(s) a utilizar <span class="text-rose-500">*</span></label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2">
+                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Fresadora CNC EMCO Concept Mill 55" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                    <div><span class="font-bold text-slate-800 block">Fresadora CNC EMCO Concept Mill 55</span></div>
                   </label>
-                  <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Taller">
-                    <input type="radio" name="tipoActividad" value="Taller" class="sr-only mt-1">
-                    <span class="text-2xl text-slate-400 mb-2 transition-colors"><i class="fa-solid fa-people-group"></i></span>
-                    <span class="font-bold text-sm text-slate-600 transition-colors">Taller</span>
+                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Impresora Bambu Lab P1S" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                    <div><span class="font-bold text-slate-800 block">Impresora Bambu Lab P1S</span></div>
                   </label>
-                  <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Reunion">
-                    <input type="radio" name="tipoActividad" value="Reunion" class="sr-only mt-1">
-                    <span class="text-2xl text-slate-400 mb-2 transition-colors"><i class="fa-solid fa-chalkboard-user"></i></span>
-                    <span class="font-bold text-sm text-slate-600 transition-colors">Reunión</span>
+                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Impresora Bambu Lab A1" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                    <div><span class="font-bold text-slate-800 block">Impresora Bambu Lab A1</span></div>
+                  </label>
+                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Sinterizadora Lisa Pro Rev.E" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                    <div><span class="font-bold text-slate-800 block">Sinterizadora Lisa Pro Rev.E</span></div>
+                  </label>
+                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Fresadora manual Marks Super SV" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                    <div><span class="font-bold text-slate-800 block">Fresadora manual Marks Super SV</span></div>
+                  </label>
+                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Impresora Raise3D Pro2 Plus" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                    <div><span class="font-bold text-slate-800 block">Impresora Raise3D Pro2 Plus</span></div>
+                  </label>
+                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Grabadora láser Creality Falcon2 Pro 40W" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                    <div><span class="font-bold text-slate-800 block">Grabadora láser Creality Falcon2 Pro 40W</span></div>
                   </label>
                 </div>
-                <p id="errorTipoActividad" class="hidden text-xs text-rose-500 mt-2"><i class="fa-solid fa-circle-exclamation mr-1"></i> Selecciona un tipo de actividad.</p>
+
+                <!-- NUEVO CAMPO: DESCRIPCIÓN DE USO -->
+                <div class="mt-4 pt-4 border-t border-slate-100">
+                  <label class="block text-xs font-bold text-slate-500 mb-1">Descripción de uso <span class="text-rose-500">*</span></label>
+                  <textarea id="descripcionUsoCW3" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Describe brevemente qué harás con la(s) máquina(s) seleccionada(s)..."></textarea>
+                  <p id="errorDescCW3" class="hidden text-xs text-rose-500 mt-1"><i class="fa-solid fa-circle-exclamation mr-1"></i> Este campo es obligatorio.</p>
+                </div>
               </div>
 
-              <div>
-                <label class="block text-xs font-bold text-slate-500 mb-1">Nombre del Evento o Actividad</label>
-                <input type="text" id="actividad" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej. Reunión de proyecto modular">
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-slate-500 mb-1">Breve Descripción de la Actividad</label>
-                <textarea id="descripcionActividad" required rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Descripción breve del evento de Innovación o Emprendimiento"></textarea>
-              </div>
-
-              <!-- ODS -->
-              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <!-- ODS (Contenedor con ID asignado) -->
+              <div id="seccionODS" class="bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <label class="block text-sm font-bold text-slate-800 mb-1">Objetivos de Desarrollo Sostenible (ODS)</label>
                 <div class="h-32 overflow-y-auto pr-2 grid grid-cols-1 sm:grid-cols-2 gap-2 border border-slate-200 rounded bg-white p-2">
                   <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 1: Fin de la Pobreza"> ODS 1: Fin de la Pobreza</label>
@@ -474,7 +589,7 @@
                   <div class="pointer-events-none">
                     <i class="fa-solid fa-cloud-arrow-up text-3xl text-[#002f5c] mb-3"></i>
                     <p class="text-sm font-semibold text-slate-700">Arrastra archivos aquí o haz clic para seleccionar</p>
-                    <p class="text-[10px] text-slate-400 mt-1">PDF, DOCX, XLSX, PNG, JPG (máx. 5MB c/u)</p>
+                    <p class="text-[10px] text-slate-400 mt-1">PDF, DOCX, XLSX, PNG, JPG (máx. 25MB c/u)</p>
                   </div>
                 </div>
 
@@ -674,10 +789,10 @@
         </div>
       </div>
 
-<!-- TAB 3: USUARIOS (NUEVO DISEÑO HÍBRIDO) -->
+      <!-- TAB 3: USUARIOS (NUEVO DISEÑO HÍBRIDO) -->
       <div id="adminVistaUsuarios" class="hidden">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
           <!-- Columna Izquierda: Admins Actuales -->
           <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
             <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
@@ -722,7 +837,7 @@
                 </div>
                 <button onclick="AdminDashboard.buscarUsuariosSistema()" class="bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow">Buscar</button>
               </div>
-              
+
               <div id="contenedorResultadosUsuarios" class="flex-grow border border-slate-200 rounded-xl overflow-hidden flex flex-col bg-slate-50 h-full">
                 <div id="mensajeResultadosUsuarios" class="p-6 text-center text-slate-400 text-sm flex flex-col justify-center h-full">
                   <i class="fa-solid fa-users text-3xl mb-2 opacity-50"></i>
@@ -864,6 +979,48 @@
     © 2026 Coordinación de Ingeniería en Computación – CUCEI<br>
     Universidad de Guadalajara
   </footer>
+
+  <!-- SCRIPT DINÁMICO DE INTERCEPTACIÓN PARA MODIFICACIÓN UI COWORKING 3 -->
+  <script>
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('button[data-coworking]');
+      if(btn) {
+        const isCW3 = btn.dataset.coworking.includes('Coworking 3');
+        const secEventos = document.getElementById('seccionEventos');
+        const secMaquinasForm = document.getElementById('seccionMaquinasForm');
+        const infoMaquinas = document.getElementById('infoMaquinasCW3');
+        const secOds = document.getElementById('seccionODS');
+        const inputActividad = document.getElementById('actividad');
+        const inputDesc = document.getElementById('descripcionActividad');
+
+        // Habilitar / Deshabilitar requerimientos y secciones basándonos en la naturaleza de uso
+        if(isCW3) {
+          if(secEventos) secEventos.classList.add('hidden');
+          if(secMaquinasForm) secMaquinasForm.classList.remove('hidden');
+          if(infoMaquinas) infoMaquinas.classList.remove('hidden');
+
+          // Ocultar ODS y limpiar selecciones previas por seguridad
+          if(secOds) {
+            secOds.classList.add('hidden');
+            secOds.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+          }
+
+          if(inputActividad) { inputActividad.required = false; inputActividad.value = "Uso de Maquinaria"; }
+          if(inputDesc) { inputDesc.required = false; inputDesc.value = "Uso de equipos del taller."; }
+        } else {
+          if(secEventos) secEventos.classList.remove('hidden');
+          if(secMaquinasForm) secMaquinasForm.classList.add('hidden');
+          if(infoMaquinas) infoMaquinas.classList.add('hidden');
+
+          // Mostrar ODS de nuevo para el resto de coworkings
+          if(secOds) secOds.classList.remove('hidden');
+
+          if(inputActividad) { inputActividad.required = true; inputActividad.value = ""; }
+          if(inputDesc) { inputDesc.required = true; inputDesc.value = ""; }
+        }
+      }
+    });
+  </script>
 
   <?!= include('script'); ?>
 </body>
