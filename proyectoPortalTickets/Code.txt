@@ -173,7 +173,10 @@ function obtenerDatosPlataforma(codigoUsuario, rol, limiteMaximo = 100) {
               endDate: String(fila[6]),
               fileName: String(fila[7]),
               status: String(fila[8]),
-              date: fechaJus
+              date: fechaJus,
+              email: String(fila[10] || ''),     // NUEVO
+              phone: String(fila[11] || ''),     // NUEVO
+              adminPdfUrl: String(fila[12] || '')// NUEVO
             });
           }
         }
@@ -204,6 +207,31 @@ function obtenerDatosPlataforma(codigoUsuario, rol, limiteMaximo = 100) {
       }
     }
 
+    // 5. Cargar Constancias 
+    let constancias = [];
+    const hojaConstancias = ss.getSheetByName("Constancias");
+    if (hojaConstancias) {
+      const dataConstancias = hojaConstancias.getDataRange().getValues();
+      for (let i = 1; i < dataConstancias.length; i++) {
+        const fila = dataConstancias[i];
+        if (fila[0] && String(fila[0]).trim() !== "") {
+          if (rolLimpio === 'Coordinacion' || String(fila[1]).trim() === codigoLimpio) {
+            let fechaSol = fila[6] instanceof Date ? fila[6].toLocaleDateString('es-MX') : String(fila[6]);
+            constancias.push({
+              id: String(fila[0]),
+              code: String(fila[1]).trim(),
+              student: String(fila[2]),
+              email: String(fila[3]),
+              requiresDetails: String(fila[4]),
+              status: String(fila[5]),
+              date: fechaSol,
+              adminData: fila[7] ? String(fila[7]) : "{}"
+            });
+          }
+        }
+      }
+    }
+    
    return { 
       exito: true, 
       tickets: tickets.reverse().slice(0, limiteMaximo), 
@@ -245,15 +273,17 @@ function forzarPermisosDeCorreo() {
 }
 
 /**
- * Registra un nuevo ticket de atención en la hoja "Tickets".
+ * Registra un nuevo ticket de atención en la hoja "Tickets" y envía un correo de confirmación.
  */
 function registrarNuevoTicket(datos) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Tickets");
     const nuevoId = generarIdUnico('INC-');
     
-    // Obtenemos la fecha actual en formato legible (Ej: 25/09/2026)
-    const fechaActual = new Date().toLocaleDateString('es-MX');
+    // Obtenemos la fecha y hora actual
+    const now = new Date();
+    const fechaActual = now.toLocaleDateString('es-MX');
+    const horaActual = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
     // Insertamos la fila en el orden exacto de las columnas de la hoja
     sheet.appendRow([
@@ -266,6 +296,45 @@ function registrarNuevoTicket(datos) {
       "",                    // G: Respuesta (inicia vacía)
       fechaActual            // H: Fecha
     ]);
+
+    // ENVIAR CORREO ELECTRÓNICO AL ESTUDIANTE CON DISEÑO INSTITUCIONAL
+    if (datos.email) {
+      const asuntoCorreo = `Confirmación de Ticket #${nuevoId} - Coordinación INCO`;
+      
+      const cuerpoHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <div style="background-color: #0f2744; padding: 20px; text-align: center;">
+            <h2 style="color: #ffffff; margin: 0; font-size: 20px;">Coordinación de Ingeniería en Computación</h2>
+            <p style="color: #cbd5e1; font-size: 13px; margin-top: 5px;">Universidad de Guadalajara • CUCEI</p>
+          </div>
+          
+          <div style="padding: 30px; background-color: #ffffff; color: #334155;">
+            <h3 style="color: #0f2744; border-bottom: 2px solid #d97706; padding-bottom: 8px; margin-top: 0;">Recepción de Ticket Exitosa</h3>
+            <p style="font-size: 15px;">Hola <strong>${datos.student}</strong>,</p>
+            <p style="font-size: 14px; line-height: 1.5;">Hemos recibido correctamente tu solicitud en nuestra Mesa de Ayuda. El personal de la coordinación revisará tu caso y te brindará una respuesta a la brevedad.</p>
+            
+            <div style="background-color: #f8fafc; border-left: 4px solid #1e3a8a; padding: 18px; margin: 25px 0; border-radius: 0 8px 8px 0;">
+              <p style="margin: 0 0 10px 0; font-size: 14px;"><strong>Folio de Seguimiento:</strong> <span style="color: #1e3a8a; font-weight: bold;">#${nuevoId}</span></p>
+              <p style="margin: 0 0 10px 0; font-size: 14px;"><strong>Asunto:</strong> ${datos.subject}</p>
+              <p style="margin: 0 0 10px 0; font-size: 14px;"><strong>Descripción:</strong><br/><span style="color: #475569;">${datos.details}</span></p>
+              <p style="margin: 0; font-size: 14px;"><strong>Hora de registro:</strong> ${fechaActual} a las ${horaActual}</p>
+            </div>
+            
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5;">Para consultar el dictamen o respuesta oficial, ingresa al Portal de la Coordinación INCO y revisa la sección <em>"Mis Tickets de Atención"</em>.</p>
+          </div>
+          
+          <div style="background-color: #f1f5f9; padding: 15px; text-align: center; font-size: 11px; color: #94a3b8;">
+            <p style="margin: 0;">Este es un mensaje automático generado por el Portal Institucional INCO. Por favor, no respondas a este correo.</p>
+          </div>
+        </div>
+      `;
+
+      MailApp.sendEmail({
+        to: datos.email,
+        subject: asuntoCorreo,
+        htmlBody: cuerpoHtml
+      });
+    }
 
     // Retornamos el ticket formateado para que React lo dibuje de inmediato
     return { 
@@ -285,35 +354,107 @@ function registrarNuevoTicket(datos) {
     return { exito: false, mensaje: "Error al guardar el ticket: " + error.toString() };
   }
 }
-
 /**
- * Guarda la respuesta del administrador y cambia el estatus a "Atendido".
+ * Guarda la respuesta del administrador, cambia el estatus a "Atendido" y notifica al alumno por correo.
  */
 function responderTicketAdmin(ticketId, respuestaAdmin) {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Tickets");
-    const data = sheet.getDataRange().getValues();
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetTickets = ss.getSheetByName("Tickets");
+    const dataTickets = sheetTickets.getDataRange().getValues();
+    
+    let studentCode = "";
+    let studentName = "";
+    let subject = "";
+    let details = "";
+    let filaActualizar = -1;
 
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0].toString() === ticketId.toString()) {
-        // Encontramos la fila (sumamos 1 porque la matriz inicia en 0 y Google Sheets en 1)
-        const numeroFila = i + 1;
+    // 1. Buscar el ticket y actualizarlo
+    for (let i = 1; i < dataTickets.length; i++) {
+      if (dataTickets[i][0].toString() === ticketId.toString()) {
+        filaActualizar = i + 1;
+        studentCode = dataTickets[i][1].toString();
+        studentName = dataTickets[i][2].toString();
+        subject = dataTickets[i][3].toString();
+        details = dataTickets[i][4].toString();
         
         // Columna 6 = Estatus, Columna 7 = Respuesta
-        sheet.getRange(numeroFila, 6).setValue("Atendido");
-        sheet.getRange(numeroFila, 7).setValue(respuestaAdmin);
-        
-        return { exito: true };
+        sheetTickets.getRange(filaActualizar, 6).setValue("Atendido");
+        sheetTickets.getRange(filaActualizar, 7).setValue(respuestaAdmin);
+        break;
       }
     }
-    return { exito: false, mensaje: "El ticket no se encontró en la base de datos." };
+
+    if (filaActualizar === -1) {
+      return { exito: false, mensaje: "El ticket no se encontró en la base de datos." };
+    }
+
+    // 2. Buscar el correo del alumno en la hoja Usuarios
+    const sheetUsuarios = ss.getSheetByName("Usuarios");
+    let studentEmail = "";
+    if (sheetUsuarios) {
+      const dataUsuarios = sheetUsuarios.getDataRange().getValues();
+      for (let j = 1; j < dataUsuarios.length; j++) {
+        if (dataUsuarios[j][1].toString() === studentCode) {
+          studentEmail = dataUsuarios[j][4].toString(); // Columna E es el Email
+          break;
+        }
+      }
+    }
+
+    // 3. Enviar correo al alumno con la respuesta si encontramos su email
+    if (studentEmail) {
+      const asuntoCorreo = `Respuesta a tu Ticket #${ticketId} - Coordinación INCO`;
+      const fechaActual = new Date().toLocaleDateString('es-MX');
+      const horaActual = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+
+      const cuerpoHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+          <div style="background-color: #0f2744; padding: 20px; text-align: center;">
+            <h2 style="color: #ffffff; margin: 0; font-size: 20px;">Coordinación de Ingeniería en Computación</h2>
+            <p style="color: #cbd5e1; font-size: 13px; margin-top: 5px;">Universidad de Guadalajara • CUCEI</p>
+          </div>
+          
+          <div style="padding: 30px; background-color: #ffffff; color: #334155;">
+            <h3 style="color: #059669; border-bottom: 2px solid #059669; padding-bottom: 8px; margin-top: 0;">Tu ticket ha sido atendido</h3>
+            <p style="font-size: 15px;">Hola <strong>${studentName}</strong>,</p>
+            <p style="font-size: 14px; line-height: 1.5;">La Coordinación ha dado respuesta a tu ticket <strong>#${ticketId}</strong>.</p>
+            
+            <div style="background-color: #f0fdf4; border-left: 4px solid #059669; padding: 18px; margin: 25px 0; border-radius: 0 8px 8px 0;">
+              <p style="margin: 0 0 10px 0; font-size: 14px; color: #065f46;"><strong>Respuesta de Coordinación:</strong></p>
+              <p style="margin: 0; font-size: 15px; color: #064e3b; line-height: 1.6;"><em>"${respuestaAdmin}"</em></p>
+            </div>
+
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <p style="margin: 0 0 5px 0; font-size: 12px; color: #64748b;"><strong>Tu solicitud original:</strong> ${subject}</p>
+              <p style="margin: 0; font-size: 12px; color: #94a3b8; font-style: italic;">${details}</p>
+            </div>
+            
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5;">Si tu duda no fue resuelta o requieres más información, te invitamos a abrir un nuevo ticket en la plataforma o acudir presencialmente al Módulo M202.</p>
+          </div>
+          
+          <div style="background-color: #f1f5f9; padding: 15px; text-align: center; font-size: 11px; color: #94a3b8;">
+            <p style="margin: 0;">Dictaminado el: ${fechaActual} a las ${horaActual}</p>
+            <p style="margin: 5px 0 0 0;">Este es un mensaje automático generado por el Portal Institucional INCO.</p>
+          </div>
+        </div>
+      `;
+
+      MailApp.sendEmail({
+        to: studentEmail,
+        subject: asuntoCorreo,
+        htmlBody: cuerpoHtml
+      });
+    }
+    
+    return { exito: true };
   } catch(error) {
     return { exito: false, mensaje: "Error al procesar la respuesta: " + error.toString() };
   }
 }
 
 /**
- * Registra un nuevo justificante en la hoja Google Sheets y lo guarda en la carpeta específica.
+ * Registra un nuevo justificante, guarda los datos extra y envía correo al alumno.
  */
 function registrarJustificante(datos) {
   try {
@@ -322,67 +463,60 @@ function registrarJustificante(datos) {
     const fechaActual = new Date().toLocaleDateString('es-MX');
 
     let fileUrl = "Sin archivo";
-
     if (datos.fileData && datos.fileName) {
       const splitBase = datos.fileData.split(',');
       const type = splitBase[0].split(';')[0].replace('data:', '');
       const byteCharacters = Utilities.base64Decode(splitBase[1]);
-      
-      // 1. Extraer la extensión del archivo original (ej: pdf, jpg)
       const extension = datos.fileName.split('.').pop();
-      
-      // 2. Formatear el texto para el nombre (quitar espacios en blanco del nombre y cambiar / por - en fecha)
       const nombreLimpio = datos.student.replace(/\s+/g, '');
       const fechaLimpia = fechaActual.replace(/\//g, '-');
-      
-      // 3. Crear el nombre inteligente estandarizado
       const nombreInteligente = `${datos.code}_${nombreLimpio}_${datos.reason}_${fechaLimpia}.${extension}`;
       
       const blob = Utilities.newBlob(byteCharacters, type, nombreInteligente);
-      
-      // 4. GUARDAR EN LA SUBCARPETA "JUSTIFICANTES"
-      // Sustituye el texto entre comillas por el ID real de tu subcarpeta en Drive
       const folderIdJustificantes = "1FYLyqOiFs90s337WMALx763R5iTxg9LW"; 
       const folder = DriveApp.getFolderById(folderIdJustificantes);
-      
-      // Crea el archivo dentro de esa subcarpeta en lugar de la raíz
       const file = folder.createFile(blob);
-      
-      // Otorga permisos de lectura y extrae la URL para la base de datos
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       fileUrl = file.getUrl();
     }
 
+    // Insertar fila (Asegúrate de tener 13 columnas en Google Sheets)
     sheet.appendRow([
-      nuevoId,               // A: ID_Justificante
-      datos.code,            // B: Codigo_Estudiante
-      datos.student,         // C: Nombre_Estudiante
-      datos.reason,          // D: Motivo
-      datos.teachers,        // E: Materias
-      datos.startDate,       // F: Fecha_Inicio_Falta
-      datos.endDate || datos.startDate, // G: Fecha_Fin_Falta
-      fileUrl,               // H: URL DEL ARCHIVO EN DRIVE
-      "Pendiente",           // I: Estatus
-      fechaActual            // J: Fecha_Solicitud
+      nuevoId, datos.code, datos.student, datos.reason, datos.teachers, 
+      datos.startDate, datos.endDate || datos.startDate, fileUrl, 
+      "Pendiente", fechaActual, datos.email, datos.phone, ""
     ]);
+
+    // Enviar correo de confirmación al alumno
+    if (datos.email) {
+      MailApp.sendEmail({
+        to: datos.email,
+        subject: `Solicitud de Justificante Recibida - #${nuevoId}`,
+        htmlBody: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; border: 1px solid #ddd; border-radius: 8px;">
+            <h2 style="color: #0f2744;">Solicitud Recibida Exitosamente</h2>
+            <p>Hola <strong>${datos.student}</strong>,</p>
+            <p>Tu solicitud de justificante por <strong>${datos.reason}</strong> ha sido recibida y está en revisión por la Coordinación INCO.</p>
+            <div style="background-color: #f8fafc; padding: 15px; border-left: 4px solid #d97706; margin-bottom: 20px;">
+              <p style="margin:0;"><strong>Folio:</strong> #${nuevoId}</p>
+              <p style="margin:5px 0 0 0;"><strong>Materias afectadas:</strong> ${datos.teachers}</p>
+            </div>
+            <p>Recibirás un correo cuando el documento oficial esté listo para recoger.</p>
+          </div>
+        `
+      });
+    }
 
     return { 
       exito: true, 
       justificante: {
-        id: nuevoId, 
-        code: datos.code, 
-        student: datos.student, 
-        reason: datos.reason, 
-        teachers: datos.teachers, 
-        startDate: datos.startDate, 
-        endDate: datos.endDate || datos.startDate,
-        fileName: fileUrl, 
-        status: "Pendiente", 
-        date: fechaActual
+        id: nuevoId, code: datos.code, student: datos.student, reason: datos.reason, 
+        teachers: datos.teachers, startDate: datos.startDate, endDate: datos.endDate || datos.startDate,
+        fileName: fileUrl, status: "Pendiente", date: fechaActual, email: datos.email, phone: datos.phone, adminPdfUrl: ""
       }
     };
   } catch(error) {
-    return { exito: false, mensaje: "Error al guardar el justificante: " + error.toString() };
+    return { exito: false, mensaje: "Error al guardar: " + error.toString() };
   }
 }
 
@@ -394,27 +528,84 @@ function forzarPermisosDeDrive() {
 }
 
 /**
- * Dictamina (Aprobar/Rechazar) un justificante. Resuelve el error de red en el Administrador.
+ * Avanza el estado del Justificante. (Sustituye a dictaminarJustificante)
+ * - Generar: Crea el PDF y pasa a 'En Proceso'.
+ * - Finalizar: Pasa a 'Finalizada' y manda correo al alumno.
  */
-function dictaminarJustificante(justificanteId, nuevoEstatus) {
+function avanzarJustificante(id, accion) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Justificantes");
-    if (!sheet) return { exito: false, mensaje: "No existe la pestaña Justificantes en la base de datos." };
-
     const data = sheet.getDataRange().getValues();
-
+    
+    let rowIndex = -1;
+    let rowData = null;
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === String(justificanteId).trim()) {
-        const numeroFila = i + 1;
-        // Columna 9 = Estatus (I)
-        sheet.getRange(numeroFila, 9).setValue(nuevoEstatus);
-        return { exito: true };
+      if (String(data[i][0]).trim() === String(id).trim()) {
+        rowIndex = i + 1;
+        rowData = data[i];
+        break;
       }
     }
-    return { exito: false, mensaje: "Justificante no encontrado en la base de datos." };
-  } catch(error) {
-    return { exito: false, mensaje: "Error al actualizar estatus: " + error.toString() };
-  }
+    if (rowIndex === -1) return { exito: false, mensaje: "No encontrado" };
+    
+    const folderIdJustificantes = "1FYLyqOiFs90s337WMALx763R5iTxg9LW"; 
+    const folder = DriveApp.getFolderById(folderIdJustificantes);
+
+    if (accion === 'Generar') {
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; padding: 40px; color: #333;">
+          <h2 style="text-align: center; color: #0f2744;">Universidad de Guadalajara</h2>
+          <h3 style="text-align: center; color: #d97706;">Coordinación de Ingeniería en Computación</h3>
+          <hr style="border: 1px solid #ddd; margin: 20px 0;" />
+          <h3 style="text-align: center;">JUSTIFICANTE OFICIAL DE INASISTENCIA</h3>
+          <p style="text-align: right;"><strong>Folio:</strong> ${id}</p>
+          <p style="text-align: right;"><strong>Emisión:</strong> ${new Date().toLocaleDateString('es-MX')}</p>
+          <br/>
+          <p>A los profesores de la carrera de Ingeniería en Computación:</p>
+          <p>Por este medio, se hace de su conocimiento que la inasistencia del alumno(a) <strong>${rowData[2]}</strong> con código <strong>${rowData[1]}</strong> ha sido <strong>JUSTIFICADA</strong> con base en los Artículos 53 y 54 del Reglamento General de Evaluación y Promoción de Alumnos.</p>
+          <div style="background-color: #f4f4f4; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0 0 5px 0;"><strong>Causa:</strong> ${rowData[3]}</p>
+            <p style="margin: 0 0 5px 0;"><strong>Período Justificado:</strong> Del ${rowData[5]} al ${rowData[6]}</p>
+            <p style="margin: 0;"><strong>Materias (NRC):</strong> ${rowData[4]}</p>
+          </div>
+          <p>Se solicita amablemente las facilidades para la regularización académica del estudiante.</p>
+          <br/><br/><br/>
+          <p style="text-align: center;">_________________________________________</p>
+          <p style="text-align: center;"><strong>Firma y Sello de Coordinación</strong></p>
+        </div>
+      `;
+      
+      const blob = Utilities.newBlob(htmlContent, MimeType.HTML).setName(`Justificante_${id}.pdf`).getAs(MimeType.PDF);
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      const pdfUrl = file.getUrl();
+      
+      sheet.getRange(rowIndex, 9).setValue('En Proceso'); 
+      sheet.getRange(rowIndex, 13).setValue(pdfUrl); 
+      return { exito: true, nuevoEstatus: 'En Proceso', pdfUrl: pdfUrl };
+    } 
+    else if (accion === 'Finalizar') {
+      sheet.getRange(rowIndex, 9).setValue('Finalizada'); 
+      const email = rowData[10];
+      if (email) {
+        MailApp.sendEmail({
+          to: email,
+          subject: `Justificante Listo para Recoger - #${id}`,
+          htmlBody: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; border: 1px solid #ddd; border-radius: 8px;">
+              <h2 style="color: #059669;">¡Tu Justificante está Listo!</h2>
+              <p>Hola <strong>${rowData[2]}</strong>,</p>
+              <p>El proceso de tu justificante <strong>#${id}</strong> ha finalizado. El documento ya fue dictaminado y generado.</p>
+              <p style="background-color: #ecfdf5; padding: 15px; border-left: 4px solid #059669; font-weight: bold;">
+                Por favor, acude presencialmente a la Coordinación (Módulo M202) para recoger tu documento físico firmado y sellado y entregarlo a tus profesores.
+              </p>
+            </div>
+          `
+        });
+      }
+      return { exito: true, nuevoEstatus: 'Finalizada' };
+    }
+  } catch(e) { return { exito: false, mensaje: "Error: " + e.toString() }; }
 }
 
 /**
@@ -587,5 +778,89 @@ function publicarNuevoAviso(datos) {
     };
   } catch (e) {
     return { exito: false, mensaje: "Error al publicar: " + e.toString() };
+  }
+}
+
+/**
+ * Registra una nueva solicitud de constancia del alumno.
+ */
+function registrarConstancia(datos) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Constancias");
+    const nuevoId = generarIdUnico('CON-');
+    const fechaActual = new Date().toLocaleDateString('es-MX');
+
+    // Columnas: A:ID, B:Codigo, C:Estudiante, D:Email, E:RequiereDetalles, F:Estatus, G:Fecha, H:DatosAdminJSON
+    sheet.appendRow([
+      nuevoId, datos.code, datos.student, datos.email, 
+      datos.requiresDetails ? 'Sí' : 'No', 
+      "Pendiente", fechaActual, "{}"
+    ]);
+
+    return { 
+      exito: true, 
+      constancia: {
+        id: nuevoId, code: datos.code, student: datos.student, email: datos.email,
+        requiresDetails: datos.requiresDetails, status: "Pendiente", date: fechaActual, adminData: {}
+      }
+    };
+  } catch(error) {
+    return { exito: false, mensaje: "Error al guardar la solicitud: " + error.toString() };
+  }
+}
+
+/**
+ * Avanza el estado de la constancia (Generar o Finalizar) y notifica al alumno.
+ */
+function avanzarConstancia(id, accion, adminData = null) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Constancias");
+    const data = sheet.getDataRange().getValues();
+    
+    let rowIndex = -1;
+    let rowData = null;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(id).trim()) {
+        rowIndex = i + 1;
+        rowData = data[i];
+        break;
+      }
+    }
+    
+    if (rowIndex === -1) return { exito: false, mensaje: "Solicitud no encontrada" };
+
+    if (accion === 'Generar') {
+      sheet.getRange(rowIndex, 6).setValue('En Proceso'); 
+      if (adminData) {
+        sheet.getRange(rowIndex, 8).setValue(JSON.stringify(adminData)); 
+      }
+      return { exito: true, nuevoEstatus: 'En Proceso' };
+    } 
+    else if (accion === 'Finalizar') {
+      sheet.getRange(rowIndex, 6).setValue('Terminada'); 
+      const email = rowData[3];
+      const studentName = rowData[2];
+      
+      if (email) {
+        MailApp.sendEmail({
+          to: email,
+          subject: `Tu Constancia de Estudios está Lista - #${id}`,
+          htmlBody: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; border: 1px solid #ddd; border-radius: 8px;">
+              <h2 style="color: #059669;">Constancia Terminada y Firmada</h2>
+              <p>Estimado/a <strong>${studentName}</strong>,</p>
+              <p>Te informamos formalmente que tu solicitud de Constancia de Estudios con el folio <strong>#${id}</strong> ha sido procesada exitosamente.</p>
+              <p style="background-color: #ecfdf5; padding: 15px; border-left: 4px solid #059669; font-weight: bold; color: #064e3b;">
+                Por favor, pasa a la Coordinación de Ingeniería en Computación (Módulo M202) con tu identificación oficial para recoger tu documento físico.
+              </p>
+              <p style="font-size: 12px; color: #666; margin-top: 20px;">Atentamente,<br/>Coordinación INCO - CUCEI</p>
+            </div>
+          `
+        });
+      }
+      return { exito: true, nuevoEstatus: 'Terminada' };
+    }
+  } catch(e) { 
+    return { exito: false, mensaje: "Error: " + e.toString() }; 
   }
 }

@@ -124,6 +124,7 @@
       const [notices, setNotices] = useState([]); 
       const [globalJustificantes, setGlobalJustificantes] = useState([]);
       const [globalHoras, setGlobalHoras] = useState([]);
+      const [globalConstancias, setGlobalConstancias] = useState([]);
 
       // Cargar datos reales al iniciar sesión
       useEffect(() => {
@@ -135,6 +136,7 @@
                 setNotices(res.avisos);
                 setGlobalJustificantes(res.justificantes || []);
                 setGlobalHoras(res.horas || []);
+                setGlobalConstancias(res.constancias || []);
               }
             })
             .catch(err => console.error("Error de red cargando datos", err));
@@ -144,6 +146,7 @@
           setNotifications([]);
           setGlobalJustificantes([]);
           setGlobalHoras([]);
+          setGlobalConstancias([]);
         }
       }, [isLoggedIn, user]);
 
@@ -243,6 +246,7 @@
                 { id: 'avisos', label: 'Publicar Avisos Oficiales', icon: 'bell', badge: null },
                 { id: 'dudas', label: 'Preguntas Frecuentes FAQ', icon: 'help-circle', badge: null },
                 { id: 'admin_horas', label: 'Revisión Horas Integrales', icon: 'award', badge: 'Revisión' },
+                { id: 'admin_constancias', label: 'Emisión de Constancias', icon: 'file-badge', badge: `${globalConstancias.filter(c => c.status === 'Pendiente').length}` },
                 
               ]
             }
@@ -781,6 +785,15 @@
                 />
               )}
 
+              {activeTab === 'admin_constancias' && (
+                <AdminConstanciasModule 
+                  showToast={showToast} 
+                  addNotification={addNotification} 
+                  globalConstancias={globalConstancias} 
+                  setGlobalConstancias={setGlobalConstancias} 
+                />
+              )}
+
               {activeTab === 'titulacion' && <TitulacionModule showToast={showToast} />}
               {activeTab === 'constancias' && <ConstanciasModule user={user} showToast={showToast} isLoggedIn={isLoggedIn} setActiveModal={setActiveModal} />}
               {activeTab === 'constancias_docente' && <ConstanciasDocenteModule user={user} showToast={showToast} />}
@@ -977,94 +990,40 @@
       );
     }
 
-    function JustificanteDetailModal({ 
-  isOpen, 
-  list, 
-  currentIndex, 
-  setCurrentIndex, 
-  onClose, 
-  onDictamen, 
-  loadingId, 
-  userRole 
-}) {
-  // Ajuste automático si el arreglo se reduce (ej. al aprobar el último elemento)
-  useEffect(() => {
-    if (isOpen && list.length > 0 && currentIndex >= list.length) {
-      setCurrentIndex(list.length - 1);
-    } else if (isOpen && list.length === 0) {
-      onClose();
-    }
-  }, [list.length, currentIndex, isOpen, onClose]);
-
+function JustificanteDetailModal({ isOpen, list, currentIndex, setCurrentIndex, onClose, onDictamen, loadingId, userRole }) {
+  useEffect(() => { if (isOpen && list.length > 0 && currentIndex >= list.length) setCurrentIndex(list.length - 1); else if (isOpen && list.length === 0) onClose(); }, [list.length, currentIndex, isOpen, onClose]);
   if (!isOpen || list.length === 0 || !list[currentIndex]) return null;
 
   const j = list[currentIndex];
   const isAdmin = userRole === 'Coordinacion';
-
-  const formatFechaLimpia = (fechaStr) => {
-    if (!fechaStr) return 'N/A';
-    if (typeof fechaStr === 'string' && fechaStr.includes('GMT')) {
-      const d = new Date(fechaStr);
-      if (!isNaN(d.getTime())) return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    }
-    return String(fechaStr).split('T')[0];
-  };
-
-  const fInicio = formatFechaLimpia(j.startDate);
-  const fFin = formatFechaLimpia(j.endDate || j.startDate);
-  const fSolicitud = formatFechaLimpia(j.date);
+  const formatFechaLimpia = (f) => f && typeof f === 'string' && f.includes('GMT') ? new Date(f).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: 'numeric'}) : (f ? f.split('T')[0] : 'N/A');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in">
       <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
-        {/* Cabecera y Navegación */}
         <div className="bg-slate-50 dark:bg-slate-900/80 p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
-              disabled={currentIndex === 0}
-              className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
-            >
-              <LucideIcon name="chevron-left" className="w-5 h-5" />
-            </button>
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono">
-              {currentIndex + 1} de {list.length}
-            </span>
-            <button 
-              onClick={() => setCurrentIndex(Math.min(list.length - 1, currentIndex + 1))}
-              disabled={currentIndex === list.length - 1}
-              className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition-colors"
-            >
-              <LucideIcon name="chevron-right" className="w-5 h-5" />
-            </button>
+            <button onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))} disabled={currentIndex === 0} className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-left" className="w-5 h-5" /></button>
+            <span className="text-xs font-bold text-slate-500 font-mono">{currentIndex + 1} de {list.length}</span>
+            <button onClick={() => setCurrentIndex(Math.min(list.length - 1, currentIndex + 1))} disabled={currentIndex === list.length - 1} className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-right" className="w-5 h-5" /></button>
           </div>
-          
-          <h3 className="font-bold text-sm font-display text-slate-800 dark:text-slate-200">
-            Detalle del Justificante
-          </h3>
-
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600">
-            <LucideIcon name="x" className="w-5 h-5" />
-          </button>
+          <h3 className="font-bold text-sm font-display text-slate-800 dark:text-slate-200">Detalle del Justificante</h3>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-red-500 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600"><LucideIcon name="x" className="w-5 h-5" /></button>
         </div>
 
-        {/* Contenido (Scrollable) */}
         <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
           <div className="flex justify-between items-start gap-4">
             <div>
-              <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-udg-light text-udg-blue dark:bg-slate-900 dark:text-blue-400 border border-blue-200 dark:border-slate-700 mb-2">
-                Folio: #{j.id}
-              </span>
+              <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-udg-light text-udg-blue dark:bg-slate-900 dark:text-blue-400 border border-blue-200 dark:border-slate-700 mb-2">Folio: #{j.id}</span>
               <h2 className="text-2xl font-black text-slate-900 dark:text-white font-display leading-tight">{j.student}</h2>
               <p className="text-slate-500 font-mono mt-1 text-sm">Código UdG: {j.code}</p>
+              {isAdmin && (
+                <p className="text-slate-500 font-medium mt-1 text-xs"><LucideIcon name="mail" className="w-3.5 h-3.5 inline mr-1" />{j.email || 'Correo no registrado'}</p>
+              )}
             </div>
             
-            <div className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider border text-center shrink-0 ${
-              j.status === 'Aprobado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800' : 
-              j.status === 'Rechazado' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800' : 
-              'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
-            }`}>
+            <div className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider border text-center shrink-0 ${j.status === 'Finalizada' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : j.status === 'En Proceso' ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
               {j.status}
             </div>
           </div>
@@ -1073,58 +1032,63 @@
             <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-1 text-sm">
               <p className="text-[10px] uppercase font-bold text-slate-400">Motivo y Solicitud</p>
               <p className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2"><LucideIcon name="alert-circle" className="w-4 h-4 text-udg-gold" /> {j.reason}</p>
-              <p className="text-xs text-slate-500 pt-1">Solicitado el: {fSolicitud}</p>
+              <p className="text-xs text-slate-500 pt-1">Solicitado: {formatFechaLimpia(j.date)}</p>
             </div>
-
             <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-1 text-sm">
               <p className="text-[10px] uppercase font-bold text-slate-400">Fechas de Incapacidad</p>
-              <p className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2"><LucideIcon name="calendar" className="w-4 h-4 text-udg-blue dark:text-blue-400" /> Del {fInicio}</p>
-              <p className="font-bold text-slate-800 dark:text-slate-200 ml-6">Al {fFin}</p>
+              <p className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2"><LucideIcon name="calendar" className="w-4 h-4 text-udg-blue" /> Del {formatFechaLimpia(j.startDate)}</p>
+              <p className="font-bold text-slate-800 dark:text-slate-200 ml-6">Al {formatFechaLimpia(j.endDate || j.startDate)}</p>
             </div>
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-sm">
-            <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Materias y Profesores Afectados</p>
-            <p className="font-semibold text-slate-800 dark:text-slate-200 leading-relaxed">{j.teachers}</p>
+            <p className="text-[10px] uppercase font-bold text-slate-400 mb-2">Materias Afectadas (NRC)</p>
+            <div className="font-semibold text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">{j.teachers.split(', ').join('\n')}</div>
           </div>
+
+          {isAdmin && j.adminPdfUrl && j.adminPdfUrl.startsWith('http') && (
+            <div className="bg-indigo-50 dark:bg-indigo-900/40 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800/60 text-sm flex items-center justify-between">
+              <div>
+                <p className="font-bold text-indigo-900 dark:text-indigo-300">Formato PDF Oficial Generado</p>
+                <p className="text-[11px] text-indigo-700 dark:text-indigo-400">El sistema dictaminó y generó el formato en Drive.</p>
+              </div>
+              <a href={j.adminPdfUrl} target="_blank" rel="noreferrer" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center gap-2"><LucideIcon name="file-text" className="w-4 h-4"/> Ver Formato</a>
+            </div>
+          )}
 
           <div className="bg-blue-50 dark:bg-slate-900/80 p-5 rounded-2xl border border-blue-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center shadow-sm">
-                <LucideIcon name="paperclip" className="w-5 h-5 text-udg-blue dark:text-blue-400" />
+                <LucideIcon name="paperclip" className="w-5 h-5 text-udg-blue" />
               </div>
               <div>
-                <p className="font-bold text-sm text-slate-900 dark:text-white">Documento Anexo</p>
-                <p className="text-[11px] text-slate-500">Comprobante médico u oficial digitalizado.</p>
+                <p className="font-bold text-sm text-slate-900 dark:text-white">Evidencia del Estudiante</p>
+                <p className="text-[11px] text-slate-500">Receta, oficio o prueba médica.</p>
               </div>
             </div>
             {j.fileName && j.fileName.startsWith('http') ? (
-              <a href={j.fileName} target="_blank" rel="noreferrer" className="bg-udg-navy hover:bg-udg-blue text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-colors shadow-md w-full sm:w-auto text-center justify-center">
-                <LucideIcon name="external-link" className="w-4 h-4" /> Abrir Archivo
+              <a href={j.fileName} target="_blank" rel="noreferrer" className="bg-udg-navy hover:bg-udg-blue text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-md">
+                <LucideIcon name="external-link" className="w-4 h-4" /> Validar Archivo
               </a>
             ) : (
-              <span className="text-xs font-semibold text-slate-400 bg-slate-200 dark:bg-slate-800 px-3 py-1.5 rounded-lg">Sin archivo disponible</span>
+              <span className="text-xs font-semibold text-slate-400">Sin archivo disponible</span>
             )}
           </div>
         </div>
 
-        {/* Pie de Modal (Acciones Admin) */}
+        {/* ACCIONES DE ADMIN */}
         {isAdmin && j.status === 'Pendiente' && (
-          <div className="bg-slate-50 dark:bg-slate-900/80 p-5 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-end gap-3 shrink-0">
-            <button 
-              onClick={() => onDictamen(j.id, 'Rechazado', j.student)} 
-              disabled={loadingId === j.id} 
-              className="bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-950/50 dark:text-red-400 font-bold px-6 py-3 rounded-xl flex items-center justify-center gap-2 border border-red-200 dark:border-red-900 transition-all text-sm disabled:opacity-50"
-            >
-              <LucideIcon name="x" className="w-4 h-4" /> Rechazar Solicitud
+          <div className="bg-slate-50 dark:bg-slate-900/80 p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end shrink-0">
+            <button onClick={() => onDictamen(j.id, 'Generar', j.student)} disabled={loadingId === j.id} className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-sm disabled:opacity-50">
+              {loadingId === j.id ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="file-text" className="w-4 h-4" />} Generar Dictamen PDF
             </button>
-            <button 
-              onClick={() => onDictamen(j.id, 'Aprobado', j.student)} 
-              disabled={loadingId === j.id} 
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-sm disabled:opacity-50"
-            >
-              {loadingId === j.id ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="check-circle" className="w-4 h-4" />}
-              Aprobar Justificante
+          </div>
+        )}
+
+        {isAdmin && j.status === 'En Proceso' && (
+          <div className="bg-slate-50 dark:bg-slate-900/80 p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end shrink-0">
+            <button onClick={() => onDictamen(j.id, 'Finalizar', j.student)} disabled={loadingId === j.id} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all text-sm disabled:opacity-50">
+              {loadingId === j.id ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="check-circle" className="w-4 h-4" />} Notificar al Alumno para Recoger
             </button>
           </div>
         )}
@@ -1133,18 +1097,25 @@
   );
 }
 
-  function TicketsModule({ user, showToast, addNotification, globalTickets, setGlobalTickets }) {
+function TicketsModule({ user, showToast, addNotification, globalTickets, setGlobalTickets }) {
   const [subject, setSubject] = useState('');
   const [details, setDetails] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Nuevos Estados de Filtro (Alumno)
-  const [filterStatus, setFilterStatus] = useState('Todos'); // Para el alumno es mejor ver 'Todos' por defecto
+  const [filterStatus, setFilterStatus] = useState('Todos');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // NUEVO: Estados de Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
+  // Resetea a la página 1 cuando el usuario busca o filtra
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, searchTerm, itemsPerPage]);
   
   const userTickets = globalTickets.filter(t => t.student === user.name || user.role !== 'Estudiante');
 
-  // Lógica de Filtrado Local
   const ticketsFiltrados = userTickets.filter(t => {
     const coincideEstado = filterStatus === 'Todos' || t.status === filterStatus;
     const busqueda = searchTerm.toLowerCase().trim();
@@ -1152,12 +1123,19 @@
     return coincideEstado && coincideBusqueda;
   });
 
+  // NUEVO: Lógica de Paginación (Cálculo de índices)
+  const totalItems = ticketsFiltrados.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentTickets = ticketsFiltrados.slice(indexOfFirstItem, indexOfLastItem);
+
   const handleCreateTicket = async (e) => {
     e.preventDefault();
     if (!subject.trim() || !details.trim()) return showToast("Ingresa el asunto y los detalles del ticket", "error");
 
     setLoading(true);
-    const datosNuevoTicket = { student: user.name, code: user.code, subject: subject, details: details };
+    const datosNuevoTicket = { student: user.name, code: user.code, email: user.email, subject: subject, details: details };
 
     try {
       const respuesta = await server.registrarNuevoTicket(datosNuevoTicket);
@@ -1165,8 +1143,9 @@
         setGlobalTickets([respuesta.ticket, ...globalTickets]);
         setSubject(''); setDetails('');
         showToast(`Ticket #${respuesta.ticket.id} registrado correctamente.`);
-        addNotification("Ticket Registrado", `Se generó tu ticket #${respuesta.ticket.id}. Recibirás respuesta pronto.`, "ticket");
-        setFilterStatus('Todos'); // Mostrar todos para que vea el recién creado
+        addNotification("Ticket Registrado", `Se generó tu ticket #${respuesta.ticket.id}. Recibirás respuesta pronto.`, "info");
+        setFilterStatus('Todos');
+        setCurrentPage(1); // Manda al alumno a la primera página para que vea su nuevo ticket
       } else {
         showToast(respuesta.mensaje, "error");
       }
@@ -1179,6 +1158,7 @@
 
   return (
     <div className="space-y-6">
+      {/* FORMULARIO CREAR TICKET */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
         <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
           <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold">
@@ -1214,13 +1194,13 @@
         </form>
       </div>
 
+      {/* HISTORIAL DE TICKETS CON PAGINACIÓN */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
         <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
           <LucideIcon name="history" className="w-4 h-4 text-udg-gold" />
-          Mis Tickets de Atención
+          Mis Tickets de Atención ({totalItems})
         </h4>
 
-        {/* Buscador y Filtros Alumno */}
         <div className="flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
           <div className="relative flex-1 max-w-md">
             <LucideIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -1236,7 +1216,7 @@
                 key={estado}
                 onClick={() => setFilterStatus(estado)}
                 className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-                  filterStatus === estado ? 'bg-udg-navy text-white shadow dark:bg-udg-blue' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  filterStatus === estado ? 'bg-udg-navy text-white shadow dark:bg-udg-blue' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
                 {estado}
@@ -1246,11 +1226,11 @@
         </div>
 
         <div className="space-y-3 pt-2">
-          {ticketsFiltrados.length === 0 ? (
+          {currentTickets.length === 0 ? (
             <p className="text-slate-400 py-6 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/40">No se encontraron tickets en tu historial.</p>
           ) : (
-            ticketsFiltrados.map(t => (
-              <div key={t.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
+            currentTickets.map(t => (
+              <div key={t.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2 transition-all hover:shadow-sm">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-udg-navy dark:text-blue-400">#{t.id}</span>
@@ -1263,7 +1243,7 @@
                 </div>
 
                 <h5 className="font-bold text-slate-900 dark:text-white text-sm">{t.subject}</h5>
-                <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-2">{t.details}</p>
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed mb-2 whitespace-pre-wrap">{t.details}</p>
 
                 {t.reply ? (
                   <div className="bg-blue-50 dark:bg-slate-800 p-4 rounded-xl border border-blue-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 space-y-1 mt-3">
@@ -1271,7 +1251,7 @@
                       <LucideIcon name="check-circle" className="w-4 h-4" />
                       <span>Respuesta Oficial de Coordinación:</span>
                     </div>
-                    <p className="text-xs leading-relaxed">{t.reply}</p>
+                    <p className="text-xs leading-relaxed whitespace-pre-wrap">{t.reply}</p>
                   </div>
                 ) : (
                   <p className="text-slate-400 italic text-[11px] mt-2 flex items-center gap-1.5">
@@ -1282,18 +1262,46 @@
             ))
           )}
         </div>
+
+        {/* CONTROLES DE PAGINACIÓN */}
+        {totalItems > 0 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 text-slate-500 font-medium text-xs">
+            <div className="flex items-center gap-2">
+              <span>Mostrar:</span>
+              <select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 outline-none text-xs font-bold text-slate-700 dark:text-slate-200">
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+              </select>
+              <span className="ml-2">Mostrando {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, totalItems)} de {totalItems}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-left" className="w-4 h-4" /></button>
+              <span className="px-3 py-1.5 font-bold text-slate-800 dark:text-slate-200">Página {currentPage} de {totalPages}</span>
+              <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-right" className="w-4 h-4" /></button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-  function AdminPanelTickets({ globalTickets, setGlobalTickets, showToast, addNotification }) {
+function AdminPanelTickets({ globalTickets, setGlobalTickets, showToast, addNotification }) {
   const [replyTexts, setReplyTexts] = useState({});
   const [loadingId, setLoadingId] = useState(null);
   
-  // Nuevos Estados de Filtro
   const [filterStatus, setFilterStatus] = useState('Pendiente');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // NUEVO: Estados de Paginación Admin
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10); // 10 por defecto para admin
+
+  // Resetea a la página 1 cuando se usan filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, searchTerm, itemsPerPage]);
 
   const handleReply = async (ticketId, studentName) => {
     const text = replyTexts[ticketId];
@@ -1318,13 +1326,19 @@
     }
   };
 
-  // Lógica de Filtrado
   const ticketsFiltrados = globalTickets.filter(t => {
     const coincideEstado = filterStatus === 'Todos' || t.status === filterStatus;
     const busqueda = searchTerm.toLowerCase().trim();
     const coincideBusqueda = t.student.toLowerCase().includes(busqueda) || t.code.includes(busqueda) || t.subject.toLowerCase().includes(busqueda);
     return coincideEstado && coincideBusqueda;
   });
+
+  // NUEVO: Lógica de Paginación Admin
+  const totalItems = ticketsFiltrados.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentTickets = ticketsFiltrados.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5 text-xs">
@@ -1341,7 +1355,6 @@
         </div>
       </div>
 
-      {/* Barra de Búsqueda y Filtros */}
       <div className="flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
         <div className="relative flex-1 max-w-md">
           <LucideIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -1358,7 +1371,7 @@
               key={estado}
               onClick={() => setFilterStatus(estado)}
               className={`px-4 py-1.5 rounded-lg font-bold transition-all ${
-                filterStatus === estado ? 'bg-udg-navy text-white shadow dark:bg-udg-blue' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                filterStatus === estado ? 'bg-udg-navy text-white shadow dark:bg-udg-blue' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               {estado}
@@ -1368,10 +1381,10 @@
       </div>
 
       <div className="space-y-4 pt-2">
-        {ticketsFiltrados.length === 0 ? (
+        {currentTickets.length === 0 ? (
           <p className="text-center text-slate-500 py-6 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/40">No se encontraron tickets con esos criterios.</p>
         ) : (
-          ticketsFiltrados.map(t => (
+          currentTickets.map(t => (
             <div key={t.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-3">
               <div className="flex justify-between items-start">
                 <div>
@@ -1384,14 +1397,14 @@
                 </span>
               </div>
               
-              <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
+              <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
                 {t.details}
               </div>
 
               {t.reply ? (
                 <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 mt-2">
                   <p className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 mb-1"><LucideIcon name="check-circle" className="w-4 h-4" /> Dictamen de Coordinación:</p>
-                  <p className="text-emerald-900 dark:text-emerald-200">{t.reply}</p>
+                  <p className="text-emerald-900 dark:text-emerald-200 whitespace-pre-wrap">{t.reply}</p>
                 </div>
               ) : (
                 <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-700">
@@ -1414,10 +1427,30 @@
           ))
         )}
       </div>
+
+      {/* CONTROLES DE PAGINACIÓN ADMIN */}
+      {totalItems > 0 && (
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 text-slate-500 font-medium text-xs">
+          <div className="flex items-center gap-2">
+            <span>Mostrar:</span>
+            <select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 outline-none text-xs font-bold text-slate-700 dark:text-slate-200">
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <span className="ml-2">Mostrando {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, totalItems)} de {totalItems}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-left" className="w-4 h-4" /></button>
+            <span className="px-3 py-1.5 font-bold text-slate-800 dark:text-slate-200">Página {currentPage} de {totalPages}</span>
+            <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-right" className="w-4 h-4" /></button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
 
 // ==========================================
 // MÓDULO ALUMNO: HORAS INTEGRALES (PROGRESO DINÁMICO)
@@ -1959,40 +1992,44 @@ function AdminHorasModule({ globalHoras, setGlobalHoras, showToast, addNotificat
     }
 
 function JustificantesModule({ showToast, addNotification, isLoggedIn, setActiveModal, user, globalJustificantes = [], setGlobalJustificantes = () => {} }) {
-  const [reason, setReason] = useState('Salud');
+  const [phone, setPhone] = useState(user.phone || '');
+  const [reason, setReason] = useState('Enfermedad');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [teachers, setTeachers] = useState('');
   const [fileObj, setFileObj] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // PAGINACIÓN Y ESTADOS MODAL
+  // ESTADOS DEL BUSCADOR DE MATERIAS
+  const DUMMY_MATERIAS = [
+    "Bases de Datos", "Redes de Computadoras", "Sistemas Operativos", "Ingeniería de Software", 
+    "Estructuras de Datos", "Inteligencia Artificial", "Compiladores", "Programación Web", 
+    "Cálculo Integral", "Física I", "Microcontroladores", "Programación Orientada a Objetos"
+  ];
+  const [materiaSearch, setMateriaSearch] = useState('');
+  const [selectedMateria, setSelectedMateria] = useState('');
+  const [nrcInput, setNrcInput] = useState('');
+  const [materiasAgregadas, setMateriasAgregadas] = useState([]);
+
+  // PAGINACIÓN Y MODAL
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [modalData, setModalData] = useState({ isOpen: false, index: 0 });
 
   const listaJustificantes = Array.isArray(globalJustificantes) ? globalJustificantes : [];
   
+  // CÁLCULO DE PAGINACIÓN ALUMNO
   const totalItems = listaJustificantes.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = listaJustificantes.slice(indexOfFirstItem, indexOfLastItem);
 
-  const formatFechaLimpia = (fechaStr) => {
-    if (!fechaStr) return 'N/A';
-    if (typeof fechaStr === 'string' && fechaStr.includes('GMT')) {
-      const d = new Date(fechaStr);
-      if (!isNaN(d.getTime())) return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    }
-    return String(fechaStr).split('T')[0];
-  };
+  const formatFechaLimpia = (f) => f && typeof f === 'string' && f.includes('GMT') ? new Date(f).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: 'numeric'}) : (f ? f.split('T')[0] : 'N/A');
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) return showToast("Formato no válido. JPG, PNG o PDF.", "error");
+      if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return showToast("Formato no válido. JPG, PNG o PDF.", "error");
       if (file.size > 5 * 1024 * 1024) return showToast("Archivo demasiado grande. Máximo 5MB.", "error");
       const reader = new FileReader();
       reader.onloadend = () => setFileObj({ name: file.name, data: reader.result });
@@ -2000,128 +2037,179 @@ function JustificantesModule({ showToast, addNotification, isLoggedIn, setActive
     }
   };
 
+  const handleAddMateria = () => {
+    if (nrcInput.length !== 6) return showToast("El NRC debe ser de 6 dígitos numéricos exactos.", "error");
+    setMateriasAgregadas([...materiasAgregadas, { nombre: selectedMateria, nrc: nrcInput }]);
+    setMateriaSearch(''); setSelectedMateria(''); setNrcInput('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isLoggedIn) return setActiveModal('login');
-    if (!startDate || !endDate || !teachers) return showToast("Ingresa fechas y materias afectadas", "error");
-    if (new Date(endDate) < new Date(startDate)) return showToast("La fecha de fin no puede ser anterior al inicio.", "error");
-    if (!fileObj) return showToast("Debes adjuntar un comprobante.", "error");
+    if (!startDate || !endDate || !phone) return showToast("Llena todos los datos de contacto y fechas.", "error");
+    if (materiasAgregadas.length === 0) return showToast("Debes añadir al menos una materia afectada.", "error");
+    if (new Date(endDate) < new Date(startDate)) return showToast("La fecha fin no puede ser menor al inicio.", "error");
+    if (!fileObj) return showToast("Debes adjuntar la evidencia médica/oficial.", "error");
 
     setLoading(true);
-    const datos = { code: user.code, student: user.name, reason, teachers, startDate, endDate, fileName: fileObj.name, fileData: fileObj.data };
+    const materiasStr = materiasAgregadas.map(m => `${m.nombre} (NRC: ${m.nrc})`).join(', ');
+    const datos = { 
+      code: user.code, student: user.name, email: user.email, phone: phone, 
+      reason, teachers: materiasStr, startDate, endDate, fileName: fileObj.name, fileData: fileObj.data 
+    };
+
     try {
-      const respuesta = await server.registrarJustificante(datos);
-      if (respuesta.exito) {
-        if (typeof setGlobalJustificantes === 'function') setGlobalJustificantes([respuesta.justificante, ...listaJustificantes]);
+      const res = await server.registrarJustificante(datos);
+      if (res.exito) {
+        if (typeof setGlobalJustificantes === 'function') setGlobalJustificantes([res.justificante, ...listaJustificantes]);
         showToast("Solicitud enviada a revisión.");
-        addNotification("Justificante Registrado", "Tu justificante fue recibido.", "info");
-        setStartDate(''); setEndDate(''); setTeachers(''); setFileObj(null);
-        const fileInput = document.getElementById('file-upload');
-        if (fileInput) fileInput.value = '';
-      } else {
-        showToast(respuesta.mensaje, "error");
-      }
-    } catch (error) {
-      showToast("Error de conexión al subir el archivo.", "error");
-    } finally {
-      setLoading(false);
-    }
+        addNotification("Justificante Registrado", "El comprobante fue recibido por coordinación.", "info");
+        setStartDate(''); setEndDate(''); setMateriasAgregadas([]); setFileObj(null);
+        setCurrentPage(1); // Reset a página 1 tras enviar
+      } else showToast(res.mensaje, "error");
+    } catch (err) { showToast("Error de conexión al subir el archivo.", "error"); }
+    setLoading(false);
   };
 
   return (
-    <div className="space-y-6">
-      
-      {/* Modal Alumno (Pasa la lista no filtrada porque el alumno no filtra) */}
+    <div className="space-y-6 text-xs">
       <JustificanteDetailModal 
-        isOpen={modalData.isOpen} 
-        list={listaJustificantes} 
-        currentIndex={modalData.index}
-        setCurrentIndex={(newIndex) => setModalData({ ...modalData, index: newIndex })}
-        onClose={() => setModalData({ isOpen: false, index: 0 })}
-        onDictamen={() => {}} // El alumno no dictamina
-        loadingId={null}
-        userRole="Estudiante"
+        isOpen={modalData.isOpen} list={listaJustificantes} currentIndex={modalData.index}
+        setCurrentIndex={(idx) => setModalData({ ...modalData, index: idx })} onClose={() => setModalData({ isOpen: false, index: 0 })}
+        onDictamen={() => {}} loadingId={null} userRole="Estudiante"
       />
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
-        <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
-          <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold">
-            <LucideIcon name="shield-check" className="w-5 h-5" />
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        
+        {/* REGLAMENTO LEGAL */}
+        <div className="bg-slate-100 dark:bg-slate-900/80 p-5 border-b border-slate-200 dark:border-slate-700 space-y-3">
+          <div className="text-center font-bold text-slate-800 dark:text-slate-200">
+            <h3 className="text-base text-udg-navy dark:text-blue-400 font-display mb-1">Solicitud de Justificante</h3>
+            <p className="text-[10px] uppercase">Coordinación de Ingeniería en Computación</p>
           </div>
-          <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Justificante de Faltas (Art. 53)</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Plazo máximo de entrega: 5 días hábiles.</p>
+          <hr className="border-slate-300 dark:border-slate-600"/>
+          <p className="font-extrabold text-center text-udg-gold text-[10px] uppercase tracking-wider">
+            Importante leer lo establecido para llenar correctamente el formulario. El procedimiento se llevará acorde al Reglamento General de Evaluación.
+          </p>
+          <hr className="border-slate-300 dark:border-slate-600"/>
+          <div className="text-slate-600 dark:text-slate-400 space-y-2 leading-relaxed text-[11px] h-32 overflow-y-auto custom-scrollbar pr-2">
+            <p><strong className="text-slate-800 dark:text-slate-200">Artículo 53.</strong> Los alumnos podrán justificar su falta de asistencia a clases por: I. Enfermedad; II. Cumplimiento de una comisión conferida por autoridad universitaria... III. Por causa de fuerza mayor justificada. El máximo de faltas que se pueden justificar no excederá del 20% del total de horas, excepto lo establecido en el Art. 54.</p>
+            <p><strong className="text-slate-800 dark:text-slate-200">Artículo 54.</strong> El alumno deberá justificar las faltas con el documento idóneo dentro de los cinco días hábiles siguientes a la fecha en que haya podido reanudar sus estudios. En forma excepcional se podrá justificar un porcentaje máximo del 35% por causa grave.</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <div className="md:col-span-2 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 flex justify-between items-center">
-            <span className="font-semibold text-slate-600">Solicitante:</span>
-            <span className="font-bold text-slate-900 text-sm">{user.name} <span className="font-mono text-udg-blue">({user.code})</span></span>
+        {/* FORMULARIO */}
+        <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+            <label className="block font-semibold mb-1 text-slate-500 text-[10px] uppercase">Datos del Alumno (Auto-llenado)</label>
+            <span className="font-bold text-slate-900 dark:text-white text-sm">{user.name} <span className="font-mono text-udg-blue dark:text-blue-400">({user.code})</span></span>
+            <span className="block text-slate-500 mt-1">{user.email}</span>
           </div>
+          
           <div>
-            <label className="block font-semibold mb-1">Motivo</label>
-            <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue"><option value="Salud">Incapacidad Médica</option><option value="Comision">Comisión Institucional</option><option value="Personal">Fuerza Mayor</option></select>
+            <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Teléfono Móvil *</label>
+            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue" />
           </div>
+
           <div>
-            <label className="block font-semibold mb-1">Materias y Profesores</label>
-            <input type="text" placeholder="Ej. Redes (Dr. Pérez)" value={teachers} onChange={(e) => setTeachers(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue" />
+            <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Motivo Legal de la Falta *</label>
+            <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue">
+              <option value="Enfermedad">Enfermedad (Requiere receta o IMSS)</option>
+              <option value="Comision">Comisión Universitaria (Requiere oficio)</option>
+              <option value="Fuerza Mayor">Fuerza Mayor Grave (Requiere evidencia)</option>
+            </select>
           </div>
-          <div>
-            <label className="block font-semibold mb-1">Fecha de Inicio</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue" />
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Fecha Inicio</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue" />
+            </div>
+            <div>
+              <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Fecha Fin</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue" />
+            </div>
           </div>
-          <div>
-            <label className="block font-semibold mb-1">Fecha de Fin</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue" />
+
+          {/* BUSCADOR DE MATERIAS Y NRC */}
+          <div className="md:col-span-2 space-y-3 bg-blue-50/50 dark:bg-slate-900/30 p-4 rounded-2xl border border-blue-100 dark:border-slate-700">
+            <label className="block font-bold text-udg-navy dark:text-blue-300">Asignaturas Afectadas (NRC Obligatorio) *</label>
+            
+            <div className="flex flex-col sm:flex-row gap-3 items-start relative z-20">
+              <div className="flex-1 w-full relative">
+                 <input type="text" placeholder="Escribe para buscar tu materia..." value={materiaSearch} onChange={(e) => {setMateriaSearch(e.target.value); setSelectedMateria(''); setNrcInput('');}} className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue" />
+                 {materiaSearch && !selectedMateria && (
+                    <div className="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 shadow-xl max-h-40 overflow-y-auto mt-1 rounded-xl">
+                       {DUMMY_MATERIAS.filter(m => m.toLowerCase().includes(materiaSearch.toLowerCase())).map((m, i) => (
+                         <div key={i} onClick={() => {setSelectedMateria(m); setMateriaSearch(m);}} className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer font-semibold text-slate-700 dark:text-slate-300">{m}</div>
+                       ))}
+                    </div>
+                 )}
+              </div>
+              
+              {selectedMateria && (
+                 <div className="flex gap-2 w-full sm:w-auto">
+                    <input type="text" maxLength="6" placeholder="NRC (6 dígitos)" value={nrcInput} onChange={(e) => setNrcInput(e.target.value.replace(/\D/g, ''))} className="w-32 font-mono text-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-udg-blue" />
+                    <button type="button" onClick={handleAddMateria} className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold shadow-sm flex items-center gap-1.5"><LucideIcon name="plus" className="w-4 h-4"/> Añadir</button>
+                 </div>
+              )}
+            </div>
+
+            {materiasAgregadas.length > 0 && (
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                 {materiasAgregadas.map((m, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800 shadow-sm">
+                       <span className="font-bold text-slate-800 dark:text-slate-200 truncate pr-2">{m.nombre} <br/><span className="text-udg-blue dark:text-blue-400 font-mono text-[10px]">NRC: {m.nrc}</span></span>
+                       <button type="button" onClick={() => setMateriasAgregadas(prev => prev.filter((_, i) => i !== idx))} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded-md"><LucideIcon name="trash-2" className="w-4 h-4"/></button>
+                    </div>
+                 ))}
+               </div>
+            )}
           </div>
+
           <div className="md:col-span-2">
-            <label className="block font-semibold mb-1">Anexo Digital (PDF, JPG, PNG)</label>
-            <input id="file-upload" type="file" accept=".pdf,image/jpeg,image/png,image/webp" onChange={handleFileChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-udg-navy file:text-white" />
+            <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Anexo Digital de Evidencia (PDF, JPG, PNG) *</label>
+            <input type="file" accept=".pdf,image/jpeg,image/png,image/webp" onChange={handleFileChange} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2 text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-udg-navy file:text-white" />
           </div>
+          
           <div className="md:col-span-2 pt-2 flex justify-end">
-            <button type="submit" disabled={loading} className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-md disabled:opacity-70">
+            <button type="submit" disabled={loading} className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-8 py-3 rounded-xl flex items-center gap-2 shadow-md disabled:opacity-70 transition-all text-sm">
               {loading ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="upload-cloud" className="w-4 h-4" />}<span>Enviar Solicitud</span>
             </button>
           </div>
         </form>
       </div>
 
-      {/* Historial de Tarjetas (Mismo diseño GRID) */}
+      {/* HISTORIAL Y PAGINACIÓN ALUMNO */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
         <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display mb-4">
-          <LucideIcon name="history" className="w-4 h-4 text-udg-gold" />
-          Mi Historial de Justificantes ({totalItems})
+          <LucideIcon name="history" className="w-4 h-4 text-udg-gold" /> Mi Historial de Justificantes ({totalItems})
         </h4>
 
-        <div className="space-y-4 text-xs">
+        <div className="space-y-4">
           {totalItems === 0 ? (
-            <p className="text-slate-400 py-6 text-center border border-dashed border-slate-200 rounded-xl">No has enviado solicitudes.</p>
+            <p className="text-slate-400 py-6 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">No has enviado solicitudes.</p>
           ) : (
             currentItems.map((j, indexLocal) => {
               const indexGlobal = listaJustificantes.findIndex(obj => obj.id === j.id);
+              const statusColor = j.status === 'Finalizada' ? 'bg-emerald-100 text-emerald-800' : j.status === 'En Proceso' ? 'bg-blue-100 text-blue-800 animate-pulse' : 'bg-amber-100 text-amber-900';
+
               return (
-                <div key={j.id} className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                <div key={j.id} className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700/80 pb-3">
                     <div>
-                      <h4 className="font-bold text-slate-900 dark:text-white font-display">Solicitud #{j.id}</h4>
-                      <p className="text-[11px] text-slate-400 mt-1">Enviado el: {formatFechaLimpia(j.date)}</p>
+                      <h4 className="font-bold text-slate-900 dark:text-white font-display text-sm">Folio #{j.id}</h4>
+                      <p className="text-[11px] text-slate-400 mt-1">Enviado: {formatFechaLimpia(j.date)}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${j.status === 'Aprobado' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : j.status === 'Rechazado' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-amber-100 text-amber-900 border-amber-300 animate-pulse'}`}>
-                      {j.status}
-                    </span>
+                    <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${statusColor}`}>{j.status}</span>
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100"><span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-1">Motivo</span><span className="font-bold">{j.reason}</span></div>
-                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100"><span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-1">Período</span><span className="font-bold">Del {formatFechaLimpia(j.startDate)} al {formatFechaLimpia(j.endDate || j.startDate)}</span></div>
-                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100"><span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-1">Materias</span><span className="font-bold truncate block">{j.teachers}</span></div>
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700/60"><span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-1">Motivo</span><span className="font-bold dark:text-white">{j.reason}</span></div>
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700/60"><span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-1">Período</span><span className="font-bold dark:text-white">Del {formatFechaLimpia(j.startDate)} al {formatFechaLimpia(j.endDate || j.startDate)}</span></div>
+                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700/60"><span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-1">Materias</span><span className="font-bold dark:text-white truncate block" title={j.teachers}>{j.teachers}</span></div>
                   </div>
-
                   <div className="pt-2 flex justify-start">
-                    <button onClick={() => setModalData({ isOpen: true, index: indexGlobal })} className="bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 shadow-sm text-xs">
-                      <LucideIcon name="maximize-2" className="w-4 h-4 text-udg-gold" /> Ver Detalles Completos
-                    </button>
+                    <button onClick={() => setModalData({ isOpen: true, index: indexGlobal })} className="bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white px-5 py-2 rounded-xl font-bold transition-all flex items-center gap-2 shadow-sm text-xs"><LucideIcon name="maximize-2" className="w-4 h-4 text-udg-gold" /> Ver Detalles Completos</button>
                   </div>
                 </div>
               );
@@ -2129,18 +2217,22 @@ function JustificantesModule({ showToast, addNotification, isLoggedIn, setActive
           )}
         </div>
 
+        {/* PAGINACIÓN ALUMNO */}
         {totalItems > 0 && (
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 text-slate-500 font-medium text-xs">
             <div className="flex items-center gap-2">
               <span>Mostrar:</span>
-              <select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="bg-slate-100 dark:bg-slate-900 border rounded-lg px-2 py-1 outline-none font-bold text-slate-700">
-                <option value={4}>4</option><option value={8}>8</option><option value={12}>12</option>
+              <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }} className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 outline-none text-xs font-bold text-slate-700 dark:text-slate-200">
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
               </select>
+              <span className="ml-2">Mostrando {totalItems === 0 ? 0 : indexOfFirstItem + 1} - {Math.min(indexOfLastItem, totalItems)} de {totalItems}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="px-3 py-1.5 rounded-lg border hover:bg-slate-100 disabled:opacity-40">Anterior</button>
-              <span className="font-bold">Página {currentPage} de {totalPages}</span>
-              <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1.5 rounded-lg border hover:bg-slate-100 disabled:opacity-40">Siguiente</button>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-left" className="w-4 h-4" /></button>
+              <span className="px-3 py-1.5 font-bold text-slate-800 dark:text-slate-200">Página {currentPage} de {totalPages}</span>
+              <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-right" className="w-4 h-4" /></button>
             </div>
           </div>
         )}
@@ -2154,42 +2246,31 @@ function AdminJustificantesModule({ showToast, addNotification, globalJustifican
   const [filterStatus, setFilterStatus] = useState('Pendiente'); 
   const [searchTerm, setSearchTerm] = useState('');
   
+  // ESTADOS DE PAGINACIÓN ADMIN
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
-
-  // ESTADO DEL MODAL
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [modalData, setModalData] = useState({ isOpen: false, index: 0 });
 
-  useEffect(() => { setCurrentPage(1); }, [filterStatus, searchTerm, itemsPerPage]);
+  // Resetea a la página 1 cuando cambia algún filtro o la cantidad por página
+  useEffect(() => { 
+    setCurrentPage(1); 
+  }, [filterStatus, searchTerm, itemsPerPage]);
 
-  const formatFechaLimpia = (fechaStr) => {
-    if (!fechaStr) return 'N/A';
-    if (typeof fechaStr === 'string' && fechaStr.includes('GMT')) {
-      const d = new Date(fechaStr);
-      if (!isNaN(d.getTime())) return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    }
-    return String(fechaStr).split('T')[0];
-  };
-
-  const handleDictamen = async (id, estatus, studentName) => {
+  const handleDictamen = async (id, accion, studentName) => {
     setLoadingId(id);
     try {
-      const respuesta = await server.dictaminarJustificante(id, estatus);
-      if (respuesta.exito) {
+      const res = await server.avanzarJustificante(id, accion);
+      if (res.exito) {
         if (typeof setGlobalJustificantes === 'function') {
-           const updated = globalJustificantes.map(j => j.id === id ? { ...j, status: estatus } : j);
+           const updated = globalJustificantes.map(j => j.id === id ? { ...j, status: res.nuevoEstatus, adminPdfUrl: res.pdfUrl || j.adminPdfUrl } : j);
            setGlobalJustificantes(updated);
         }
-        showToast(`Justificante marcado como ${estatus}`);
-        addNotification(`Justificante ${estatus}`, `El justificante de ${studentName} ha sido ${estatus.toLowerCase()}.`, estatus === 'Aprobado' ? 'success' : 'error');
-      } else {
-        showToast(respuesta.mensaje, "error");
-      }
-    } catch(e) {
-      showToast("Error de conexión al dictaminar", "error");
-    } finally {
-      setLoadingId(null);
-    }
+        showToast(`Trámite actualizado a: ${res.nuevoEstatus}`);
+        addNotification(`Justificante ${res.nuevoEstatus}`, `El documento de ${studentName} avanzó de estado.`, 'success');
+        if (accion === 'Finalizar') setModalData({ isOpen: false, index: 0 }); // Cierra modal si termina
+      } else showToast(res.mensaje, "error");
+    } catch(e) { showToast("Error de conexión al procesar", "error"); } 
+    finally { setLoadingId(null); }
   };
 
   const justificantesFiltrados = globalJustificantes.filter(j => {
@@ -2199,6 +2280,7 @@ function AdminJustificantesModule({ showToast, addNotification, globalJustifican
     return coincideEstado && coincideBusqueda;
   });
 
+  // LÓGICA DE PAGINACIÓN ADMIN
   const totalItems = justificantesFiltrados.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -2207,133 +2289,81 @@ function AdminJustificantesModule({ showToast, addNotification, globalJustifican
 
   const conteo = {
     pendientes: globalJustificantes.filter(j => j.status === 'Pendiente').length,
-    aprobados: globalJustificantes.filter(j => j.status === 'Aprobado').length,
-    rechazados: globalJustificantes.filter(j => j.status === 'Rechazado').length,
-    todos: globalJustificantes.length
+    enProceso: globalJustificantes.filter(j => j.status === 'En Proceso').length,
+    finalizados: globalJustificantes.filter(j => j.status === 'Finalizada').length
   };
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5 text-xs relative">
       
-      {/* Componente Modal Renderizado aquí */}
       <JustificanteDetailModal 
-        isOpen={modalData.isOpen} 
-        list={justificantesFiltrados} // Pasamos la lista entera filtrada para navegar libremente
-        currentIndex={modalData.index}
+        isOpen={modalData.isOpen} list={justificantesFiltrados} currentIndex={modalData.index}
         setCurrentIndex={(newIndex) => setModalData({ ...modalData, index: newIndex })}
         onClose={() => setModalData({ isOpen: false, index: 0 })}
-        onDictamen={handleDictamen}
-        loadingId={loadingId}
-        userRole="Coordinacion"
+        onDictamen={handleDictamen} loadingId={loadingId} userRole="Coordinacion"
       />
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+      <div className="flex flex-col sm:flex-row justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
         <div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
-            <LucideIcon name="shield-check" className="w-5 h-5 text-udg-gold" />
-            Gestión y Dictamen de Justificantes
+            <LucideIcon name="shield-check" className="w-5 h-5 text-udg-gold" /> Procesamiento de Justificantes
           </h3>
-          <p className="text-slate-500 text-[11px] mt-0.5">Revisa, aprueba o rechaza los comprobantes médicos e institucionales enviados por los estudiantes.</p>
+          <p className="text-slate-500 text-[11px] mt-0.5">Revisa, autoriza, genera los PDFs oficiales y notifica a los alumnos.</p>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col md:flex-row gap-3 justify-between items-center">
+        <div className="relative w-full max-w-md">
           <LucideIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text" placeholder="Buscar alumno por nombre o código UdG..."
-            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 pl-9 pr-8 py-2 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-udg-blue text-xs"
-          />
+          <input type="text" placeholder="Buscar alumno por nombre o código..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-udg-blue outline-none" />
         </div>
 
         <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl shrink-0 overflow-x-auto custom-scrollbar">
-          <button onClick={() => setFilterStatus('Pendiente')} className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${filterStatus === 'Pendiente' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}>
-            <span>Pendientes</span><span className="bg-slate-950/20 px-1.5 py-0.2 rounded-md text-[10px]">{conteo.pendientes}</span>
+          <button onClick={() => setFilterStatus('Pendiente')} className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${filterStatus === 'Pendiente' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-600 dark:text-slate-400'}`}>
+            <span>Recibidos</span><span className="bg-slate-950/20 px-1.5 rounded-md text-[10px]">{conteo.pendientes}</span>
           </button>
-          <button onClick={() => setFilterStatus('Aprobado')} className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${filterStatus === 'Aprobado' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}>
-            <span>Aprobados</span><span className="bg-white/20 px-1.5 py-0.2 rounded-md text-[10px]">{conteo.aprobados}</span>
+          <button onClick={() => setFilterStatus('En Proceso')} className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${filterStatus === 'En Proceso' ? 'bg-udg-blue text-white shadow' : 'text-slate-600 dark:text-slate-400'}`}>
+            <span>PDF Generado</span><span className="bg-white/20 px-1.5 rounded-md text-[10px]">{conteo.enProceso}</span>
           </button>
-          <button onClick={() => setFilterStatus('Rechazado')} className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${filterStatus === 'Rechazado' ? 'bg-red-600 text-white shadow' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}>
-            <span>Rechazados</span><span className="bg-white/20 px-1.5 py-0.2 rounded-md text-[10px]">{conteo.rechazados}</span>
+          <button onClick={() => setFilterStatus('Finalizada')} className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${filterStatus === 'Finalizada' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 dark:text-slate-400'}`}>
+            <span>Completados</span><span className="bg-white/20 px-1.5 rounded-md text-[10px]">{conteo.finalizados}</span>
           </button>
-          <button onClick={() => setFilterStatus('Todos')} className={`px-3 py-1.5 rounded-lg font-bold transition-all ${filterStatus === 'Todos' ? 'bg-udg-navy text-white shadow dark:bg-udg-blue' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}>
-            Todos ({conteo.todos})
-          </button>
+          <button onClick={() => setFilterStatus('Todos')} className={`px-3 py-1.5 rounded-lg font-bold transition-all ${filterStatus === 'Todos' ? 'bg-udg-navy text-white shadow' : 'text-slate-600 dark:text-slate-400'}`}>Todos</button>
         </div>
       </div>
 
-      <div className="space-y-4 pt-1">
+      <div className="space-y-4">
         {currentJustificantes.length === 0 ? (
-          <div className="text-center py-8 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-            <LucideIcon name="inbox" className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-            <p className="text-slate-500 font-medium">No se encontraron justificantes para este criterio.</p>
-          </div>
+          <div className="text-center py-8 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/40"><p className="text-slate-500 font-medium">Vacío en este filtro.</p></div>
         ) : (
-          currentJustificantes.map((j, indexLocal) => {
+          currentJustificantes.map((j) => {
             const indexGlobal = justificantesFiltrados.findIndex(obj => obj.id === j.id);
-            const fInicio = formatFechaLimpia(j.startDate);
-            const fFin = formatFechaLimpia(j.endDate || j.startDate);
+            const statusColor = j.status === 'Finalizada' ? 'bg-emerald-100 text-emerald-800' : j.status === 'En Proceso' ? 'bg-blue-100 text-blue-800 animate-pulse' : 'bg-amber-100 text-amber-900';
             
             return (
-              <div key={j.id} className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/80 pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold shrink-0">
-                      <LucideIcon name="user" className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-slate-900 dark:text-white text-sm font-display">{j.student}</h4>
-                        <span className="font-mono text-xs text-udg-blue dark:text-blue-400 font-semibold">({j.code})</span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                        <span className="font-mono font-bold text-slate-500">#{j.id}</span>
-                        <span>•</span>
-                        <span>Solicitado el: {formatFechaLimpia(j.date)}</span>
-                      </p>
-                    </div>
+              <div key={j.id} className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 hover:shadow-md transition-shadow">
+                <div className="flex flex-col sm:flex-row justify-between gap-2 border-b border-slate-100 dark:border-slate-700/80 pb-3">
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm">{j.student} <span className="font-mono text-udg-blue dark:text-blue-400">({j.code})</span></h4>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">#{j.id}</p>
                   </div>
-                  <span className={`self-start sm:self-center px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${j.status === 'Aprobado' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : j.status === 'Rechazado' ? 'bg-red-100 text-red-800 border border-red-300' : 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse'}`}>
-                    {j.status}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700/60">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">Motivo</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5"><LucideIcon name="alert-circle" className="w-3.5 h-3.5 text-udg-gold shrink-0" /> {j.reason}</span>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700/60">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">Período de Incapacidad</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5"><LucideIcon name="calendar" className="w-3.5 h-3.5 text-udg-blue shrink-0" /> Del {fInicio} al {fFin}</span>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700/60">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">Materias / Profesores</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate block" title={j.teachers}>{j.teachers || 'No especificadas'}</span>
-                  </div>
+                  <span className={`self-start sm:self-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${statusColor}`}>{j.status}</span>
                 </div>
 
                 <div className="pt-2 flex flex-col sm:flex-row justify-between items-center gap-3">
-                  <button 
-                    onClick={() => setModalData({ isOpen: true, index: indexGlobal })}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm text-xs"
-                  >
-                    <LucideIcon name="maximize-2" className="w-4 h-4 text-udg-gold" />
-                    <span>Ver Detalles Completos</span>
+                  <button onClick={() => setModalData({ isOpen: true, index: indexGlobal })} className="w-full sm:w-auto bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm text-xs">
+                    <LucideIcon name="maximize-2" className="w-4 h-4 text-udg-gold" /> Revisar y Accionar
                   </button>
 
-                  {j.status === 'Pendiente' ? (
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <button onClick={() => handleDictamen(j.id, 'Aprobado', j.student)} disabled={loadingId === j.id} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow transition-all disabled:opacity-50">
-                        {loadingId === j.id ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="check" className="w-4 h-4" />} Aprobar
-                      </button>
-                      <button onClick={() => handleDictamen(j.id, 'Rechazado', j.student)} disabled={loadingId === j.id} className="flex-1 sm:flex-none bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400 font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 border border-red-200 transition-all disabled:opacity-50">
-                        <LucideIcon name="x" className="w-4 h-4" /> Rechazar
-                      </button>
-                    </div>
-                  ) : (
-                    <span className="text-[11px] font-medium text-slate-400">Dictaminado como <b className="text-slate-700 dark:text-slate-200">{j.status}</b></span>
+                  {j.status === 'Pendiente' && (
+                    <button onClick={() => handleDictamen(j.id, 'Generar', j.student)} disabled={loadingId === j.id} className="w-full sm:w-auto bg-udg-navy hover:bg-udg-blue text-white font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow transition-all disabled:opacity-50">
+                      {loadingId === j.id ? <LucideIcon name="loader-2" className="animate-spin w-4 h-4"/> : <LucideIcon name="file-text" className="w-4 h-4"/>} Autorizar y Generar PDF
+                    </button>
+                  )}
+                  {j.status === 'En Proceso' && (
+                    <button onClick={() => handleDictamen(j.id, 'Finalizar', j.student)} disabled={loadingId === j.id} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow transition-all disabled:opacity-50">
+                      {loadingId === j.id ? <LucideIcon name="loader-2" className="animate-spin w-4 h-4"/> : <LucideIcon name="check-circle" className="w-4 h-4"/>} Marcar Finalizada
+                    </button>
                   )}
                 </div>
               </div>
@@ -2342,82 +2372,273 @@ function AdminJustificantesModule({ showToast, addNotification, globalJustifican
         )}
       </div>
 
+      {/* PAGINACIÓN ADMIN */}
       {totalItems > 0 && (
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 text-slate-500 font-medium">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 text-slate-500 font-medium text-xs">
           <div className="flex items-center gap-2">
             <span>Mostrar:</span>
-            <select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 outline-none text-xs font-bold text-slate-700 dark:text-slate-200">
-              <option value={5}>5</option><option value={10}>10</option><option value={20}>20</option>
+            <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }} className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 outline-none text-xs font-bold text-slate-700 dark:text-slate-200">
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
             </select>
-            <span className="ml-2">Mostrando {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, totalItems)} de {totalItems}</span>
+            <span className="ml-2">Mostrando {totalItems === 0 ? 0 : indexOfFirstItem + 1} - {Math.min(indexOfLastItem, totalItems)} de {totalItems}</span>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 disabled:opacity-40"><LucideIcon name="chevron-left" className="w-4 h-4" /></button>
+            <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-left" className="w-4 h-4" /></button>
             <span className="px-3 py-1.5 font-bold text-slate-800 dark:text-slate-200">Página {currentPage} de {totalPages}</span>
-            <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 disabled:opacity-40"><LucideIcon name="chevron-right" className="w-4 h-4" /></button>
+            <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-right" className="w-4 h-4" /></button>
           </div>
         </div>
       )}
     </div>
   );
 }
-    function TitulacionModule({ showToast }) {
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
-          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
-            <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold">
-              <LucideIcon name="graduation-cap" className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Modalidades de Titulación - INCO</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Reglamento General de Titulación de la Universidad de Guadalajara.</p>
-            </div>
-          </div>
+function TitulacionModule() {
+  const modalidades = [
+    {
+      categoria: "Desempeño Académico Sobresaliente",
+      icono: "award",
+      color: "text-amber-500",
+      bg: "bg-amber-50 dark:bg-amber-950/30",
+      opciones: [
+        { nombre: "Excelencia Académica", desc: "Promedio global mínimo de 95. Aprobación del 90% de asignaturas en período ordinario." },
+        { nombre: "Titulación por Promedio", desc: "Promedio global mínimo de 90. Aprobación de todas las asignaturas en períodos ordinarios (sin SD ni extraordinarios)." }
+      ]
+    },
+    {
+      categoria: "Exámenes",
+      icono: "file-text",
+      color: "text-blue-500",
+      bg: "bg-blue-50 dark:bg-blue-950/30",
+      opciones: [
+        { nombre: "Global Teórico-Práctico / Teórico", desc: "Prueba oral o escrita de conocimientos. Requiere solicitud con asignaturas y promedio mayor a 80." },
+        { nombre: "CENEVAL (Certificación Profesional)", desc: "Evaluación CENEVAL con testimonio de Desempeño Satisfactorio o Sobresaliente." },
+        { nombre: "Capacitación Profesional", desc: "Certificaciones en tecnologías afines validadas por el Comité de Titulación." }
+      ]
+    },
+    {
+      categoria: "Producción de Materiales Educativos",
+      icono: "book-open",
+      color: "text-emerald-500",
+      bg: "bg-emerald-50 dark:bg-emerald-950/30",
+      opciones: [
+        { nombre: "Guías Comentadas o Ilustradas", desc: "Documentos pedagógicos elaborados para facilitar la enseñanza de una materia." },
+        { nombre: "Paquete Didáctico", desc: "Material de apoyo didáctico diseñado específicamente para una disciplina." }
+      ]
+    },
+    {
+      categoria: "Investigación y Posgrado",
+      icono: "flask-conical",
+      color: "text-purple-500",
+      bg: "bg-purple-50 dark:bg-purple-950/30",
+      opciones: [
+        { nombre: "Cursos de Maestría o Doctorado", desc: "Aprobación de al menos 4 materias en un programa de posgrado reconocido." },
+        { nombre: "Seminarios (Investigación / Titulación)", desc: "Trabajos que fundamentan una investigación o trabajos para personal académico egresado." },
+        { nombre: "Diseño o Rediseño de Equipo", desc: "Trabajo escrito que especifica planos, cálculos y diseño de maquinaria o aparatos." }
+      ]
+    },
+    {
+      categoria: "Tesis, Tesina e Informes",
+      icono: "library",
+      color: "text-indigo-500",
+      bg: "bg-indigo-50 dark:bg-indigo-950/30",
+      opciones: [
+        { nombre: "Tesis", desc: "Investigación académica inédita que presenta y aporta nuevos conocimientos." },
+        { nombre: "Informe de Prácticas Profesionales", desc: "Documento analítico sobre los problemas y soluciones enfrentados en la práctica profesional." }
+      ]
+    }
+  ];
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
-              <h4 className="font-bold text-slate-900 dark:text-white text-sm font-display">1. Examen Global CENEVAL (EGEL Plus)</h4>
-              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">Obtener resultado Satisfactorio o Sobresaliente en la evaluación nacional de la carrera de Computación.</p>
-              <button onClick={() => showToast("Descargando guía de registro EGEL CENEVAL")} className="bg-slate-800 hover:bg-slate-700 text-white px-3.5 py-1.5 rounded-xl font-semibold">Ver Guía de Examen</button>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
-              <h4 className="font-bold text-slate-900 dark:text-white text-sm font-display">2. Desempeño Sobresaliente / Promedio</h4>
-              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">Promedio general mínimo de 90 con un máximo del 10% de exámenes extraordinarios acumulados.</p>
-              <button onClick={() => showToast("Verificación completada: Promedio ELEGIBLE para Titulación Automática")} className="bg-udg-navy hover:bg-udg-blue text-white px-3.5 py-1.5 rounded-xl font-semibold">Verificar Elegibilidad</button>
-            </div>
+  return (
+    <div className="space-y-6 text-xs">
+      {/* CABECERA Y ENLACE OFICIAL */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold shrink-0">
+            <LucideIcon name="graduation-cap" className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white font-display">Opciones de Titulación</h2>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">Conoce las modalidades disponibles para obtener tu título como Ingeniero(a) en Computación.</p>
           </div>
         </div>
-      );
-    }
+        <a 
+          href="https://www.cucei.udg.mx/carreras/computacion/es/contenido/titulacion-0" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-6 py-3 rounded-xl flex items-center gap-2 shadow-md transition-all text-sm shrink-0 whitespace-nowrap"
+        >
+          <LucideIcon name="external-link" className="w-4 h-4" />
+          Portal Oficial de Titulación
+        </a>
+      </div>
 
-    function ConstanciasModule({ user, showToast, isLoggedIn, setActiveModal }) {
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <LucideIcon name="file-text" className="w-5 h-5 text-udg-blue" />
-            Kardex de Calificaciones y Constancias Oficiales
+      {/* REQUISITOS GENERALES */}
+      <div className="bg-amber-50 dark:bg-slate-900/80 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-5 flex items-start gap-3">
+        <LucideIcon name="info" className="w-5 h-5 text-amber-600 dark:text-amber-500 mt-0.5 shrink-0" />
+        <div>
+          <h4 className="font-bold text-amber-900 dark:text-amber-400 text-sm mb-1">Documentación Base Obligatoria</h4>
+          <p className="text-amber-800 dark:text-amber-200/80 leading-relaxed">
+            Independientemente de la modalidad que elijas, siempre deberás presentar como mínimo: <strong className="font-black">Formato A, Kardex actualizado y Certificado de Inglés</strong>. Algunas modalidades requerirán anexos adicionales (protocolos, certificados o constancias).
+          </p>
+        </div>
+      </div>
+
+      {/* GRID DE MODALIDADES */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {modalidades.map((mod, idx) => (
+          <div key={idx} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+            <div className={`${mod.bg} p-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center gap-3`}>
+              <div className={`p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm ${mod.color}`}>
+                <LucideIcon name={mod.icono} className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-slate-800 dark:text-white text-sm font-display uppercase tracking-wide">{mod.categoria}</h3>
+            </div>
+            <div className="p-5 space-y-4">
+              {mod.opciones.map((opc, opcIdx) => (
+                <div key={opcIdx} className="relative pl-4 border-l-2 border-slate-200 dark:border-slate-600">
+                  <div className={`absolute w-2 h-2 rounded-full -left-[5px] top-1.5 bg-current ${mod.color}`}></div>
+                  <h4 className="font-bold text-slate-900 dark:text-slate-200 text-sm mb-1">{opc.nombre}</h4>
+                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{opc.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ConstanciasModule({ user, showToast, addNotification, globalConstancias = [], setGlobalConstancias = () => {} }) {
+  const [requiresDetails, setRequiresDetails] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
+  const listaConstancias = Array.isArray(globalConstancias) ? globalConstancias.filter(c => c.student === user.name) : [];
+  
+  const totalItems = listaConstancias.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = listaConstancias.slice(indexOfFirstItem, indexOfLastItem);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    const datos = { code: user.code, student: user.name, email: user.email, requiresDetails };
+
+    try {
+      const res = await server.registrarConstancia(datos);
+      if (res.exito) {
+        setGlobalConstancias([res.constancia, ...globalConstancias]);
+        showToast("Solicitud de constancia enviada.");
+        addNotification("Solicitud Recibida", "Tu constancia está en revisión.", "info");
+        setRequiresDetails(false);
+        setCurrentPage(1);
+      } else showToast(res.mensaje, "error");
+    } catch (err) { showToast("Error de conexión.", "error"); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-6 text-xs">
+      {/* DESCRIPCIÓN Y FORMULARIO */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div className="bg-slate-100 dark:bg-slate-900/80 p-5 border-b border-slate-200 dark:border-slate-700 space-y-2">
+          <h3 className="text-base font-bold text-udg-navy dark:text-blue-400 font-display flex items-center gap-2">
+            <LucideIcon name="file-badge" className="w-5 h-5" /> Trámite de Constancias Oficiales
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
-              <h4 className="font-bold text-slate-900 dark:text-white font-display">Kardex Simple de Calificaciones</h4>
-              <p className="text-slate-500">Documento que avala tus calificaciones acumuladas y promedio general de {user.gpa}.</p>
-              <button onClick={() => {
-                if(!isLoggedIn) return setActiveModal('login');
-                showToast("Generando Kardex en PDF con sello digital de verificación");
-              }} className="bg-udg-navy text-white px-4 py-2 rounded-xl font-bold">Generar Kardex PDF</button>
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-xs">
+            Las constancias de estudio son documentos oficiales emitidos por la Coordinación que avalan tu situación académica actual. Son el documento idóneo para trámites de becas, servicio social, seguro médico facultativo o comprobación general de estudios.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+            <label className="block font-semibold mb-1 text-slate-500 text-[10px] uppercase">Nombre Completo del Solicitante</label>
+            <span className="font-bold text-slate-900 dark:text-white text-sm">{user.name}</span>
+          </div>
+          
+          <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+            <label className="block font-semibold mb-1 text-slate-500 text-[10px] uppercase">Código de Estudiante (UdG)</label>
+            <span className="font-bold text-slate-900 dark:text-white text-sm font-mono">{user.code}</span>
+          </div>
+
+          <div className="md:col-span-2 bg-blue-50/50 dark:bg-slate-900/30 p-4 rounded-xl border border-blue-100 dark:border-slate-700 mt-2 flex items-center gap-3">
+            <input 
+              type="checkbox" id="reqDetails" checked={requiresDetails} onChange={(e) => setRequiresDetails(e.target.checked)}
+              className="w-5 h-5 text-udg-blue rounded border-slate-300 focus:ring-udg-blue cursor-pointer" 
+            />
+            <label htmlFor="reqDetails" className="font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+              Requiere desglose detallado <span className="text-slate-500 font-normal">(Incluir período actual, promedio general y créditos adquiridos)</span>
+            </label>
+          </div>
+          
+          <div className="md:col-span-2 pt-2 flex justify-end">
+            <button type="submit" disabled={loading} className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-8 py-3 rounded-xl flex items-center gap-2 shadow-md disabled:opacity-70 transition-all text-sm">
+              {loading ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="send" className="w-4 h-4" />}<span>Enviar Solicitud de Constancia</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* HISTORIAL PAGINADO */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+        <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display mb-4">
+          <LucideIcon name="history" className="w-4 h-4 text-udg-gold" /> Historial de Solicitudes ({totalItems})
+        </h4>
+
+        <div className="space-y-3">
+          {totalItems === 0 ? (
+            <p className="text-slate-400 py-6 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">No has solicitado ninguna constancia.</p>
+          ) : (
+            currentItems.map((c) => (
+              <div key={c.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 transition-all hover:shadow-sm">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">Constancia de Estudios</h4>
+                  <div className="flex items-center gap-2 mt-1 text-[11px]">
+                    <span className="font-mono text-udg-navy dark:text-blue-400 font-bold">#{c.id}</span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-slate-500">Solicitada el {c.date}</span>
+                    {c.requiresDetails === 'Sí' && <span className="ml-2 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded text-[9px] font-bold uppercase">Con Desglose</span>}
+                  </div>
+                </div>
+                <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 ${c.status === 'Terminada' ? 'bg-emerald-100 text-emerald-800' : c.status === 'En Proceso' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-900'}`}>
+                  {c.status}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Controles de paginación idénticos */}
+        {totalItems > 0 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 text-slate-500 font-medium text-xs">
+            <div className="flex items-center gap-2">
+              <span>Mostrar:</span>
+              <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }} className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 outline-none text-xs font-bold text-slate-700 dark:text-slate-200">
+                <option value={5}>5</option><option value={10}>10</option>
+              </select>
+              <span className="ml-2">Mostrando {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, totalItems)} de {totalItems}</span>
             </div>
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
-              <h4 className="font-bold text-slate-900 dark:text-white font-display">Constancia de Alumno Activo</h4>
-              <p className="text-slate-500">Acredita tu inscripción oficial en el ciclo lectivo 2026B para trámites externos.</p>
-              <button onClick={() => {
-                if(!isLoggedIn) return setActiveModal('login');
-                showToast("Generando Constancia de Alumno Activo UdG");
-              }} className="bg-udg-gold text-white px-4 py-2 rounded-xl font-bold">Descargar Constancia</button>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-left" className="w-4 h-4" /></button>
+              <span className="px-3 py-1.5 font-bold text-slate-800 dark:text-slate-200">Página {currentPage} de {totalPages}</span>
+              <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-right" className="w-4 h-4" /></button>
             </div>
           </div>
-        </div>
-      );
-    }
+        )}
+      </div>
+    </div>
+  );
+}
+
 
     function ProyectosModularesModule({ showToast, user }) {
       return (
@@ -3046,6 +3267,218 @@ function RegisterModal({ onClose, onRegister, onOpenLogin }) {
         </div>
       );
     }
+    // ==========================================
+// MÓDULO ADMIN: EMISIÓN DE CONSTANCIAS
+// ==========================================
+function AdminConstanciasModule({ showToast, addNotification, globalConstancias, setGlobalConstancias }) {
+  const [loadingId, setLoadingId] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('Pendiente'); 
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [modalData, setModalData] = useState({ isOpen: false, item: null });
+
+  useEffect(() => { setCurrentPage(1); }, [filterStatus, searchTerm, itemsPerPage]);
+
+  const listaSegura = Array.isArray(globalConstancias) ? globalConstancias : [];
+
+  const constanciasFiltradas = listaSegura.filter(c => {
+    if (!c) return false; 
+    const coincideEstado = filterStatus === 'Todos' || c.status === filterStatus;
+    const busqueda = searchTerm.toLowerCase().trim();
+    const coincideBusqueda = (c.student && c.student.toLowerCase().includes(busqueda)) || (c.code && c.code.toString().includes(busqueda));
+    return coincideEstado && coincideBusqueda;
+  });
+
+  const totalItems = constanciasFiltradas.length;
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = constanciasFiltradas.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+
+  const handleAction = async (id, accion, adminData, studentName) => {
+    setLoadingId(id);
+    try {
+      const res = await server.avanzarConstancia(id, accion, adminData);
+      if (res.exito) {
+        if (typeof setGlobalConstancias === 'function') {
+           const updated = listaSegura.map(c => c.id === id ? { ...c, status: res.nuevoEstatus, adminData: adminData || c.adminData } : c);
+           setGlobalConstancias(updated);
+        }
+        showToast(`Constancia actualizada a: ${res.nuevoEstatus}`);
+        if(accion === 'Finalizar') addNotification(`Constancia Terminada`, `Notificación enviada a ${studentName}.`, 'success');
+        setModalData({ isOpen: false, item: null });
+      } else showToast(res.mensaje, "error");
+    } catch(e) { showToast("Error al procesar", "error"); } 
+    finally { setLoadingId(null); }
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5 text-xs">
+      
+      {modalData.isOpen && modalData.item && (
+        <ConstanciaAdminModal 
+          item={modalData.item} 
+          onClose={() => setModalData({ isOpen: false, item: null })} 
+          onAction={handleAction} 
+          loadingId={loadingId} 
+        />
+      )}
+
+      <div className="flex flex-col sm:flex-row justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+            <LucideIcon name="file-badge" className="w-5 h-5 text-udg-gold" /> Emisión de Constancias
+          </h3>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-3 justify-between items-center">
+        <div className="relative w-full max-w-md">
+          <LucideIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input type="text" placeholder="Buscar por nombre o código..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-udg-blue outline-none" />
+        </div>
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl shrink-0">
+          {['Pendiente', 'En Proceso', 'Terminada', 'Todos'].map(st => (
+            <button key={st} onClick={() => setFilterStatus(st)} className={`px-3 py-1.5 rounded-lg font-bold transition-all ${filterStatus === st ? 'bg-udg-navy text-white shadow' : 'text-slate-600 dark:text-slate-400'}`}>{st}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {currentItems.length === 0 ? (
+          <div className="text-center py-8 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/40"><p className="text-slate-500 font-medium">No hay solicitudes en este estado.</p></div>
+        ) : (
+          currentItems.map((c) => (
+            <div key={c.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between gap-4 transition-all hover:shadow-sm">
+              <div>
+                <span className="font-mono font-bold text-udg-navy dark:text-blue-400 text-sm">#{c.id}</span>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{c.student}</h4>
+                <p className="text-slate-500 text-[11px]">Código: <span className="font-semibold text-slate-700 dark:text-slate-300">{c.code}</span> • Solicitud: {c.date}</p>
+                {c.requiresDetails === 'Sí' && <p className="text-udg-blue font-bold text-[10px] mt-1"><LucideIcon name="alert-circle" className="w-3 h-3 inline mr-1"/>Requiere Promedio y Créditos</p>}
+              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+                 <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${c.status === 'Terminada' ? 'bg-emerald-100 text-emerald-800' : c.status === 'En Proceso' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-900'}`}>{c.status}</span>
+                 <button onClick={() => setModalData({ isOpen: true, item: c })} className="bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-sm text-xs"><LucideIcon name="maximize-2" className="w-4 h-4 text-udg-gold" /> {c.status === 'Pendiente' ? 'Procesar' : 'Ver / Imprimir'}</button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {totalItems > 0 && (
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 text-slate-500 font-medium text-xs">
+          <span className="ml-2">Mostrando {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, totalItems)} de {totalItems}</span>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-left" className="w-4 h-4" /></button>
+            <span className="px-3 py-1.5 font-bold">Página {currentPage} de {totalPages}</span>
+            <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40 transition-colors"><LucideIcon name="chevron-right" className="w-4 h-4" /></button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Subcomponente: Modal de Llenado e Impresión
+function ConstanciaAdminModal({ item, onClose, onAction, loadingId }) {
+  const [formData, setFormData] = useState({
+    folioVar: '', semestre: 'Primero', carrera: 'Ingeniería en Computación', ciclo: '2026-B',
+    fechaInicio: '', fechaFin: '', creditosTotales: 430, creditosAlumno: 0, promedioGral: 0, promedioAnt: 0
+  });
+
+  const creditosRestantes = Math.max(0, formData.creditosTotales - formData.creditosAlumno);
+
+  const handlePrintPreview = () => {
+    const d = typeof item.adminData === 'string' ? JSON.parse(item.adminData) : (item.adminData || formData);
+    const html = `
+      <html><head><title>Constancia ${item.id}</title><style>body{font-family:Arial,sans-serif; padding:50px; line-height:1.6;} .h{text-align:center; color:#0f2744;} .b{font-weight:bold;} hr{border:1px solid #ddd; margin:20px 0;}</style></head>
+      <body>
+        <h2 class="h">UNIVERSIDAD DE GUADALAJARA</h2><h3 class="h">Centro Universitario de Ciencias Exactas e Ingenierías</h3>
+        <hr/>
+        <p style="text-align:right;"><strong>Folio:</strong> CUCEI/SAC/CDCOM/${d.folioVar || '---'}/2026<br/><strong>Asunto:</strong> Constancia de Estudios</p>
+        <br/>
+        <p>A QUIEN CORRESPONDA:</p>
+        <p>Por este conducto se hace constar que el C. <span class="b">${item.student}</span>, con código de registro <span class="b">${item.code}</span>, es alumno(a) activo(a) de la carrera de <span class="b">${d.carrera}</span> de este Centro Universitario.</p>
+        <p>Actualmente cursa el <span class="b">${d.semestre} semestre</span> correspondiente al ciclo escolar <span class="b">${d.ciclo}</span> (Del ${d.fechaInicio} al ${d.fechaFin}).</p>
+        ${item.requiresDetails === 'Sí' ? `
+          <div style="background:#f4f4f4; padding:15px; margin-top:20px;">
+            <p><strong>Promedio General:</strong> ${d.promedioGral} \vert{} <strong>Promedio Semestre Anterior:</strong>${d.promedioAnt}</p>
+            <p><strong>Créditos Cubiertos:</strong> ${d.creditosAlumno} de ${d.creditosTotales} (Restantes:${Math.max(0, d.creditosTotales - d.creditosAlumno)})</p>
+          </div>
+        ` : ''}
+        <br/><br/><br/><p style="text-align:center;">A T E N T A M E N T E<br/>"PIENSA Y TRABAJA"</p>
+        <script>window.print();<\/script>
+      </body></html>
+    `;
+    const blob = new Blob([html], { type: 'text/html' });
+    window.open(URL.createObjectURL(blob), '_blank');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-3xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        
+        <div className="bg-slate-50 dark:bg-slate-900/80 p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+          <h3 className="font-bold text-sm font-display text-slate-800 dark:text-slate-200">Procesamiento: Constancia #{item.id}</h3>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-red-500 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600"><LucideIcon name="x" className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
+          <div className="bg-blue-50 dark:bg-slate-900/50 p-4 rounded-xl border border-blue-100 dark:border-slate-700 text-sm">
+            <p className="font-bold text-slate-900 dark:text-white">Estudiante: {item.student} <span className="font-mono text-udg-blue">({item.code})</span></p>
+            {item.requiresDetails === 'Sí' && <span className="mt-2 inline-block bg-udg-blue text-white px-2 py-1 rounded text-[10px] font-bold">SOLICITA DESGLOSE DE PROMEDIO Y CRÉDITOS</span>}
+          </div>
+
+          {item.status === 'Pendiente' ? (
+            <div className="space-y-4">
+              <h4 className="font-bold text-slate-700 dark:text-slate-300 border-b pb-2">Formulario de Llenado Oficial</h4>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div><label className="block mb-1 font-semibold">Folio Variable (ej. 1024)</label><input type="text" value={formData.folioVar} onChange={e=>setFormData({...formData, folioVar: e.target.value})} className="w-full border rounded-lg p-2 dark:bg-slate-900 dark:border-slate-600" /></div>
+                <div><label className="block mb-1 font-semibold">Ciclo Escolar</label><input type="text" value={formData.ciclo} onChange={e=>setFormData({...formData, ciclo: e.target.value})} className="w-full border rounded-lg p-2 dark:bg-slate-900 dark:border-slate-600" /></div>
+                <div><label className="block mb-1 font-semibold">Semestre en Letras</label><input type="text" value={formData.semestre} onChange={e=>setFormData({...formData, semestre: e.target.value})} className="w-full border rounded-lg p-2 dark:bg-slate-900 dark:border-slate-600" /></div>
+                <div><label className="block mb-1 font-semibold">Carrera</label><input type="text" value={formData.carrera} onChange={e=>setFormData({...formData, carrera: e.target.value})} className="w-full border rounded-lg p-2 dark:bg-slate-900 dark:border-slate-600" /></div>
+                <div><label className="block mb-1 font-semibold">Fecha Inicio Ciclo</label><input type="date" value={formData.fechaInicio} onChange={e=>setFormData({...formData, fechaInicio: e.target.value})} className="w-full border rounded-lg p-2 dark:bg-slate-900 dark:border-slate-600" /></div>
+                <div><label className="block mb-1 font-semibold">Fecha Fin Ciclo</label><input type="date" value={formData.fechaFin} onChange={e=>setFormData({...formData, fechaFin: e.target.value})} className="w-full border rounded-lg p-2 dark:bg-slate-900 dark:border-slate-600" /></div>
+                
+                {item.requiresDetails === 'Sí' && (
+                  <div className="col-span-2 grid grid-cols-2 gap-4 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div><label className="block mb-1 font-semibold text-amber-900 dark:text-amber-300">Créditos Totales Carrera</label><input type="number" value={formData.creditosTotales} onChange={e=>setFormData({...formData, creditosTotales: Number(e.target.value)})} className="w-full border rounded-lg p-2 dark:bg-slate-900" /></div>
+                    <div><label className="block mb-1 font-semibold text-amber-900 dark:text-amber-300">Créditos Adquiridos Alumno</label><input type="number" value={formData.creditosAlumno} onChange={e=>setFormData({...formData, creditosAlumno: Number(e.target.value)})} className="w-full border rounded-lg p-2 dark:bg-slate-900" /></div>
+                    <div><label className="block mb-1 font-semibold text-amber-900 dark:text-amber-300">Promedio General</label><input type="number" step="0.01" value={formData.promedioGral} onChange={e=>setFormData({...formData, promedioGral: e.target.value})} className="w-full border rounded-lg p-2 dark:bg-slate-900" /></div>
+                    <div><label className="block mb-1 font-semibold text-amber-900 dark:text-amber-300">Promedio Ant. Semestre</label><input type="number" step="0.01" value={formData.promedioAnt} onChange={e=>setFormData({...formData, promedioAnt: e.target.value})} className="w-full border rounded-lg p-2 dark:bg-slate-900" /></div>
+                    <div className="col-span-2 text-amber-700 font-bold">Créditos Restantes Automáticos: {creditosRestantes}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl text-center border border-slate-200 dark:border-slate-700">
+              <LucideIcon name="check-circle" className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+              <h3 className="font-bold text-lg dark:text-white">Los datos ya fueron capturados</h3>
+              <p className="text-slate-500 mb-4">La constancia está {item.status}. Puedes previsualizar e imprimir el PDF genérico.</p>
+              <button onClick={handlePrintPreview} className="bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 mx-auto"><LucideIcon name="printer" className="w-4 h-4"/> Imprimir PDF Generado</button>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-slate-50 dark:bg-slate-900/80 p-5 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 shrink-0">
+          {item.status === 'Pendiente' && (
+            <button onClick={() => { handleAction(item.id, 'Generar', formData, item.student); setTimeout(handlePrintPreview, 1000); }} disabled={loadingId === item.id} className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-6 py-3 rounded-xl flex items-center gap-2 text-sm disabled:opacity-50">
+              {loadingId === item.id ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="file-text" className="w-4 h-4" />} Guardar y Generar Constancia
+            </button>
+          )}
+          {item.status === 'En Proceso' && (
+            <button onClick={() => onAction(item.id, 'Finalizar', null, item.student)} disabled={loadingId === item.id} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl flex items-center gap-2 text-sm disabled:opacity-50">
+              {loadingId === item.id ? <LucideIcon name="loader-2" className="w-4 h-4 animate-spin" /> : <LucideIcon name="mail" className="w-4 h-4" />} Marcar Terminada y Notificar Alumno
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
   </script>
