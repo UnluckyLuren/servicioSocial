@@ -1,0 +1,14 @@
+const ENV = {
+  get dbSheetId() { return PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID'); },
+  get driveFolderId() { return PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID'); },
+  get geminiApiKey() { return PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY'); }
+};
+
+const TABLES = {
+  USERS: 'Usuarios',
+  TICKETS: 'Tickets',
+  JUSTIFICANTES: 'Justificantes',
+  AVISOS: 'Avisos',
+  LOGS: 'Logs', 
+  CONSTANCIAS: 'Constancias'
+};

@@ -1,0 +1,313 @@
+
+
+/**
+ * =========================================================================
+ * MÓDULO BACKEND: MESA DE AYUDA Y TICKETS
+ * Versión sincronizada y optimizada para evitar desfases de columnas.
+ * =========================================================================
+ */
+
+/**
+ * 1. CREAR UN NUEVO TICKET (Vista Alumno)
+ */
+function createTicket(ticketData, userEmail) {
+  const lock = LockService.getScriptLock();
+  try {
+    const safeSubject = sanitizeInput(ticketData.asunto);
+    const safeDetails = sanitizeInput(ticketData.detalles);
+    const safeCode = sanitizeInput(ticketData.codigo);
+    const safeName = sanitizeInput(ticketData.nombre);
+    const safeEmail = sanitizeInput(userEmail);
+
+    if (!lock.tryLock(5000)) {
+      return { success: false, message: "El servidor está procesando otras solicitudes, intenta en 5 segundos." };
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const sheet = SpreadsheetApp.openById(ssId).getSheetByName(TABLES.TICKETS);
+    
+    // Generar Folio único. Ej: INC-1792018895
+    const folioId = `INC-${Math.floor(Date.now() / 1000)}`;
+    const fechaActual = Utilities.formatDate(new Date(), "America/Mexico_City", "dd MMM yyyy HH:mm");
+
+    // Estructura exacta de 9 columnas:
+    // [0] id_ticket, [1] codigo_estudiante, [2] nombre_estudiante, [3] asunto, 
+    // [4] detalles, [5] estatus, [6] respuesta_coordinacion, [7] fecha_creacion, [8] correo_estudiante
+    const newRow = [
+      folioId, 
+      safeCode, 
+      safeName, 
+      safeSubject, 
+      safeDetails, 
+      'Pendiente', 
+      '', 
+      fechaActual, 
+      safeEmail 
+    ];
+
+    sheet.appendRow(newRow);
+    SpreadsheetApp.flush();
+    
+    logSystemEvent('INFO', safeCode, 'Ticket Creado', `Se aperturó el ticket folio ${folioId}`);
+
+    enviarCorreoTicket(safeEmail, safeName, 'creacion', {
+      folio: folioId,
+      asunto: safeSubject,
+      detalles: safeDetails,
+      fecha: fechaActual
+    });
+
+    return {
+      success: true,
+      ticket: {
+        id_ticket: folioId,
+        asunto: safeSubject,
+        detalles: safeDetails,
+        estatus: 'Pendiente',
+        fecha_creacion: fechaActual,
+        respuesta_coordinacion: ''
+      }
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', ticketData.codigo || 'SISTEMA', 'Error en Creación Ticket', error.toString());
+    return { success: false, message: "Error interno al crear el ticket." };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * 2. OBTENER TICKETS DEL ALUMNO (Vista Alumno)
+ */
+function getStudentTickets(studentCode) {
+  try {
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const sheet = SpreadsheetApp.openById(ssId).getSheetByName(TABLES.TICKETS);
+    
+    const data = sheet.getDataRange().getValues();
+    const result = [];
+
+    // Omitimos fila 0 (headers)
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      // Aislamiento IDOR: Coincidencia estricta con el código del alumno
+      if (String(row[1]) === String(studentCode)) {
+        
+        // PARCHE CRÍTICO: Evitar objetos Date para que google.script.run no colapse
+        let fechaSegura = '';
+        if (row[7] instanceof Date) {
+          fechaSegura = Utilities.formatDate(row[7], "America/Mexico_City", "dd MMM yyyy HH:mm");
+        } else {
+          fechaSegura = String(row[7] || '');
+        }
+
+        result.push({
+          id_ticket: String(row[0] || ''),
+          codigo_estudiante: String(row[1] || ''),
+          nombre_estudiante: String(row[2] || ''),
+          asunto: String(row[3] || ''),
+          detalles: String(row[4] || ''),
+          estatus: String(row[5] || ''),
+          respuesta_coordinacion: String(row[6] || ''),
+          fecha_creacion: fechaSegura,
+          correo_estudiante: String(row[8] || '')
+        });
+      }
+    }
+    
+    return result.reverse();
+
+  } catch (error) {
+    logSystemEvent('ERROR', studentCode, 'Error Lectura Tickets', error.toString());
+    throw new Error("No se pudieron cargar los tickets.");
+  }
+}
+
+/**
+ * 3. OBTENER TODOS LOS TICKETS (Vista Coordinador)
+ */
+function getAllTickets() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const cachedData = cache.get('ADMIN_ALL_TICKETS');
+    
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const sheet = SpreadsheetApp.openById(ssId).getSheetByName(TABLES.TICKETS);
+    
+    const data = sheet.getDataRange().getValues();
+    const result = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      
+      // PARCHE CRÍTICO: Evitar objetos Date
+      let fechaSegura = '';
+      if (row[7] instanceof Date) {
+        fechaSegura = Utilities.formatDate(row[7], "America/Mexico_City", "dd MMM yyyy HH:mm");
+      } else {
+        fechaSegura = String(row[7] || '');
+      }
+
+      result.push({
+        id_ticket: String(row[0] || ''),
+        codigo_estudiante: String(row[1] || ''),
+        nombre_estudiante: String(row[2] || ''),
+        asunto: String(row[3] || ''),
+        detalles: String(row[4] || ''),
+        estatus: String(row[5] || ''),
+        respuesta_coordinacion: String(row[6] || ''),
+        fecha_creacion: fechaSegura,
+        correo_estudiante: String(row[8] || '')
+      });
+    }
+    
+    const finalData = result.reverse();
+    cache.put('ADMIN_ALL_TICKETS', JSON.stringify(finalData), 60); 
+    return finalData;
+
+  } catch (error) {
+    logSystemEvent('ERROR', 'ADMIN', 'Error Lectura Global Tickets', error.toString());
+    throw new Error("No se pudieron cargar los tickets globales.");
+  }
+}
+
+/**
+ * 4. RESPONDER A UN TICKET (Vista Coordinador)
+ */
+function replyToTicket(ticketId, replyText, studentEmail, studentName) {
+  const lock = LockService.getScriptLock();
+  try {
+    const safeReply = sanitizeInput(replyText);
+    
+    if (!lock.tryLock(5000)) return { success: false, message: "Sistema ocupado." };
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const sheet = SpreadsheetApp.openById(ssId).getSheetByName(TABLES.TICKETS);
+    const data = sheet.getDataRange().getValues();
+    
+    let rowIndex = -1;
+    let ticketSubject = '';
+    let ticketDetails = '';
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === ticketId) {
+        rowIndex = i + 1; // Base 1 para Google Sheets
+        ticketSubject = data[i][3];
+        ticketDetails = data[i][4];
+        break;
+      }
+    }
+
+    if (rowIndex === -1) {
+      return { success: false, message: "Ticket no encontrado en la base de datos." };
+    }
+
+    const fechaUpdate = Utilities.formatDate(new Date(), "America/Mexico_City", "dd MMM yyyy HH:mm");
+    
+    // Escritura segura celda por celda para no desplazar ni corromper otras columnas
+    sheet.getRange(rowIndex, 6).setValue('Atendido');               // Columna F (estatus)
+    sheet.getRange(rowIndex, 7).setValue(safeReply);              // Columna G (respuesta_coordinacion)
+    sheet.getRange(rowIndex, 9).setValue(fechaUpdate);            // Columna I (fecha_actualizacion)
+    SpreadsheetApp.flush();
+
+    // Invalidar caché del administrador para ver cambios inmediatos
+    CacheService.getScriptCache().remove('ADMIN_ALL_TICKETS');
+
+    logSystemEvent('INFO', 'ADMIN_COORDINACION', 'Ticket Atendido', `Se respondió al ticket ${ticketId}`);
+
+    if (studentEmail) {
+      enviarCorreoTicket(studentEmail, studentName, 'respuesta', {
+        folio: ticketId,
+        asunto: ticketSubject,
+        detalles: ticketDetails,
+        respuesta: safeReply
+      });
+    }
+
+    return { success: true };
+
+  } catch (error) {
+    logSystemEvent('ERROR', 'ADMIN_COORDINACION', 'Error Cerrando Ticket', error.toString());
+    return { success: false, message: "Error interno al procesar la respuesta." };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * =========================================================================
+ * PLANTILLAS DE CORREO INSTITUCIONALES (HTML Inline Puro)
+ * =========================================================================
+ */
+function enviarCorreoTicket(email, nombre, tipo, datos) {
+  let subjectMail = '';
+  let htmlBody = '';
+
+  const headerAzul = `
+    <div style="background-color: #0f2744; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+      <h2 style="color: #ffffff; margin: 0; font-family: Arial, sans-serif; letter-spacing: 1px;">Coordinación INCO - CUCEI</h2>
+    </div>
+  `;
+
+  if (tipo === 'creacion') {
+    subjectMail = `[TICKET #${datos.folio}] Recepción Exitosa - INCO`;
+    htmlBody = `
+      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+        ${headerAzul}
+        <div style="padding: 30px; background-color: #f8fafc; color: #334155;">
+          <h3 style="color: #0f2744; margin-top: 0;">Recepción de Solicitud</h3>
+          <p>Estimado/a <strong>${nombre}</strong>,</p>
+          <p>Se ha registrado un nuevo ticket de atención en nuestro portal. El personal de coordinación lo revisará a la brevedad.</p>
+          
+          <div style="background-color: #ffffff; padding: 20px; border-radius: 6px; border: 1px solid #e2e8f0; margin: 20px 0;">
+            <p style="margin: 0 0 10px 0; font-size: 13px; color: #64748b;"><strong>FOLIO DE SEGUIMIENTO:</strong> <span style="color:#2563eb;">${datos.folio}</span></p>
+            <p style="margin: 0 0 10px 0; font-size: 13px; color: #64748b;"><strong>ASUNTO:</strong> ${datos.asunto}</p>
+            <p style="margin: 0; font-size: 13px; color: #64748b;"><strong>FECHA:</strong> ${datos.fecha}</p>
+          </div>
+          
+          <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 30px;">
+            Este es un correo automático. Por favor, no respondas a esta dirección.
+          </p>
+        </div>
+      </div>
+    `;
+  } 
+  else if (tipo === 'respuesta') {
+    subjectMail = `[RESUELTO] Tu ticket #${datos.folio} ha sido atendido`;
+    htmlBody = `
+      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+        ${headerAzul}
+        <div style="padding: 30px; background-color: #f8fafc; color: #334155;">
+          <h3 style="color: #0f2744; margin-top: 0;">Resolución de Ticket</h3>
+          <p>Hola <strong>${nombre}</strong>,</p>
+          <p>La Coordinación ha emitido una respuesta oficial a tu solicitud con folio <strong>${datos.folio}</strong>:</p>
+          
+          <div style="background-color: #ecfdf5; padding: 20px; border-left: 4px solid #10b981; border-radius: 0 6px 6px 0; margin: 20px 0;">
+            <p style="margin: 0 0 8px 0; font-size: 12px; color: #047857; font-weight: bold; text-transform: uppercase;">Respuesta Oficial de Coordinación:</p>
+            <p style="margin: 0; font-size: 14px; color: #065f46; line-height: 1.5; white-space: pre-wrap;">${datos.respuesta}</p>
+          </div>
+
+          <div style="background-color: #ffffff; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+            <p style="margin: 0 0 5px 0; font-size: 11px; color: #94a3b8; text-transform: uppercase;">Solicitud Original (${datos.asunto}):</p>
+            <p style="margin: 0; font-size: 12px; color: #64748b; font-style: italic;">"${datos.detalles}"</p>
+          </div>
+          
+          <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 30px;">
+            Sistema de Tickets - Coordinación de Ingeniería en Computación
+          </p>
+        </div>
+      </div>
+    `;
+  }
+
+  MailApp.sendEmail({
+    to: email,
+    subject: subjectMail,
+    htmlBody: htmlBody
+  });
+}

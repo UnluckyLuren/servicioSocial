@@ -1,0 +1,81 @@
+/**
+ * EJECUTA ESTA FUNCIÓN SOLO UNA VEZ para inicializar la base de datos y carpetas.
+ * Configura las pestañas en la hoja de cálculo ACTUAL y crea la carpeta en Drive.
+ */
+function setupEnvironment() {
+  try {
+    // 1. Crear carpeta principal en Google Drive para anexos y fotos
+    const mainFolder = DriveApp.createFolder("Sistema_INCO_Archivos");
+    const folderId = mainFolder.getId();
+    
+    // 2. Obtener la hoja de cálculo ACTUAL (donde está este script)
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) {
+      throw new Error("No se detectó una hoja de cálculo activa. Asegúrate de estar ejecutando esto desde el archivo de Google Sheets.");
+    }
+    const ssId = ss.getId();
+    
+    // 3. Configurar pestañas (Tablas) y sus encabezados en ESPAÑOL
+    const tables = {
+      'Usuarios': [
+        'codigo', 'nombre', 'rol', 'carrera', 'telefono', 'correo', 
+        'promedio', 'creditos_avance', 'creditos_totales', 'horas_integrales', 
+        'horas_requeridas', 'estatus', 'ciclo', 'foto_url', 'fecha_registro'
+      ],
+      'Tickets': [
+        'id_ticket', 'codigo_estudiante', 'nombre_estudiante', 'asunto', 
+        'detalles', 'estatus', 'respuesta_coordinacion', 'fecha_creacion', 'fecha_actualizacion'
+      ],
+      'Justificantes': [
+        'id_justificante', 'codigo_estudiante', 'motivo', 'materias_afectadas', 
+        'fecha_incapacidad', 'archivo_pdf_url', 'estatus', 'fecha_solicitud', 'fecha_revision'
+      ],
+      'Avisos': [
+        'id_aviso', 'titulo', 'descripcion', 'categoria', 'fecha_publicacion', 'codigo_autor'
+      ],
+      'Logs': [
+        'fecha_hora', 'nivel_log', 'codigo_usuario', 'accion', 'detalles'
+      ]
+    };
+
+    // Crear o renombrar las hojas
+    for (let tableName in tables) {
+      let sheet = ss.getSheetByName(tableName);
+      
+      // Si la hoja no existe, la creamos
+      if (!sheet) {
+        // Si solo existe la "Hoja 1" inicial que Google crea por defecto, la renombramos en lugar de crear una nueva
+        let existingSheets = ss.getSheets();
+        if (existingSheets.length === 1 && (existingSheets[0].getName() === 'Hoja 1' || existingSheets[0].getName() === 'Sheet1')) {
+          sheet = existingSheets[0].setName(tableName);
+        } else {
+          sheet = ss.insertSheet(tableName);
+        }
+      }
+      
+      // Insertar encabezados y darles formato (negrita y fondo gris)
+      const headers = tables[tableName];
+      const headerRange = sheet.getRange(1, 1, 1, headers.length);
+      headerRange.setValues([headers]);
+      headerRange.setFontWeight("bold").setBackground("#f3f4f6");
+      sheet.setFrozenRows(1); // Congelar la primera fila
+    }
+
+    // Guardar los IDs de forma segura en las propiedades del script
+    const scriptProperties = PropertiesService.getScriptProperties();
+    scriptProperties.setProperties({
+      'DB_SHEET_ID': ssId,
+      'DRIVE_FOLDER_ID': folderId
+    });
+
+    Logger.log("Entorno configurado correctamente en la hoja actual.");
+    Logger.log("ID Spreadsheet: " + ssId);
+    Logger.log("ID Folder: " + folderId);
+    
+    // Registrar el evento en el sistema de logs
+    logSystemEvent('INFO', 'SISTEMA', 'Inicializacion BD', `Pestañas creadas en el archivo vinculado.`);
+
+  } catch (error) {
+    Logger.log("Error en el setup: " + error.toString());
+  }
+}

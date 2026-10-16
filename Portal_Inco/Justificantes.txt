@@ -1,0 +1,541 @@
+/**
+ * =========================================================================
+ * MÓDULO BACKEND: GESTIÓN DE JUSTIFICANTES (ART. 53 y 54)
+ * Cumple con Prevención IDOR, Protección PII en Drive, Sanitización y Logs.
+ * =========================================================================
+ */
+
+/**
+ * Función auxiliar para formatear fechas de Sheets de forma segura a String
+ * (Evita el congelamiento de google.script.run por objetos Date nativos).
+ */
+function formatSafeSheetDate(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, "America/Mexico_City", "d/MM/yyyy");
+  }
+  return String(val);
+}
+
+/**
+ * Función auxiliar que desempaqueta el campo archivo_pdf_url:
+ * Formato interno: "url_evidencia_alumno ||| url_pdf_oficial_coordinacion"
+ */
+function unpackJustificanteUrls(rawCell) {
+  const str = String(rawCell || '');
+  if (str.indexOf('|||') !== -1) {
+    const parts = str.split('|||');
+    return { evidenciaUrl: parts[0].trim(), pdfOficialUrl: parts[1].trim() };
+  }
+  return { evidenciaUrl: str.trim(), pdfOficialUrl: '' };
+}
+
+/**
+ * 1. CREAR SOLICITUD DE JUSTIFICANTE (Vista Alumno)
+ * Guarda evidencia con permisos privados en Drive, inserta en Sheets y envía acuse.
+ */
+function createJustificante(payload) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    // 1. Sanitización estricta de inputs
+    const safeCode = sanitizeInput(String(payload.codigo || '').trim());
+    const safeName = sanitizeInput(String(payload.nombre || '').trim());
+    const safeEmail = sanitizeInput(String(payload.correo || '').trim());
+    const safePhone = sanitizeInput(String(payload.telefono || '').trim());
+    const safeMotivo = sanitizeInput(String(payload.motivo || '').trim());
+    const safeMaterias = sanitizeInput(String(payload.materias || '').trim());
+    const safePeriodo = sanitizeInput(String(payload.fecha_incapacidad || '').trim());
+
+    if (!safeCode || !safeMotivo || !safeMaterias || !payload.fileData) {
+      return { success: false, message: "Datos incompletos para procesar el justificante." };
+    }
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "El servidor está ocupado procesando otra solicitud. Intenta en unos segundos." };
+    }
+
+    // 2. Generar Folio Único (Ej: JUS-4fk7lq)
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const folioId = `JUS-${randomSuffix}`;
+    const fechaSolicitud = Utilities.formatDate(new Date(), "America/Mexico_City", "d/MM/yyyy");
+
+    // 3. Guardar Archivo Sensible (PII) en Google Drive con permisos restringidos
+    const folderId = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID');
+    const folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
+
+    const decodedBytes = Utilities.base64Decode(payload.fileData.base64);
+    const cleanFileName = `EVIDENCIA_${folioId}_${safeCode}_${sanitizeInput(payload.fileData.name)}`;
+    const blob = Utilities.newBlob(decodedBytes, payload.fileData.mimeType || 'application/pdf', cleanFileName);
+
+    const driveFile = folder.createFile(blob);
+    // MANDATO CRÍTICO PII: Restringir acceso público; solo propietarios/administradores de la carpeta
+    driveFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+    const evidenciaUrl = driveFile.getUrl();
+
+    // 4. Insertar en la hoja 'Justificantes' (9 columnas exactas)
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const justSheet = ss.getSheetByName(TABLES.JUSTIFICANTES);
+
+    // Actualizar teléfono del alumno en la hoja Usuarios si lo modificó (Operación en lote)
+    if (safePhone) {
+      const userSheet = ss.getSheetByName(TABLES.USERS);
+      const usersData = userSheet.getDataRange().getValues();
+      for (let u = 1; u < usersData.length; u++) {
+        if (String(usersData[u][0]) === safeCode) {
+          userSheet.getRange(u + 1, 5).setValue(safePhone); // Columna E: telefono
+          break;
+        }
+      }
+    }
+
+    // Columnas: id_justificante, codigo_estudiante, motivo, materias_afectadas, fecha_incapacidad, archivo_pdf_url, estatus, fecha_solicitud, fecha_revision
+    const newRow = [
+      folioId,
+      safeCode,
+      safeMotivo,
+      safeMaterias,
+      safePeriodo,
+      evidenciaUrl,
+      'Pendiente',
+      fechaSolicitud,
+      ''
+    ];
+
+    justSheet.appendRow(newRow);
+    SpreadsheetApp.flush();
+
+    // 5. Auditoría en Logs
+    logSystemEvent('INFO', safeCode, 'Solicitud Justificante Creada', `Folio ${folioId} registrado con evidencia privada.`);
+
+    // 6. Enviar Correo de Confirmación al Estudiante
+    if (safeEmail) {
+      try {
+        enviarCorreoJustificante(safeEmail, safeName, 'recepcion', {
+          folio: folioId,
+          motivo: safeMotivo,
+          periodo: safePeriodo,
+          materias: safeMaterias,
+          fecha: fechaSolicitud
+        });
+      } catch (mailErr) {
+        console.warn("Advertencia: No se pudo enviar el correo de confirmación: " + mailErr);
+      }
+    }
+
+    return {
+      success: true,
+      justificante: {
+        id_justificante: folioId,
+        codigo_estudiante: safeCode,
+        nombre_estudiante: safeName,
+        correo_estudiante: safeEmail,
+        motivo: safeMotivo,
+        materias_afectadas: safeMaterias,
+        fecha_incapacidad: safePeriodo,
+        evidencia_url: evidenciaUrl,
+        estatus: 'Pendiente',
+        fecha_solicitud: fechaSolicitud,
+        fecha_revision: ''
+      }
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', payload?.codigo || 'SISTEMA', 'Error Crear Justificante', error.toString());
+    return { success: false, message: "Error interno al guardar la solicitud: " + error.message };
+  } finally {
+    if (lockAcquired) lock.releaseLock();
+  }
+}
+
+/**
+ * 2. OBTENER JUSTIFICANTES DEL ALUMNO (Vista Alumno)
+ * Prevención IDOR: Filtra estrictamente por studentCode y OCULTA el PDF oficial de coordinación.
+ */
+function getStudentJustificantes(studentCode) {
+  try {
+    const safeStudentCode = String(studentCode || '').trim();
+    if (!safeStudentCode) return [];
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const sheet = SpreadsheetApp.openById(ssId).getSheetByName(TABLES.JUSTIFICANTES);
+    const data = sheet.getDataRange().getValues();
+    const result = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      // Prevención IDOR estricta
+      if (String(row[1]).trim() === safeStudentCode) {
+        const urls = unpackJustificanteUrls(row[5]);
+        result.push({
+          id_justificante: String(row[0] || ''),
+          codigo_estudiante: String(row[1] || ''),
+          motivo: String(row[2] || ''),
+          materias_afectadas: String(row[3] || ''),
+          fecha_incapacidad: formatSafeSheetDate(row[4]),
+          evidencia_url: urls.evidenciaUrl, // El alumno SOLO recibe su evidencia, jamás el PDF oficial
+          estatus: String(row[6] || 'Pendiente'),
+          fecha_solicitud: formatSafeSheetDate(row[7]),
+          fecha_revision: formatSafeSheetDate(row[8])
+        });
+      }
+    }
+
+    return result.reverse();
+  } catch (error) {
+    logSystemEvent('ERROR', studentCode || 'DESCONOCIDO', 'Error Lectura Justificantes Alumno', error.toString());
+    return [];
+  }
+}
+
+/**
+ * 3. OBTENER TODOS LOS JUSTIFICANTES (Vista Coordinador)
+ * Cruza en memoria (O(N)) los datos con la tabla Usuarios para adjuntar nombre y correo.
+ */
+function getAllJustificantes() {
+  try {
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    
+    // 1. Crear diccionario de Usuarios en memoria (1 sola llamada getValues)
+    const usersSheet = ss.getSheetByName(TABLES.USERS);
+    const usersData = usersSheet.getDataRange().getValues();
+    const userMap = {};
+    for (let u = 1; u < usersData.length; u++) {
+      const codeKey = String(usersData[u][0]).trim();
+      userMap[codeKey] = {
+        nombre: String(usersData[u][1] || 'Alumno UDG'),
+        telefono: String(usersData[u][4] || ''),
+        correo: String(usersData[u][5] || '')
+      };
+    }
+
+    // 2. Leer todos los Justificantes en memoria
+    const justSheet = ss.getSheetByName(TABLES.JUSTIFICANTES);
+    const justData = justSheet.getDataRange().getValues();
+    const result = [];
+
+    for (let i = 1; i < justData.length; i++) {
+      const row = justData[i];
+      const code = String(row[1] || '').trim();
+      const studentInfo = userMap[code] || { nombre: 'Estudiante INCO', telefono: '', correo: '' };
+      const urls = unpackJustificanteUrls(row[5]);
+
+      result.push({
+        id_justificante: String(row[0] || ''),
+        codigo_estudiante: code,
+        nombre_estudiante: studentInfo.nombre,
+        correo_estudiante: studentInfo.correo,
+        telefono_estudiante: studentInfo.telefono,
+        motivo: String(row[2] || ''),
+        materias_afectadas: String(row[3] || ''),
+        fecha_incapacidad: formatSafeSheetDate(row[4]),
+        evidencia_url: urls.evidenciaUrl,
+        pdf_oficial_url: urls.pdfOficialUrl,
+        estatus: String(row[6] || 'Pendiente'),
+        fecha_solicitud: formatSafeSheetDate(row[7]),
+        fecha_revision: formatSafeSheetDate(row[8])
+      });
+    }
+
+    return result.reverse();
+  } catch (error) {
+    logSystemEvent('ERROR', 'ADMIN_COORDINACION', 'Error Lectura Global Justificantes', error.toString());
+    return [];
+  }
+}
+
+/**
+ * 4. GENERAR DICTAMEN OFICIAL EN PDF (Docs Temporal -> PDF Restringido en Drive)
+ * Incrementa un folio consecutivo institucional, crea el PDF y pasa el estado a 'En Proceso'.
+ */
+function generateJustificantePDF(idJustificante, adminCode) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeId = sanitizeInput(String(idJustificante || '').trim());
+    const safeAdmin = sanitizeInput(String(adminCode || 'COORD_INCO'));
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "El sistema está ocupado. Intenta nuevamente." };
+    }
+
+    const scriptProps = PropertiesService.getScriptProperties();
+    const ssId = scriptProps.getProperty('DB_SHEET_ID');
+    const folderId = scriptProps.getProperty('DRIVE_FOLDER_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+
+    const justSheet = ss.getSheetByName(TABLES.JUSTIFICANTES);
+    const justData = justSheet.getDataRange().getValues();
+
+    let rowIndex = -1;
+    let targetRow = null;
+    for (let i = 1; i < justData.length; i++) {
+      if (String(justData[i][0]).trim() === safeId) {
+        rowIndex = i + 1;
+        targetRow = justData[i];
+        break;
+      }
+    }
+
+    if (rowIndex === -1 || !targetRow) {
+      return { success: false, message: "No se encontró la solicitud de justificante." };
+    }
+
+    // Buscar datos del estudiante en la hoja Usuarios
+    const studentCode = String(targetRow[1]).trim();
+    const usersSheet = ss.getSheetByName(TABLES.USERS);
+    const usersData = usersSheet.getDataRange().getValues();
+    let studentName = 'Estudiante INCO';
+    let studentCareer = 'Ingeniería en Computación (INCO)';
+
+    for (let u = 1; u < usersData.length; u++) {
+      if (String(usersData[u][0]).trim() === studentCode) {
+        studentName = String(usersData[u][1] || studentName);
+        studentCareer = String(usersData[u][3] || studentCareer);
+        break;
+      }
+    }
+
+    // Folio Autoincremental Oficial en Propiedades del Script
+    const currentSeq = Number(scriptProps.getProperty('JUSTIFICANTE_SEQ') || 100);
+    const nextSeq = currentSeq + 1;
+    scriptProps.setProperty('JUSTIFICANTE_SEQ', String(nextSeq));
+    const folioOficial = `OF-INCO-2026B-${String(nextSeq).padStart(4, '0')}`;
+
+    const fechaEmision = Utilities.formatDate(new Date(), "America/Mexico_City", "dd 'de' MMMM 'de' yyyy");
+    const fechaRevisionCorta = Utilities.formatDate(new Date(), "America/Mexico_City", "d/MM/yyyy");
+
+    // Crear Google Doc Temporal para maquetar el Justificante Oficial
+    const tempDoc = DocumentApp.create(`TEMP_DICTAMEN_${safeId}`);
+    const body = tempDoc.getBody();
+
+    body.appendParagraph("UNIVERSIDAD DE GUADALAJARA")
+        .setHeading(DocumentApp.ParagraphHeading.HEADING2)
+        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    body.appendParagraph("CENTRO UNIVERSITARIO DE CIENCIAS EXACTAS E INGENIERÍAS\nCOORDINACIÓN DE INGENIERÍA EN COMPUTACIÓN")
+        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    body.appendParagraph(`\nOFICIO DE JUSTIFICACIÓN DE INASISTENCIAS (ART. 53 y 54)\nFOLIO OFICIAL: ${folioOficial} | EXPEDIENTE: #${safeId}\n`)
+        .setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+
+    body.appendParagraph("A LOS C. PROFESORES DE LA CARRERA DE INGENIERÍA EN COMPUTACIÓN\nPRESENTE.\n")
+        .setBold(true);
+
+    body.appendParagraph(
+      `Por medio del presente, y con fundamento en los Artículos 53 y 54 del Reglamento General de Evaluación y Promoción de Alumnos de la Universidad de Guadalajara, se hace de su conocimiento que el(la) alumno(a):`
+    ).setAlignment(DocumentApp.HorizontalAlignment.JUSTIFY);
+
+    body.appendParagraph(`\n• NOMBRE DEL ALUMNO: ${studentName}\n• CÓDIGO SIIAU: ${studentCode}\n• CARRERA: ${studentCareer}\n• CAUSA ACREDITADA: ${targetRow[2]}\n• PERIODO A JUSTIFICAR: ${formatSafeSheetDate(targetRow[4])}\n`)
+        .setBold(true);
+
+    body.appendParagraph("ASIGNATURAS Y NRCs AFECTADOS:")
+        .setBold(true);
+
+    const listaMaterias = String(targetRow[3] || '').split(',');
+    for (let m = 0; m < listaMaterias.length; m++) {
+      if (listaMaterias[m].trim()) {
+        body.appendListItem(listaMaterias[m].trim());
+      }
+    }
+
+    body.appendParagraph(
+      `\nPresentó en tiempo y forma la documentación probatoria correspondiente ante esta Coordinación, por lo que se solicita atentamente se justifiquen las inasistencias registradas en dicho periodo.\n\nAtentamente,\n"PIENSA Y TRABAJA"\nGuadalajara, Jalisco, a ${fechaEmision}.\n\n_____________________________________________\nCOORDINACIÓN DE INGENIERÍA EN COMPUTACIÓN\nMódulo M202 • CUCEI`
+    ).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+    tempDoc.saveAndClose();
+
+    // Exportar el documento temporal a PDF y guardarlo en la carpeta privada de Drive
+    const pdfBlob = tempDoc.getAs(MimeType.PDF).setName(`JUSTIFICANTE_OFICIAL_${safeId}_${studentCode}.pdf`);
+    const folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
+    const pdfFile = folder.createFile(pdfBlob);
+
+    // MANDATO DE SEGURIDAD: El PDF generado es exclusivo para la coordinación (Restringido)
+    pdfFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+    const pdfUrl = pdfFile.getUrl();
+
+    // Borrar el Google Doc temporal
+    DriveApp.getFileById(tempDoc.getId()).setTrashed(true);
+
+    // Empaquetar la URL de evidencia original + URL del PDF oficial en la columna 6 (F)
+    const urlsPrevias = unpackJustificanteUrls(targetRow[5]);
+    const packedUrls = `${urlsPrevias.evidenciaUrl} ||| ${pdfUrl}`;
+
+    // Actualizar fila en lote (Columnas F, G, H, I -> índices 6, 7, 8, 9)
+    const fechaSolicitudOriginal = targetRow[7];
+    justSheet.getRange(rowIndex, 6, 1, 4).setValues([[
+      packedUrls,
+      'En Proceso',
+      fechaSolicitudOriginal,
+      fechaRevisionCorta
+    ]]);
+    SpreadsheetApp.flush();
+
+    logSystemEvent('INFO', safeAdmin, 'PDF Justificante Generado', `Se generó el dictamen ${folioOficial} para solicitud ${safeId}`);
+
+    return {
+      success: true,
+      pdfUrl: pdfUrl,
+      fechaRevision: fechaRevisionCorta
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', adminCode || 'COORD', 'Error Generar PDF Justificante', error.toString());
+    return { success: false, message: "Error al generar el PDF oficial: " + error.message };
+  } finally {
+    if (lockAcquired) lock.releaseLock();
+  }
+}
+
+/**
+ * 5. NOTIFICAR AL ALUMNO Y MARCAR COMO FINALIZADA (Vista Coordinador)
+ * Cambia el estado a 'Finalizada' y envía correo indicando pasar a ventanilla M202.
+ */
+function finalizeJustificante(idJustificante, adminCode) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeId = sanitizeInput(String(idJustificante || '').trim());
+    const safeAdmin = sanitizeInput(String(adminCode || 'COORD_INCO'));
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "Sistema ocupado. Intenta nuevamente." };
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const justSheet = ss.getSheetByName(TABLES.JUSTIFICANTES);
+    const justData = justSheet.getDataRange().getValues();
+
+    let rowIndex = -1;
+    let targetRow = null;
+    for (let i = 1; i < justData.length; i++) {
+      if (String(justData[i][0]).trim() === safeId) {
+        rowIndex = i + 1;
+        targetRow = justData[i];
+        break;
+      }
+    }
+
+    if (rowIndex === -1 || !targetRow) {
+      return { success: false, message: "Solicitud no encontrada." };
+    }
+
+    const studentCode = String(targetRow[1]).trim();
+    const usersSheet = ss.getSheetByName(TABLES.USERS);
+    const usersData = usersSheet.getDataRange().getValues();
+    let studentName = 'Estudiante INCO';
+    let studentEmail = '';
+
+    for (let u = 1; u < usersData.length; u++) {
+      if (String(usersData[u][0]).trim() === studentCode) {
+        studentName = String(usersData[u][1] || studentName);
+        studentEmail = String(usersData[u][5] || '');
+        break;
+      }
+    }
+
+    const fechaFinal = Utilities.formatDate(new Date(), "America/Mexico_City", "d/MM/yyyy");
+
+    // Actualizar estatus (Columna 7 / G) y fecha_revision (Columna 9 / I)
+    justSheet.getRange(rowIndex, 7).setValue('Finalizada');
+    justSheet.getRange(rowIndex, 9).setValue(fechaFinal);
+    SpreadsheetApp.flush();
+
+    logSystemEvent('INFO', safeAdmin, 'Justificante Finalizado', `Solicitud ${safeId} marcada como Finalizada y alumno notificado.`);
+
+    if (studentEmail) {
+      try {
+        enviarCorreoJustificante(studentEmail, studentName, 'finalizado', {
+          folio: safeId,
+          motivo: String(targetRow[2] || ''),
+          periodo: formatSafeSheetDate(targetRow[4]),
+          materias: String(targetRow[3] || '')
+        });
+      } catch (mailErr) {
+        console.warn("No se pudo enviar correo de finalización: " + mailErr);
+      }
+    }
+
+    return {
+      success: true,
+      fechaRevision: fechaFinal
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', adminCode || 'COORD', 'Error Finalizar Justificante', error.toString());
+    return { success: false, message: "Error interno al finalizar la solicitud." };
+  } finally {
+    if (lockAcquired) lock.releaseLock();
+  }
+}
+
+/**
+ * =========================================================================
+ * PLANTILLAS DE CORREO HTML INSTITUCIONALES PARA JUSTIFICANTES
+ * =========================================================================
+ */
+function enviarCorreoJustificante(email, nombre, tipo, datos) {
+  const headerHtml = `
+    <div style="background-color: #0f2744; padding: 22px; text-align: center; border-radius: 10px 10px 0 0;">
+      <h2 style="color: #ffffff; margin: 0; font-family: Arial, sans-serif; font-size: 18px;">
+        Coordinación de Ingeniería en Computación • CUCEI
+      </h2>
+    </div>
+  `;
+
+  let subject = '';
+  let htmlBody = '';
+
+  if (tipo === 'recepcion') {
+    subject = `[Acuse #${datos.folio}] Solicitud de Justificante Recibida - INCO`;
+    htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+        ${headerHtml}
+        <div style="padding: 28px; background-color: #f8fafc; color: #334155;">
+          <h3 style="color: #0f2744; margin-top: 0;">Recepción de Solicitud de Justificante (Art. 53)</h3>
+          <p>Estimado/a <strong>${nombre}</strong>,</p>
+          <p>Hemos recibido tu solicitud y evidencia digital para validación. A continuación el resumen de tu registro:</p>
+          <div style="background-color: #ffffff; padding: 18px; border-radius: 8px; border: 1px solid #cbd5e1; margin: 20px 0; font-size: 13px;">
+            <p style="margin: 0 0 8px 0;"><strong>Folio:</strong> <span style="color: #2563eb;">#${datos.folio}</span></p>
+            <p style="margin: 0 0 8px 0;"><strong>Motivo:</strong> ${datos.motivo}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Periodo:</strong> ${datos.periodo}</p>
+            <p style="margin: 0;"><strong>Materias y NRCs:</strong> ${datos.materias}</p>
+          </div>
+          <p style="font-size: 12px; color: #64748b;">
+            Recibirás un segundo correo cuando el dictamen oficial esté impreso y sellado para que pases a recogerlo en ventanilla.
+          </p>
+        </div>
+      </div>
+    `;
+  } else if (tipo === 'finalizado') {
+    subject = `[LISTO EN VENTANILLA] Tu Justificante #${datos.folio} ha sido autorizado`;
+    htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+        ${headerHtml}
+        <div style="padding: 28px; background-color: #f8fafc; color: #334155;">
+          <h3 style="color: #059669; margin-top: 0;">¡Tu Justificante Oficial está listo!</h3>
+          <p>Estimado/a <strong>${nombre}</strong>,</p>
+          <p>Te informamos que tu solicitud con folio <strong>#${datos.folio}</strong> (${datos.periodo}) ha sido dictaminada favorablemente por la Coordinación de Ingeniería en Computación.</p>
+          <div style="background-color: #ecfdf5; border-left: 4px solid #059669; padding: 16px; margin: 20px 0; font-size: 13px; color: #065f46;">
+            <strong>Instrucciones de Entrega:</strong><br/>
+            Acude con tu credencial de estudiante a la ventanilla de la Coordinación (<strong>Edificio M, Planta Alta - Módulo M202</strong>) en horario de Lunes a Viernes de 09:00 a 18:00 hrs para recoger tu formato oficial sellado y presentarlo ante tus profesores de: <br/><br/>
+            <em>${datos.materias}</em>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  MailApp.sendEmail({
+    to: email,
+    subject: subject,
+    htmlBody: htmlBody
+  });
+}

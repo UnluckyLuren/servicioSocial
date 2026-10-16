@@ -1,0 +1,192 @@
+/**
+ * Dominios permitidos para el registro.
+ */
+const ALLOWED_DOMAINS = [
+  'alumnos.udg.mx', 
+  'academicos.udg.mx', 
+  'cucei.udg.mx'
+];
+
+/**
+ * 1. ENVIAR CÓDIGO DE VERIFICACIÓN
+ * Genera un código de 6 dígitos, lo guarda en caché y lo envía por correo.
+ */
+function sendVerificationCode(email) {
+  try {
+    const domain = email.split('@')[1];
+    if (!ALLOWED_DOMAINS.includes(domain)) {
+      logSystemEvent('SEC', 'DESCONOCIDO', 'Intento de registro inválido', `Dominio no permitido: ${email}`);
+      return { success: false, message: "Dominio de correo no autorizado. Usa tu correo UDG." };
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const cache = CacheService.getScriptCache();
+    cache.put(`VERIFY_${email}`, code, 600); // Expira en 10 min
+    
+    const subject = "Código de Verificación - Coordinación INCO CUCEI";
+    const body = `Hola,\n\nTu código de verificación de 6 dígitos es: ${code}\n\nEste código expirará en 10 minutos.\n\nSi no solicitaste esto, ignora este mensaje.`;
+    
+    MailApp.sendEmail(email, subject, body);
+    
+    logSystemEvent('INFO', 'SISTEMA', 'Código enviado', `Se envió código a ${email}`);
+    return { success: true, message: "Código enviado. Revisa tu bandeja de entrada." };
+    
+  } catch (error) {
+    logSystemEvent('ERROR', 'SISTEMA', 'Error al enviar código', error.toString());
+    
+    return { 
+      success: false, 
+      message: "Error de servidor: " + error.toString() 
+    };
+  }
+}
+
+/**
+ * 2. REGISTRAR USUARIO
+ * Verifica el código, encripta el NIP, asigna rol 'Estudiante' por defecto y guarda.
+ */
+function registerUser(rawUserData, verificationCode) {
+  try {
+    // Sanitizamos todos los inputs antes de procesar
+    const userData = sanitizeUserData(rawUserData);
+    const safeVerCode = sanitizeInput(verificationCode);
+
+    const cache = CacheService.getScriptCache();
+    const savedCode = cache.get(`VERIFY_${userData.email}`);
+    
+    if (!savedCode || savedCode !== safeVerCode) {
+      return { success: false, message: "Código de verificación incorrecto o expirado." };
+    }
+
+    const domain = userData.email.split('@')[1];
+    if (!ALLOWED_DOMAINS.includes(domain)) {
+      return { success: false, message: "Dominio de correo no autorizado." };
+    }
+
+    // Se implementa LockService para escritura concurrente
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(5000)) {
+      return { success: false, message: "El sistema está ocupado. Intenta nuevamente." };
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const sheet = SpreadsheetApp.openById(ssId).getSheetByName(TABLES.USERS);
+    
+    // Obtenemos todos los datos para validación en memoria (Regla de Optimización)
+    const data = sheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] == userData.code || data[i][5] == userData.email) {
+        lock.releaseLock();
+        return { success: false, message: "El código de usuario o correo ya están registrados." };
+      }
+    }
+
+    const assignedRole = 'Estudiante'; 
+    const nipHash = hashPassword(userData.nip);
+    
+    const newRow = [
+      userData.code, userData.name, assignedRole, 'Ingeniería en Computación', 
+      userData.phone, userData.email, 0, 0, 380, 0, 60, 'Activo', '2026B', '', new Date(), nipHash
+    ];
+    
+    sheet.appendRow(newRow);
+    SpreadsheetApp.flush(); // Fuerza la escritura antes de soltar el candado
+    lock.releaseLock();
+    
+    cache.remove(`VERIFY_${userData.email}`); 
+    logSystemEvent('INFO', userData.code, 'Registro exitoso', `Nuevo usuario registrado con correo ${userData.email}`);
+    
+    return {
+      success: true,
+      user: { code: userData.code, name: userData.name, role: assignedRole, email: userData.email, phone: userData.phone }
+    };
+  } catch (error) {
+    logSystemEvent('ERROR', 'SISTEMA', 'Error en registro', error.toString());
+    return { success: false, message: "Error al registrar usuario." };
+  }
+}
+
+/**
+ * 3. INICIO DE SESIÓN
+ */
+function loginUser(rawCodigo, rawNip) {
+  try {
+    const codigo = sanitizeInput(rawCodigo);
+    const nip = sanitizeInput(rawNip);
+    
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const sheet = SpreadsheetApp.openById(ssId).getSheetByName(TABLES.USERS);
+    
+    // Lectura en memoria y no en bucle (Regla de Optimización)
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    const inputHash = hashPassword(nip);
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] == codigo) { 
+        const storedHash = data[i][15]; // Columna P
+        
+        if (inputHash === storedHash) {
+          logSystemEvent('INFO', codigo, 'Login Exitoso', 'Sesión iniciada correctamente.');
+          
+          let userObj = {};
+          // Extraemos solo hasta la columna 14, omitiendo el hash y la fecha
+          for(let j = 0; j < 14; j++) {
+            userObj[headers[j]] = data[i][j];
+          }
+          return { success: true, user: userObj };
+        } else {
+          logSystemEvent('SEC', codigo, 'Login Fallido', 'NIP incorrecto.');
+          return { success: false, message: "Credenciales incorrectas." };
+        }
+      }
+    }
+    
+    logSystemEvent('WARN', codigo, 'Login Fallido', 'Código no encontrado.');
+    return { success: false, message: "El usuario no existe." };
+  } catch (error) {
+    logSystemEvent('ERROR', 'SISTEMA', 'Error en login', error.toString());
+    return { success: false, message: "Error interno del servidor." };
+  }
+}
+
+/**
+ * Encriptar contraseñas (NIP) usando SHA-256
+ */
+function hashPassword(password) {
+  const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password, Utilities.Charset.UTF_8);
+  let txtHash = '';
+  for (let i = 0; i < rawHash.length; i++) {
+    let hashVal = rawHash[i];
+    if (hashVal < 0) hashVal += 256;
+    if (hashVal.toString(16).length == 1) txtHash += '0';
+    txtHash += hashVal.toString(16);
+  }
+  return txtHash;
+}
+
+/**
+ * SANITIZACIÓN (Mandato de Seguridad):
+ * Limpia los inputs recibidos desde el frontend para prevenir inyecciones (XSS).
+ */
+function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
+  return input.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+}
+
+function sanitizeUserData(userData) {
+  return {
+    code: sanitizeInput(userData.code),
+    name: sanitizeInput(userData.name),
+    email: sanitizeInput(userData.email),
+    phone: sanitizeInput(userData.phone),
+    nip: sanitizeInput(userData.nip)
+  };
+}
+
+function forzarPermisosDeCorreo() {
+  const miCorreo = Session.getActiveUser().getEmail();
+  MailApp.sendEmail(miCorreo, "Prueba de Permisos", "Los permisos de correo han sido otorgados exitosamente.");
+}

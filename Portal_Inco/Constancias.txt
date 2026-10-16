@@ -1,0 +1,528 @@
+/**
+ * =========================================================================
+ * MÓDULO BACKEND: EMISIÓN DE CONSTANCIAS OFICIALES (INCO CUCEI)
+ * Cumple con Prevención IDOR, LockService, Operaciones en Lote y Auditoría.
+ * =========================================================================
+ */
+
+/**
+ * Inicializa o recupera la hoja 'Constancias' en Google Sheets automáticamente.
+ * Estructura de columnas:
+ * [0] id_constancia, [1] codigo_estudiante, [2] nombre_estudiante, [3] correo_estudiante,
+ * [4] requiere_desglose, [5] datos_desglose_json, [6] archivo_pdf_url,
+ * [7] estatus, [8] fecha_solicitud, [9] fecha_emision
+ */
+function getOrInitConstanciasSheet(ss) {
+  const sheetName = (typeof TABLES !== 'undefined' && TABLES.CONSTANCIAS) ? TABLES.CONSTANCIAS : 'Constancias';
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    const headers = [
+      'id_constancia', 'codigo_estudiante', 'nombre_estudiante', 'correo_estudiante',
+      'requiere_desglose', 'datos_desglose_json', 'archivo_pdf_url',
+      'estatus', 'fecha_solicitud', 'fecha_emision'
+    ];
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setValues([headers]);
+    headerRange.setFontWeight('bold').setBackground('#f3f4f6');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+/**
+ * Obtiene o crea la subcarpeta privada "Constancias" dentro de la carpeta raíz del proyecto.
+ */
+function getOrInitConstanciasFolder() {
+  const mainFolderId = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID');
+  const parentFolder = mainFolderId ? DriveApp.getFolderById(mainFolderId) : DriveApp.getRootFolder();
+  const subFolders = parentFolder.getFoldersByName('Constancias');
+  if (subFolders.hasNext()) {
+    return subFolders.next();
+  }
+  const newFolder = parentFolder.createFolder('Constancias');
+  newFolder.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+  return newFolder;
+}
+
+/**
+ * Formatea celdas de fecha de Google Sheets a texto plano para no romper google.script.run.
+ */
+function formatSafeConstanciaDate(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, "America/Mexico_City", "d/MM/yyyy");
+  }
+  return String(val);
+}
+
+/**
+ * 1. CREAR SOLICITUD DE CONSTANCIA (Vista Alumno)
+ */
+function createConstanciaRequest(payload) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeCode = sanitizeInput(String(payload.codigo || '').trim());
+    const safeName = sanitizeInput(String(payload.nombre || '').trim());
+    const safeEmail = sanitizeInput(String(payload.correo || '').trim());
+    const requiereDesglose = Boolean(payload.requiere_desglose);
+
+    if (!safeCode || !safeName) {
+      return { success: false, message: "Datos del estudiante incompletos." };
+    }
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "El servidor está ocupado. Intenta nuevamente en unos segundos." };
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = getOrInitConstanciasSheet(ss);
+
+    // Generar Folio único (ej. CON-nrjt8d)
+    const suffix = Math.random().toString(36).substring(2, 8);
+    const folioId = `CON-${suffix}`;
+    const fechaSolicitud = Utilities.formatDate(new Date(), "America/Mexico_City", "d/MM/yyyy");
+
+    const newRow = [
+      folioId,
+      safeCode,
+      safeName,
+      safeEmail,
+      requiereDesglose ? 'SI' : 'NO',
+      '',
+      '',
+      'Pendiente',
+      fechaSolicitud,
+      ''
+    ];
+
+    sheet.appendRow(newRow);
+    SpreadsheetApp.flush();
+
+    logSystemEvent(
+      'INFO',
+      safeCode,
+      'Solicitud Constancia Creada',
+      `Folio ${folioId} registrado (Desglose: ${requiereDesglose ? 'SI' : 'NO'})`
+    );
+
+    if (safeEmail) {
+      try {
+        enviarCorreoConstancia(safeEmail, safeName, 'recepcion', {
+          folio: folioId,
+          desglose: requiereDesglose,
+          fecha: fechaSolicitud
+        });
+      } catch (mailErr) {
+        console.warn("No se pudo enviar correo de acuse de constancia: " + mailErr);
+      }
+    }
+
+    return {
+      success: true,
+      constancia: {
+        id_constancia: folioId,
+        codigo_estudiante: safeCode,
+        nombre_estudiante: safeName,
+        requiere_desglose: requiereDesglose,
+        estatus: 'Pendiente',
+        fecha_solicitud: fechaSolicitud
+      }
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', payload?.codigo || 'SISTEMA', 'Error Crear Constancia', error.toString());
+    return { success: false, message: "Error interno al registrar la solicitud de constancia." };
+  } finally {
+    if (lockAcquired) lock.releaseLock();
+  }
+}
+
+/**
+ * 2. OBTENER HISTORIAL DE CONSTANCIAS DEL ALUMNO (Vista Alumno)
+ * Prevención IDOR: Filtra estrictamente por studentCode y oculta el enlace al PDF de Drive.
+ */
+function getStudentConstancias(studentCode) {
+  try {
+    const safeCode = String(studentCode || '').trim();
+    if (!safeCode) return [];
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = getOrInitConstanciasSheet(ss);
+
+    const data = sheet.getDataRange().getValues();
+    const result = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (String(row[1]).trim() === safeCode) {
+        result.push({
+          id_constancia: String(row[0] || ''),
+          codigo_estudiante: String(row[1] || ''),
+          nombre_estudiante: String(row[2] || ''),
+          requiere_desglose: String(row[4] || '').toUpperCase() === 'SI',
+          estatus: String(row[7] || 'Pendiente'),
+          fecha_solicitud: formatSafeConstanciaDate(row[8]),
+          fecha_emision: formatSafeConstanciaDate(row[9])
+        });
+      }
+    }
+
+    return result.reverse();
+  } catch (error) {
+    logSystemEvent('ERROR', studentCode || 'DESCONOCIDO', 'Error Lectura Constancias Alumno', error.toString());
+    return [];
+  }
+}
+
+/**
+ * 3. OBTENER TODAS LAS CONSTANCIAS (Vista Coordinador)
+ * Cruza en memoria (1 sola llamada getValues) los datos académicos de la hoja Usuarios.
+ */
+function getAllConstancias() {
+  try {
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+
+    // 1. Mapa en memoria de Usuarios para prellenar carrera, ciclo, créditos y promedio
+    const usersSheet = ss.getSheetByName(TABLES.USERS);
+    const usersData = usersSheet.getDataRange().getValues();
+    const userMap = {};
+
+    for (let u = 1; u < usersData.length; u++) {
+      const codeKey = String(usersData[u][0]).trim();
+      userMap[codeKey] = {
+        nombre: String(usersData[u][1] || ''),
+        carrera: String(usersData[u][3] || 'Ingeniería en Computación'),
+        correo: String(usersData[u][5] || ''),
+        promedio: Number(usersData[u][6] || 0),
+        creditos_avance: Number(usersData[u][7] || 0),
+        ciclo: String(usersData[u][12] || '2026-B')
+      };
+    }
+
+    // 2. Leer hoja Constancias en memoria
+    const sheet = getOrInitConstanciasSheet(ss);
+    const data = sheet.getDataRange().getValues();
+    const result = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const code = String(row[1] || '').trim();
+      const studentInfo = userMap[code] || {
+        nombre: String(row[2] || 'Estudiante INCO'),
+        carrera: 'Ingeniería en Computación',
+        correo: String(row[3] || ''),
+        promedio: 0,
+        creditos_avance: 0,
+        ciclo: '2026-B'
+      };
+
+      let parsedDesglose = {};
+      if (row[5]) {
+        try {
+          parsedDesglose = JSON.parse(String(row[5]));
+        } catch (e) {
+          parsedDesglose = {};
+        }
+      }
+
+      result.push({
+        id_constancia: String(row[0] || ''),
+        codigo_estudiante: code,
+        nombre_estudiante: String(row[2] || studentInfo.nombre),
+        correo_estudiante: String(row[3] || studentInfo.correo),
+        carrera_estudiante: studentInfo.carrera,
+        ciclo_estudiante: studentInfo.ciclo,
+        promedio_estudiante: studentInfo.promedio,
+        creditos_estudiante: studentInfo.creditos_avance,
+        requiere_desglose: String(row[4] || '').toUpperCase() === 'SI',
+        datos_desglose: parsedDesglose,
+        archivo_pdf_url: String(row[6] || ''),
+        estatus: String(row[7] || 'Pendiente'),
+        fecha_solicitud: formatSafeConstanciaDate(row[8]),
+        fecha_emision: formatSafeConstanciaDate(row[9])
+      });
+    }
+
+    return result.reverse();
+  } catch (error) {
+    logSystemEvent('ERROR', 'ADMIN_COORDINACION', 'Error Lectura Global Constancias', error.toString());
+    return [];
+  }
+}
+
+/**
+ * 4. GENERAR PDF OFICIAL DE CONSTANCIA Y GUARDAR EN CARPETA "Constancias" (Vista Coordinador)
+ */
+function generateConstanciaPDF(idConstancia, formDetails, adminCode) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeId = sanitizeInput(String(idConstancia || '').trim());
+    const safeAdmin = sanitizeInput(String(adminCode || 'COORD_INCO'));
+
+    const details = {
+      folioVariable: sanitizeInput(String(formDetails.folioVariable || '').trim()),
+      cicloEscolar: sanitizeInput(String(formDetails.cicloEscolar || '2026-B').trim()),
+      semestreLetras: sanitizeInput(String(formDetails.semestreLetras || '').trim()),
+      carrera: sanitizeInput(String(formDetails.carrera || 'Ingeniería en Computación').trim()),
+      fechaInicio: sanitizeInput(String(formDetails.fechaInicio || '').trim()),
+      fechaFin: sanitizeInput(String(formDetails.fechaFin || '').trim()),
+      creditosTotales: Number(formDetails.creditosTotales || 430),
+      creditosConseguidos: Number(formDetails.creditosConseguidos || 0),
+      creditosRestantes: Math.max(0, Number(formDetails.creditosTotales || 430) - Number(formDetails.creditosConseguidos || 0)),
+      promedioGeneral: sanitizeInput(String(formDetails.promedioGeneral || '')),
+      promedioAnterior: sanitizeInput(String(formDetails.promedioAnterior || ''))
+    };
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "El sistema está ocupado. Intenta nuevamente." };
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = getOrInitConstanciasSheet(ss);
+    const data = sheet.getDataRange().getValues();
+
+    let rowIndex = -1;
+    let targetRow = null;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === safeId) {
+        rowIndex = i + 1;
+        targetRow = data[i];
+        break;
+      }
+    }
+
+    if (rowIndex === -1 || !targetRow) {
+      return { success: false, message: "Solicitud de constancia no encontrada en la base de datos." };
+    }
+
+    const studentCode = String(targetRow[1] || '');
+    const studentName = String(targetRow[2] || '');
+    const requiereDesglose = String(targetRow[4] || '').toUpperCase() === 'SI';
+    const fechaEmisionTexto = Utilities.formatDate(new Date(), "America/Mexico_City", "dd 'de' MMMM 'de' yyyy");
+    const fechaEmisionCorta = Utilities.formatDate(new Date(), "America/Mexico_City", "d/MM/yyyy");
+
+    // Crear documento temporal para exportar como PDF oficial
+    const tempDoc = DocumentApp.create(`TEMP_CONSTANCIA_${safeId}`);
+    const body = tempDoc.getBody();
+
+    body.appendParagraph("UNIVERSIDAD DE GUADALAJARA")
+        .setHeading(DocumentApp.ParagraphHeading.HEADING2)
+        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    body.appendParagraph("CENTRO UNIVERSITARIO DE CIENCIAS EXACTAS E INGENIERÍAS\nCOORDINACIÓN DE LA CARRERA DE INGENIERÍA EN COMPUTACIÓN")
+        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+    body.appendParagraph(`\nOFICIO FOLIO: ${details.folioVariable} | EXPEDIENTE: #${safeId}\nASUNTO: CONSTANCIA OFICIAL DE ESTUDIOS\n`)
+        .setAlignment(DocumentApp.HorizontalAlignment.RIGHT)
+        .setBold(true);
+
+    body.appendParagraph("A QUIEN CORRESPONDA:\n")
+        .setBold(true);
+
+    body.appendParagraph(
+      `El que suscribe, Coordinador de la Carrera de ${details.carrera} del Centro Universitario de Ciencias Exactas e Ingenierías (CUCEI) de la Universidad de Guadalajara, hace CONSTAR que el(la) ciudadano(a):\n`
+    ).setAlignment(DocumentApp.HorizontalAlignment.JUSTIFY);
+
+    body.appendParagraph(`${studentName.toUpperCase()}\nCÓDIGO DE ESTUDIANTE: ${studentCode}\n`)
+        .setAlignment(DocumentApp.HorizontalAlignment.CENTER)
+        .setBold(true);
+
+    body.appendParagraph(
+      `Es alumno(a) activo(a) regular de esta Casa de Estudios, cursando actualmente el ${details.semestreLetras} semestre en el ciclo escolar ${details.cicloEscolar}, cuyo periodo lectivo comprende del ${details.fechaInicio} al ${details.fechaFin}.`
+    ).setAlignment(DocumentApp.HorizontalAlignment.JUSTIFY);
+
+    if (requiereDesglose) {
+      body.appendParagraph("\nDESGLOSE ACADÉMICO OFICIAL (KARDEX / AVANCE CURRICULAR):")
+          .setBold(true);
+      body.appendListItem(`Créditos Totales del Plan de Estudios: ${details.creditosTotales}`);
+      body.appendListItem(`Créditos Acumulados por el Alumno: ${details.creditosConseguidos}`);
+      body.appendListItem(`Créditos Restantes por Cursar: ${details.creditosRestantes}`);
+      body.appendListItem(`Promedio General Acumulado: ${details.promedioGeneral}`);
+      body.appendListItem(`Promedio del Ciclo Inmediato Anterior: ${details.promedioAnterior}`);
+    }
+
+    body.appendParagraph(
+      `\nSe extiende la presente constancia a petición del interesado para los fines legales y académicos que a él convengan.\n\nATENTAMENTE\n"PIENSA Y TRABAJA"\nGuadalajara, Jalisco, a ${fechaEmisionTexto}.\n\n____________________________________________________\nCOORDINACIÓN DE INGENIERÍA EN COMPUTACIÓN\nMódulo M202 • CUCEI`
+    ).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+    tempDoc.saveAndClose();
+
+    // Exportar a PDF dentro de la carpeta "Constancias" con acceso restringido
+    const constanciasFolder = getOrInitConstanciasFolder();
+    const pdfBlob = tempDoc.getAs(MimeType.PDF).setName(`CONSTANCIA_${safeId}_${studentCode}.pdf`);
+    const pdfFile = constanciasFolder.createFile(pdfBlob);
+    pdfFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+    const pdfUrl = pdfFile.getUrl();
+
+    // Eliminar documento temporal
+    DriveApp.getFileById(tempDoc.getId()).setTrashed(true);
+
+    // Actualizar registro en lote (Columnas 6 a 10: datos_desglose_json, archivo_pdf_url, estatus, fecha_solicitud, fecha_emision)
+    sheet.getRange(rowIndex, 6, 1, 5).setValues([[
+      JSON.stringify(details),
+      pdfUrl,
+      'En Proceso',
+      targetRow[8],
+      fechaEmisionCorta
+    ]]);
+    SpreadsheetApp.flush();
+
+    logSystemEvent('INFO', safeAdmin, 'Constancia PDF Generada', `Se generó PDF oficial para solicitud ${safeId} (Folio Variable: ${details.folioVariable})`);
+
+    return {
+      success: true,
+      pdfUrl: pdfUrl,
+      fechaEmision: fechaEmisionCorta
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', adminCode || 'COORD', 'Error Generar PDF Constancia', error.toString());
+    return { success: false, message: "Error al generar el PDF de la constancia: " + error.message };
+  } finally {
+    if (lockAcquired) lock.releaseLock();
+  }
+}
+
+/**
+ * 5. MARCAR CONSTANCIA COMO TERMINADA Y NOTIFICAR RECOLECCIÓN FÍSICA (Vista Coordinador)
+ */
+function finalizeConstanciaDelivery(idConstancia, adminCode) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeId = sanitizeInput(String(idConstancia || '').trim());
+    const safeAdmin = sanitizeInput(String(adminCode || 'COORD_INCO'));
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "El sistema está ocupado. Intenta nuevamente." };
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = getOrInitConstanciasSheet(ss);
+    const data = sheet.getDataRange().getValues();
+
+    let rowIndex = -1;
+    let targetRow = null;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === safeId) {
+        rowIndex = i + 1;
+        targetRow = data[i];
+        break;
+      }
+    }
+
+    if (rowIndex === -1 || !targetRow) {
+      return { success: false, message: "Solicitud de constancia no localizada." };
+    }
+
+    const fechaFinal = Utilities.formatDate(new Date(), "America/Mexico_City", "d/MM/yyyy");
+    const studentName = String(targetRow[2] || 'Estudiante INCO');
+    const studentEmail = String(targetRow[3] || '');
+    const requiereDesglose = String(targetRow[4] || '').toUpperCase() === 'SI';
+
+    // Actualizar columnas Estatus (Col 8 / H) y Fecha Emisión (Col 10 / J)
+    sheet.getRange(rowIndex, 8).setValue('Terminada');
+    sheet.getRange(rowIndex, 10).setValue(fechaFinal);
+    SpreadsheetApp.flush();
+
+    logSystemEvent('INFO', safeAdmin, 'Constancia Terminada', `Se notificó entrega física de la constancia ${safeId}`);
+
+    if (studentEmail) {
+      try {
+        enviarCorreoConstancia(studentEmail, studentName, 'lista_entrega', {
+          folio: safeId,
+          desglose: requiereDesglose,
+          fecha: fechaFinal
+        });
+      } catch (mailErr) {
+        console.warn("No se pudo enviar el correo de entrega física de constancia: " + mailErr);
+      }
+    }
+
+    return {
+      success: true,
+      fechaEmision: fechaFinal
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', adminCode || 'COORD', 'Error Finalizar Constancia', error.toString());
+    return { success: false, message: "Error interno al actualizar el estado de la constancia." };
+  } finally {
+    if (lockAcquired) lock.releaseLock();
+  }
+}
+
+/**
+ * =========================================================================
+ * PLANTILLAS DE CORREO ELECTRÓNICO (HTML Inline Institucional)
+ * =========================================================================
+ */
+function enviarCorreoConstancia(email, nombre, tipo, datos) {
+  const headerHtml = `
+    <div style="background-color: #0f2744; padding: 22px; text-align: center; border-radius: 10px 10px 0 0;">
+      <h2 style="color: #ffffff; margin: 0; font-family: Arial, sans-serif; font-size: 18px;">
+        Coordinación de Ingeniería en Computación • CUCEI
+      </h2>
+    </div>
+  `;
+
+  let subject = '';
+  let htmlBody = '';
+
+  if (tipo === 'recepcion') {
+    subject = `[Solicitud #${datos.folio}] Trámite de Constancia Recibido - INCO`;
+    htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+        ${headerHtml}
+        <div style="padding: 28px; background-color: #f8fafc; color: #334155;">
+          <h3 style="color: #0f2744; margin-top: 0;">Recepción de Solicitud de Constancia</h3>
+          <p>Estimado/a <strong>${nombre}</strong>,</p>
+          <p>Tu solicitud de Constancia Oficial de Estudios ha sido registrada en el portal de la Coordinación.</p>
+          <div style="background-color: #ffffff; padding: 18px; border-radius: 8px; border: 1px solid #cbd5e1; margin: 20px 0; font-size: 13px;">
+            <p style="margin: 0 0 8px 0;"><strong>Folio de Seguimiento:</strong> <span style="color: #2563eb;">#${datos.folio}</span></p>
+            <p style="margin: 0 0 8px 0;"><strong>Tipo de Documento:</strong> ${datos.desglose ? 'Constancia con Desglose (Periodo, Promedio y Créditos)' : 'Constancia Simple de Estudios'}</p>
+            <p style="margin: 0;"><strong>Fecha de Solicitud:</strong> ${datos.fecha}</p>
+          </div>
+          <p style="font-size: 12px; color: #64748b;">
+            Te notificaremos por este medio en cuanto el documento esté impreso, firmado y sellado para que pases a recogerlo en ventanilla.
+          </p>
+        </div>
+      </div>
+    `;
+  } else if (tipo === 'lista_entrega') {
+    subject = `[LISTA PARA ENTREGA] Tu Constancia #${datos.folio} está disponible en Coordinación`;
+    htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+        ${headerHtml}
+        <div style="padding: 28px; background-color: #f8fafc; color: #334155;">
+          <h3 style="color: #059669; margin-top: 0;">¡Tu Constancia de Estudios está lista!</h3>
+          <p>Hola <strong>${nombre}</strong>,</p>
+          <p>Te informamos que tu Constancia Oficial de Estudios con folio <strong>#${datos.folio}</strong> ha sido emitida y sellada por la Coordinación de Ingeniería en Computación.</p>
+          <div style="background-color: #ecfdf5; border-left: 4px solid #059669; padding: 16px; margin: 20px 0; font-size: 13px; color: #065f46;">
+            <strong>Instrucciones para Entrega Física:</strong><br/>
+            Acude con tu credencial institucional vigente a la ventanilla de la Coordinación (<strong>Edificio M, Planta Alta - Módulo M202</strong>) de Lunes a Viernes en horario de 09:00 a 18:00 hrs para recoger tu documento original.
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  MailApp.sendEmail({
+    to: email,
+    subject: subject,
+    htmlBody: htmlBody
+  });
+}

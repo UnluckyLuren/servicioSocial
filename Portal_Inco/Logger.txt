@@ -1,0 +1,36 @@
+/**
+ * Función principal para registrar eventos en la base de datos (Pestaña Logs).
+ */
+function logSystemEvent(nivel_log, codigo_usuario, accion, detalles) {
+  try {
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    if (!ssId) {
+      console.warn("Falta DB_SHEET_ID en las propiedades, el log se imprimirá solo en consola.");
+      console.log(`[${nivel_log}] ${codigo_usuario} - ${accion}: ${detalles}`);
+      return;
+    }
+
+    const ss = SpreadsheetApp.openById(ssId);
+    const logSheet = ss.getSheetByName('Logs');
+    
+    if (!logSheet) {
+      console.error("La hoja 'Logs' no existe.");
+      return;
+    }
+
+    const fecha_hora = new Date(); 
+    
+    // Evitar colisiones si varios usuarios escriben al mismo tiempo
+    const lock = LockService.getScriptLock();
+    if (lock.tryLock(5000)) {
+      logSheet.appendRow([fecha_hora, nivel_log, codigo_usuario, accion, detalles]);
+      SpreadsheetApp.flush(); 
+      lock.releaseLock();
+    } else {
+      console.warn("No se pudo obtener el bloqueo de escritura para los logs.");
+    }
+    
+  } catch (error) {
+    console.error("Error crítico al intentar guardar un log: " + error.toString());
+  }
+}
