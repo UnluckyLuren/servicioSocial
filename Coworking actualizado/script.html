@@ -32,6 +32,7 @@
   // ──────────────────────────────────────────────────────────
   const AuthService = {
     usuario: null,
+    correoEnVerificacion: '', // Se usa para retener el correo durante el paso 2SV
 
     async inicializar() {
       try {
@@ -85,7 +86,7 @@
       } else {
         document.getElementById('vistaAdmin')?.classList.add('hidden');
         document.getElementById('vistaAlumno')?.classList.remove('hidden');
-        // Mostrar botón Mis Reservas
+
         const btnMis = document.getElementById('btnMisReservas');
         if (btnMis) {
           btnMis.classList.remove('hidden');
@@ -146,27 +147,48 @@
       document.body.style.overflow = 'auto';
       document.getElementById('formLogin')?.reset();
       document.getElementById('formRegister')?.reset();
+      document.getElementById('formVerification')?.reset();
     },
 
     setAuthMode(modo) {
       const formLogin = document.getElementById('formLogin');
       const formReg   = document.getElementById('formRegister');
+      const formVerif = document.getElementById('formVerification');
+      const tabs      = document.getElementById('authTabs');
+
       const btnLogin  = document.getElementById('btnTabLogin');
       const btnReg    = document.getElementById('btnTabRegister');
 
       this._ocultarMensajeAuth();
+      tabs?.classList.remove('hidden');
+      formVerif?.classList.add('hidden');
 
       if (modo === 'login') {
         formLogin?.classList.remove('hidden');
         formReg?.classList.add('hidden');
-        if (btnLogin) btnLogin.className = 'flex-1 text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c]';
-        if (btnReg)   btnReg.className   = 'flex-1 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700';
+        if (btnLogin) btnLogin.className = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c] transition-all';
+        if (btnReg)   btnReg.className   = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700 transition-all';
       } else {
         formLogin?.classList.add('hidden');
         formReg?.classList.remove('hidden');
-        if (btnReg)   btnReg.className   = 'flex-1 text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c]';
-        if (btnLogin) btnLogin.className = 'flex-1 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700';
+        if (btnReg)   btnReg.className   = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c] transition-all';
+        if (btnLogin) btnLogin.className = 'flex-1 text-xs sm:text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700 transition-all';
       }
+    },
+
+    mostrarFormVerificacion(correo) {
+      this.correoEnVerificacion = correo;
+      document.getElementById('formLogin')?.classList.add('hidden');
+      document.getElementById('formRegister')?.classList.add('hidden');
+      document.getElementById('authTabs')?.classList.add('hidden');
+
+      const formVerif = document.getElementById('formVerification');
+      formVerif?.classList.remove('hidden');
+
+      const display = document.getElementById('verifEmailDisplay');
+      if (display) display.textContent = correo;
+
+      this._ocultarMensajeAuth();
     },
 
     async procesarLogin(evento) {
@@ -184,6 +206,9 @@
           localStorage.setItem('coworking_sesion', JSON.stringify(res.usuario));
           this.cerrarModalAuth();
           this.inicializar();
+        } else if (res.requiereVerificacion) {
+          this._mostrarMensajeAuth(res.mensaje, 'warn');
+          setTimeout(() => { this.mostrarFormVerificacion(res.correo); }, 1500);
         } else {
           this._mostrarMensajeAuth(res.mensaje, 'error');
         }
@@ -208,18 +233,18 @@
         return;
       }
 
-      this._mostrarCargandoAuth(btn, true, 'Registrando...');
+      this._mostrarCargandoAuth(btn, true, 'Enviando código...');
       this._ocultarMensajeAuth();
 
       try {
         const res = await GasApi.ejecutar('registrarUsuarioCustom', correo, codigo, pass, nombres, apellidos);
-        if (res.exito) {
-          this._mostrarMensajeAuth('Registro exitoso. Iniciando sesión...', 'exito');
-          const loginRes = await GasApi.ejecutar('loginUsuarioCustom', correo, pass);
-          if (loginRes.exito) {
-            localStorage.setItem('coworking_sesion', JSON.stringify(loginRes.usuario));
-            setTimeout(() => { this.cerrarModalAuth(); this.inicializar(); }, 1500);
-          }
+
+        if (res.exito && res.requiereVerificacion) {
+          this._mostrarMensajeAuth(res.mensaje, 'exito');
+          setTimeout(() => { this.mostrarFormVerificacion(res.correo); }, 1500);
+        } else if (!res.exito && res.requiereVerificacion) {
+          this._mostrarMensajeAuth(res.mensaje, 'warn');
+          setTimeout(() => { this.mostrarFormVerificacion(res.correo); }, 2000);
         } else {
           this._mostrarMensajeAuth(res.mensaje, 'error');
         }
@@ -227,6 +252,35 @@
         this._mostrarMensajeAuth('Error de conexión.', 'error');
       } finally {
         this._mostrarCargandoAuth(btn, false, 'Crear Cuenta');
+      }
+    },
+
+    async procesarVerificacion(evento) {
+      evento.preventDefault();
+      const codigo = document.getElementById('verifCode').value.trim();
+      const btn = document.getElementById('btnVerifSubmit');
+
+      this._mostrarCargandoAuth(btn, true, 'Validando código...');
+      this._ocultarMensajeAuth();
+
+      try {
+        const res = await GasApi.ejecutar('verificarCodigoRegistro', this.correoEnVerificacion, codigo);
+        if (res.exito) {
+          this._mostrarMensajeAuth('¡Cuenta activada con éxito! Entrando...', 'exito');
+          localStorage.setItem('coworking_sesion', JSON.stringify(res.usuario));
+          setTimeout(() => {
+            this.cerrarModalAuth();
+            this.inicializar();
+          }, 1500);
+        } else {
+          this._mostrarMensajeAuth(res.mensaje, 'error');
+          document.getElementById('verifCode').value = '';
+          document.getElementById('verifCode').focus();
+        }
+      } catch (e) {
+        this._mostrarMensajeAuth('Error de conexión.', 'error');
+      } finally {
+        this._mostrarCargandoAuth(btn, false, 'Activar Cuenta');
       }
     },
 
@@ -242,11 +296,12 @@
       const div = document.getElementById('formAuthMsg');
       if (!div) return;
       div.textContent = texto;
-      div.className = `mb-4 p-3 rounded-lg text-sm font-semibold text-center ${
-        tipo === 'error'
-          ? 'bg-rose-50 text-rose-600 border border-rose-200'
-          : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-      }`;
+
+      let clase = 'bg-rose-50 text-rose-600 border border-rose-200';
+      if (tipo === 'exito') clase = 'bg-emerald-50 text-emerald-600 border border-emerald-200';
+      else if (tipo === 'warn') clase = 'bg-amber-50 text-amber-700 border border-amber-200';
+
+      div.className = `mb-4 p-3 rounded-lg text-sm font-semibold text-center ${clase}`;
       div.classList.remove('hidden');
     },
 
@@ -259,14 +314,14 @@
   // MÓDULO: StudentView
   // ──────────────────────────────────────────────────────────
   const StudentView = {
-    fechasSeleccionadas: [],   // [{ fecha: 'yyyy-mm-dd', horaEntrada: '08:00', horaSalida: '10:00' }]
-    archivosSeleccionados: [], // Nuevos archivos
-    archivosExistentes: [],    // Archivos de reserva devuelta
-    archivosAEliminar: [],     // Archivos viejos que el usuario decide quitar
-    archivosEnProceso: 0,      // Contador de FileReader
+    fechasSeleccionadas: [],
+    archivosSeleccionados: [],
+    archivosExistentes: [],
+    archivosAEliminar: [],
+    archivosEnProceso: 0,
     correoUsuario: '',
     codigoUsuario: '',
-    usarMismoHorario: true,    // por defecto checkbox marcado
+    usarMismoHorario: true,
 
     HORAS: [
       '08:00','08:30','09:00','09:30','10:00','10:30',
@@ -300,7 +355,6 @@
       return `${String(hora12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
     },
 
-    // ── Toggle: mismo horario para todas las fechas ──
     toggleMismoHorario() {
       const checkbox = document.getElementById('checkMismoHorario');
       this.usarMismoHorario = checkbox.checked;
@@ -343,14 +397,14 @@
           </p>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Hora de Entrada</label>
+              <label class="block text-[10px] sm:text-xs font-semibold text-slate-600 mb-1">Entrada</label>
               <select id="entrada_${idx}" onchange="StudentView._actualizarHoraSalida(${idx})"
                 class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#002f5c]/30">
                 ${this.HORAS.slice(0,-1).map(h => `<option value="${h}" ${h === (item.horaEntrada||'08:00') ? 'selected' : ''}>${this._formatearAmPm(h)}</option>`).join('')}
               </select>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">Hora de Salida</label>
+              <label class="block text-[10px] sm:text-xs font-semibold text-slate-600 mb-1">Salida</label>
               <select id="salida_${idx}"
                 class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#002f5c]/30">
                 ${this._opcionesSalidaParaEntrada(item.horaEntrada || '08:00', item.horaSalida)}
@@ -373,7 +427,6 @@
       const salida  = document.getElementById(`salida_${idx}`);
       if (!entrada || !salida) return;
       salida.innerHTML = this._opcionesSalidaParaEntrada(entrada, '');
-      // Actualizar en array
       if (this.fechasSeleccionadas[idx]) {
         this.fechasSeleccionadas[idx].horaEntrada = entrada;
       }
@@ -392,6 +445,7 @@
       const nombreEncargado = document.getElementById('nombreEncargado');
       const apellidosEncargado = document.getElementById('apellidosEncargado');
       const correoEncargado = document.getElementById('correoEncargado');
+      const telefonoEncargado = document.getElementById('telefonoEncargado'); // NUEVO CAMPO
 
       if (this.correoUsuario) {
         const inputCorreo = document.getElementById('correo');
@@ -402,6 +456,7 @@
         inputCodigo.readOnly = true;
         inputCodigo.className = 'w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-sm cursor-not-allowed';
       }
+
       if (this.nombresUsuario) {
         const inNom = document.getElementById('nombres');
         if (inNom) inNom.value = this.nombresUsuario;
@@ -409,6 +464,12 @@
       if (this.apellidosUsuario) {
         const inApe = document.getElementById('apellidos');
         if (inApe) inApe.value = this.apellidosUsuario;
+      }
+
+      const telefonoGuardado = localStorage.getItem('coworking_telefono');
+      const inputTelefono = document.getElementById('telefono');
+      if (telefonoGuardado && inputTelefono) {
+        inputTelefono.value = telefonoGuardado;
       }
 
       const hoy = new Date();
@@ -426,7 +487,7 @@
         campoExt?.classList.add('hidden');
         campoResp?.classList.add('hidden');
         if (inputExt) { inputExt.required = false; inputExt.value = ''; }
-        [nombreEncargado, apellidosEncargado, correoEncargado].forEach(el => {
+        [nombreEncargado, apellidosEncargado, correoEncargado, telefonoEncargado].forEach(el => {
           if (el) { el.value = ''; el.required = false; }
         });
       } else if (rolNormalizado === 'maestro') {
@@ -439,7 +500,7 @@
         campoExt?.classList.remove('hidden');
         campoResp?.classList.remove('hidden');
         if (inputExt) inputExt.required = false;
-        [nombreEncargado, apellidosEncargado, correoEncargado].forEach(el => {
+        [nombreEncargado, apellidosEncargado, correoEncargado, telefonoEncargado].forEach(el => {
           if (el) el.required = false;
         });
       } else {
@@ -452,7 +513,7 @@
         campoExt?.classList.remove('hidden');
         campoResp?.classList.add('hidden');
         if (inputExt) { inputExt.required = false; inputExt.value = ''; }
-        [nombreEncargado, apellidosEncargado, correoEncargado].forEach(el => {
+        [nombreEncargado, apellidosEncargado, correoEncargado, telefonoEncargado].forEach(el => {
           if (el) { el.value = ''; el.required = false; }
         });
       }
@@ -491,7 +552,6 @@
         this._renderizarHorariosPorFecha();
       }
       input.value = '';
-
       document.getElementById('errorFechas')?.classList.add('hidden');
     },
 
@@ -531,7 +591,6 @@
       document.getElementById('horariosPorFecha')?.classList.add('hidden');
     },
 
-    // ── Procesamiento de archivos ──
     onDragOver(event) {
       event.preventDefault();
       document.getElementById('uploadZone')?.classList.add('dragover');
@@ -556,7 +615,7 @@
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'image/png','image/jpeg'];
-      const MAX_SIZE  = 5 * 1024 * 1024; // 5MB
+      const MAX_SIZE  = 25 * 1024 * 1024;
       const MAX_FILES = 5;
       const btnEnviar = document.getElementById('btnEnviar');
 
@@ -566,7 +625,7 @@
           return;
         }
         if (file.size > MAX_SIZE) {
-          this._mostrarToast(`El archivo "${file.name}" supera los 5MB.`, 'error');
+          this._mostrarToast(`El archivo "${file.name}" supera los 25MB.`, 'error');
           return;
         }
         if (!TIPOS_PERMITIDOS.includes(file.type)) {
@@ -574,14 +633,13 @@
           return;
         }
         if (this.archivosSeleccionados.some(a => a.nombre === file.name) || this.archivosExistentes.some(a => a.nombre === file.name)) {
-          return; // Evitar duplicados visuales
+          return;
         }
 
-        // Bloquear botón mientras procesa
         this.archivosEnProceso++;
         if (btnEnviar) {
           btnEnviar.disabled = true;
-          btnEnviar.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Procesando archivos...';
+          btnEnviar.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Procesando...';
         }
 
         const reader = new FileReader();
@@ -593,11 +651,10 @@
             base64: base64,
             tamano: file.size
           });
-          
+
           this.archivosEnProceso--;
           this._renderizarListaArchivos();
 
-          // Desbloquear cuando termine de leer todos
           if (this.archivosEnProceso === 0 && btnEnviar) {
             this._restaurarBoton(btnEnviar);
           }
@@ -613,7 +670,6 @@
       if (!lista) return;
       lista.innerHTML = '';
 
-      // Renderizar Archivos Devueltos (Ya en Drive)
       this.archivosExistentes.forEach((archivo, idx) => {
         const div = document.createElement('div');
         div.className = 'flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-2 animate-fadeIn';
@@ -621,7 +677,7 @@
           <div class="flex items-center gap-2 min-w-0">
             <i class="fa-solid fa-cloud-arrow-down flex-shrink-0 text-[#002f5c]"></i>
             <span class="text-xs font-semibold text-slate-700 truncate">${this._escapar(archivo.nombre)}</span>
-            <span class="text-[10px] font-bold text-[#002f5c] bg-blue-100/50 px-2 py-0.5 rounded-full flex-shrink-0 border border-[#002f5c]/20">Ya subido</span>
+            <span class="text-[10px] font-bold text-[#002f5c] bg-blue-100/50 px-2 py-0.5 rounded-full flex-shrink-0 border border-[#002f5c]/20 hidden sm:inline-block">Ya subido</span>
           </div>
           <button type="button" onclick="StudentView.eliminarArchivoExistente(${idx})" class="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors flex-shrink-0 ml-2">
             <i class="fa-solid fa-trash-can text-xs"></i>
@@ -630,7 +686,6 @@
         lista.appendChild(div);
       });
 
-      // Renderizar Nuevos Archivos
       this.archivosSeleccionados.forEach((archivo, idx) => {
         const tamanoKb = (archivo.tamano / 1024).toFixed(1);
         const icono = 'fa-file-lines text-slate-400';
@@ -641,7 +696,7 @@
           <div class="flex items-center gap-2 min-w-0">
             <i class="fa-solid ${icono} flex-shrink-0"></i>
             <span class="text-xs font-semibold text-slate-700 truncate">${this._escapar(archivo.nombre)}</span>
-            <span class="text-[10px] text-slate-400 flex-shrink-0">${tamanoKb} KB</span>
+            <span class="text-[10px] text-slate-400 flex-shrink-0 hidden sm:inline-block">${tamanoKb} KB</span>
           </div>
           <button type="button" onclick="StudentView.eliminarArchivo(${idx})" class="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors flex-shrink-0 ml-2">
             <i class="fa-solid fa-trash-can text-xs"></i>
@@ -658,10 +713,10 @@
 
     eliminarArchivoExistente(idx) {
       const arch = this.archivosExistentes.splice(idx, 1)[0];
-      this.archivosAEliminar.push(arch); // Guardamos para decirle al backend que lo borre de Drive
+      this.archivosAEliminar.push(arch);
       this._renderizarListaArchivos();
     },
-    // ── Panel Mis Reservas ──
+
     abrirPanelMisReservas() {
       const panel = document.getElementById('panelMisReservas');
       if (!panel) return;
@@ -681,7 +736,6 @@
         const reservas = res.reservas || [];
         this._renderizarMisReservas(reservas);
 
-        // El contador sigue mostrando solamente las reservas devueltas.
         const badge = document.getElementById('badgeReservasDevueltas');
         const devueltas = reservas.filter(r => r.estado === 'Devuelta').length;
         if (badge) {
@@ -701,13 +755,12 @@
             <div class="text-center py-8">
               <i class="fa-solid fa-circle-exclamation text-3xl text-rose-400 mb-2 block"></i>
               <p class="text-sm font-semibold text-slate-600">No se pudieron cargar tus reservas.</p>
-              <p class="text-xs text-slate-400 mt-1">${this._escapar(e.message || 'Inténtalo de nuevo.')}</p>
+              <p class="text-[10px] sm:text-xs text-slate-400 mt-1">${this._escapar(e.message || 'Inténtalo de nuevo.')}</p>
             </div>`;
         }
       }
     },
 
-    // Compatibilidad con llamadas anteriores.
     async _cargarReservasDevueltas() {
       return this._cargarMisReservas();
     },
@@ -721,7 +774,7 @@
           <div class="text-center py-8">
             <i class="fa-solid fa-folder-open text-3xl text-slate-300 mb-2 block"></i>
             <p class="text-sm font-semibold text-slate-600">Aún no tienes reservas.</p>
-            <p class="text-xs text-slate-400 mt-1">Aquí aparecerán todas las solicitudes que realices.</p>
+            <p class="text-[10px] sm:text-xs text-slate-400 mt-1">Aquí aparecerán todas las solicitudes que realices.</p>
           </div>`;
         return;
       }
@@ -742,38 +795,41 @@
         const esDevuelta = r.estado === 'Devuelta';
 
         return `
-          <div class="bg-white border border-slate-200 rounded-xl p-4 animate-fadeIn shadow-sm hover:shadow-md transition-shadow">
-            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-              <div class="min-w-0 flex-1">
+          <div class="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 animate-fadeIn shadow-sm hover:shadow-md transition-shadow">
+            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 sm:gap-4">
+              <div class="min-w-0 flex-1 w-full">
                 <div class="flex items-center gap-2 flex-wrap mb-1">
-                  <span class="text-xs font-mono text-slate-500">${this._escapar(r.idReserva)}</span>
+                  <span class="text-[10px] sm:text-xs font-mono text-slate-500">${this._escapar(r.idReserva)}</span>
                   <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${claseEstado}">${this._escapar(r.estado)}</span>
                 </div>
-                <p class="font-black text-slate-800 text-sm">${this._escapar(r.actividad || 'Sin nombre')}</p>
-                <p class="text-xs text-slate-600 mt-1">
-                  <i class="fa-solid fa-building mr-1 text-slate-400"></i>${this._escapar(r.coworking || 'Sin espacio')} ·
-                  <i class="fa-solid fa-calendar ml-1 mr-1 text-slate-400"></i>${fechaLegible} ·
-                  <i class="fa-regular fa-clock ml-1 mr-1 text-slate-400"></i>${this._escapar(r.horaInicio || '')} – ${this._escapar(r.horaFin || '')}
+                <p class="font-black text-slate-800 text-xs sm:text-sm break-words">${this._escapar(r.actividad || 'Sin nombre')}</p>
+                <p class="text-[10px] sm:text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-1">
+                  <span class="whitespace-nowrap"><i class="fa-solid fa-building text-slate-400"></i> ${this._escapar(r.coworking || 'Sin espacio')}</span>
+                  <span class="text-slate-300 hidden sm:inline">·</span>
+                  <span class="whitespace-nowrap"><i class="fa-solid fa-calendar text-slate-400"></i> ${fechaLegible}</span>
+                  <span class="text-slate-300 hidden sm:inline">·</span>
+                  <span class="whitespace-nowrap"><i class="fa-regular fa-clock text-slate-400"></i> ${this._escapar(r.horaInicio || '')} – ${this._escapar(r.horaFin || '')}</span>
                 </p>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-xs">
-                  <div class="bg-slate-50 border border-slate-100 rounded-lg p-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-[10px] sm:text-xs">
+                  <div class="bg-slate-50 border border-slate-100 rounded-lg p-2 min-w-0">
                     <span class="block text-[9px] font-black uppercase tracking-wider text-slate-400">Responsable</span>
-                    <span class="font-semibold text-slate-700">${this._escapar(responsable || 'No registrado')}</span>
+                    <span class="font-semibold text-slate-700 truncate block">${this._escapar(responsable || 'No registrado')}</span>
                   </div>
-                  <div class="bg-slate-50 border border-slate-100 rounded-lg p-2">
-                    <span class="block text-[9px] font-black uppercase tracking-wider text-slate-400">Correo responsable</span>
-                    <span class="font-semibold text-slate-700 break-all">${this._escapar(r.correoEncargado || r.correoResponsable || 'No registrado')}</span>
+                  <div class="bg-slate-50 border border-slate-100 rounded-lg p-2 min-w-0">
+                    <span class="block text-[9px] font-black uppercase tracking-wider text-slate-400">Contacto responsable</span>
+                    <span class="font-semibold text-slate-700 truncate block">${this._escapar(r.correoEncargado || r.correoResponsable || 'No registrado')}</span>
+                    ${r.telefonoEncargado ? `<span class="font-semibold text-slate-700 truncate block mt-0.5"><i class="fa-solid fa-phone text-slate-400 mr-1"></i>${this._escapar(r.telefonoEncargado)}</span>` : ''}
                   </div>
                 </div>
                 ${esDevuelta ? `
                   <div class="mt-2 p-2.5 bg-rose-50 border border-rose-100 rounded-lg">
-                    <p class="text-[10px] font-black text-rose-700 uppercase tracking-wider mb-0.5">Motivo de devolución:</p>
-                    <p class="text-xs text-rose-800">${this._escapar(r.motivoRechazo || 'Sin motivo especificado')}</p>
+                    <p class="text-[9px] sm:text-[10px] font-black text-rose-700 uppercase tracking-wider mb-0.5">Motivo de devolución:</p>
+                    <p class="text-[10px] sm:text-xs text-rose-800 break-words">${this._escapar(r.motivoRechazo || 'Sin motivo especificado')}</p>
                   </div>` : ''}
               </div>
-              <div class="flex items-center gap-2 flex-shrink-0">
+              <div class="flex items-center gap-2 flex-shrink-0 mt-2 lg:mt-0 w-full lg:w-auto">
                 ${esDevuelta ? `
-                  <button onclick="StudentView.editarReservaDevuelta('${this._escapar(r.idReserva)}')" class="flex items-center gap-2 bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-sm whitespace-nowrap">
+                  <button onclick="StudentView.editarReservaDevuelta('${this._escapar(r.idReserva)}')" class="w-full lg:w-auto justify-center flex items-center gap-2 bg-[#002f5c] hover:bg-[#001f3f] text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition-colors shadow-sm whitespace-nowrap">
                     <i class="fa-solid fa-pen-to-square"></i> Editar y Reenviar
                   </button>` : ''}
               </div>
@@ -845,6 +901,26 @@
       if (banner) banner.classList.remove('hidden');
       if (textoMotivo) textoMotivo.textContent = `Motivo: ${r.motivoRechazo || 'No especificado'}`;
 
+      if (r.ods) {
+        document.querySelectorAll('input[name="ods_check"]').forEach(cb => {
+          cb.checked = r.ods.includes(cb.value);
+        });
+      }
+
+      let descLimpia = r.descripcion || '';
+      if (r.coworking && r.coworking.includes('Coworking 3')) {
+        document.querySelectorAll('input[name="maquinas_check"]').forEach(cb => {
+          cb.checked = descLimpia.includes(cb.value);
+        });
+        descLimpia = descLimpia.split('\n\nEquipos requeridos:')[0].trim();
+
+        const txtUso = document.getElementById('descripcionUsoCW3');
+        if (txtUso) txtUso.value = descLimpia;
+      } else {
+        const txtDesc = document.getElementById('descripcionActividad');
+        if (txtDesc) txtDesc.value = descLimpia;
+      }
+
       const campos = {
         'nombres':              r.nombres || r.nombreCompleto?.split(' ')[0] || '',
         'apellidos':            (r.apellidoPaterno || '') + (r.apellidoMaterno ? ' ' + r.apellidoMaterno : ''),
@@ -853,11 +929,11 @@
         'extension':            r.extension !== 'N/A' ? (r.extension || '') : '',
         'correo':               r.correo || '',
         'correoResponsable':    r.correoResponsable || r.correoEncargado || '',
-        'nombreEncargado':    r.nombreEncargado || '',
-        'apellidosEncargado': r.apellidosEncargado || '',
-        'correoEncargado':    r.correoEncargado || r.correoResponsable || '',
-        'actividad':            r.actividad || '',
-        'descripcionActividad': r.descripcion || ''
+        'nombreEncargado':      r.nombreEncargado || '',
+        'apellidosEncargado':   r.apellidosEncargado || '',
+        'correoEncargado':      r.correoEncargado || r.correoResponsable || '',
+        'telefonoEncargado':    r.telefonoEncargado || '',
+        'actividad':            r.actividad || ''
       };
 
       Object.entries(campos).forEach(([id, valor]) => {
@@ -865,17 +941,9 @@
         if (el) el.value = valor;
       });
 
-      // Rellenar Tipo de Actividad
       if (r.tipoActividad) {
         const tipoRadio = document.querySelector(`input[name="tipoActividad"][value="${r.tipoActividad}"]`);
         if (tipoRadio) tipoRadio.checked = true;
-      }
-
-      // Rellenar ODS
-      if (r.ods) {
-        document.querySelectorAll('input[name="ods_check"]').forEach(cb => {
-          cb.checked = r.ods.includes(cb.value);
-        });
       }
 
       if (r.fecha) {
@@ -889,17 +957,23 @@
       }
     },
 
-    // ── Envío del formulario ──
     async enviarReserva(evento) {
       evento.preventDefault();
 
-      const tipoActividad = document.querySelector('input[name="tipoActividad"]:checked');
-      if (!tipoActividad) {
-        document.getElementById('errorTipoActividad')?.classList.remove('hidden');
-        document.getElementById('tipoActividadContainer')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
+      const coworkingSeleccionado = document.getElementById('inputCoworking')?.value || '';
+      const isCW3 = coworkingSeleccionado.includes('Coworking 3');
+
+      let valorTipoActividad = 'Uso de Maquinaria';
+      if (!isCW3) {
+        const tipoActividad = document.querySelector('input[name="tipoActividad"]:checked');
+        if (!tipoActividad) {
+          document.getElementById('errorTipoActividad')?.classList.remove('hidden');
+          document.getElementById('tipoActividadContainer')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        valorTipoActividad = tipoActividad.value;
+        document.getElementById('errorTipoActividad')?.classList.add('hidden');
       }
-      document.getElementById('errorTipoActividad')?.classList.add('hidden');
 
       if (this.fechasSeleccionadas.length === 0) {
         document.getElementById('errorFechas')?.classList.remove('hidden');
@@ -907,11 +981,45 @@
       }
       document.getElementById('errorFechas')?.classList.add('hidden');
 
+      let descFinal = '';
+      let maquinasSeleccionadas = [];
+
+      if (isCW3) {
+        const maquinasChecks = document.querySelectorAll('input[name="maquinas_check"]:checked');
+        maquinasSeleccionadas = Array.from(maquinasChecks).map(cb => cb.value);
+
+        if (maquinasSeleccionadas.length === 0) {
+          this._mostrarToast('Debes seleccionar al menos una máquina para usar el Coworking 3.', 'error');
+          return;
+        }
+
+        const descUsoInput = document.getElementById('descripcionUsoCW3');
+        const descUsoVal = descUsoInput ? descUsoInput.value.trim() : '';
+
+        if (!descUsoVal) {
+          document.getElementById('errorDescCW3')?.classList.remove('hidden');
+          descUsoInput?.focus();
+          return;
+        }
+        document.getElementById('errorDescCW3')?.classList.add('hidden');
+
+        descFinal = descUsoVal + '\n\nEquipos requeridos:\n- ' + maquinasSeleccionadas.join('\n- ');
+      } else {
+        descFinal = document.getElementById('descripcionActividad')?.value.trim() || '';
+      }
+
       const btn    = document.getElementById('btnEnviar');
       const msgDiv = document.getElementById('mensajeResultado');
 
       const odsChecks = document.querySelectorAll('input[name="ods_check"]:checked');
       const odsSeleccionados = Array.from(odsChecks).map(cb => cb.value);
+
+      if (!isCW3 && odsSeleccionados.length === 0) {
+        document.getElementById('errorODS')?.classList.remove('hidden');
+        document.getElementById('seccionODS')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      document.getElementById('errorODS')?.classList.add('hidden');
 
       let fechasConHorario = [];
       if (this.usarMismoHorario) {
@@ -945,11 +1053,12 @@
       const nombreEncargado = document.getElementById('nombreEncargado')?.value.trim() || '';
       const apellidosEncargado = document.getElementById('apellidosEncargado')?.value.trim() || '';
       const correoEncargado = document.getElementById('correoEncargado')?.value.trim().toLowerCase() || '';
+      const telefonoEncargado = document.getElementById('telefonoEncargado')?.value.trim() || '';
 
       if (rolActual === 'maestro') {
-        const hayDatosEncargado = nombreEncargado || apellidosEncargado || correoEncargado;
-        if (hayDatosEncargado && (!nombreEncargado || !apellidosEncargado || !correoEncargado)) {
-          this._mostrarMensaje(msgDiv, 'Si agregas un encargado, debes capturar nombre, apellidos y correo.', 'error');
+        const hayDatosEncargado = nombreEncargado || apellidosEncargado || correoEncargado || telefonoEncargado;
+        if (hayDatosEncargado && (!nombreEncargado || !apellidosEncargado || !correoEncargado || !telefonoEncargado)) {
+          this._mostrarMensaje(msgDiv, 'Si agregas un encargado, debes capturar nombre, apellidos, correo y teléfono.', 'error');
           return;
         }
         if (correoEncargado && !/@(alumnos\.udg\.mx|academicos\.udg\.mx|cucei\.udg\.mx)$/i.test(correoEncargado)) {
@@ -960,7 +1069,7 @@
 
       const datos = {
         rol:                  rolActual,
-        coworking:            document.getElementById('inputCoworking')?.value || '',
+        coworking:            coworkingSeleccionado,
         nombres:              document.getElementById('nombres')?.value.trim() || '',
         apellidoPaterno:      document.getElementById('apellidos')?.value.trim() || '',
         apellidoMaterno:      '',
@@ -970,11 +1079,12 @@
         nombreEncargado:      rolActual === 'maestro' ? nombreEncargado : '',
         apellidosEncargado:   rolActual === 'maestro' ? apellidosEncargado : '',
         correoEncargado:      rolActual === 'maestro' ? correoEncargado : '',
+        telefonoEncargado:    rolActual === 'maestro' ? telefonoEncargado : '',
         correoResponsable:    rolActual === 'maestro' ? correoEncargado : '',
         correo:               document.getElementById('correo')?.value.trim() || '',
         actividad:            document.getElementById('actividad')?.value.trim() || '',
-        tipoActividad:        tipoActividad.value,
-        descripcionActividad: document.getElementById('descripcionActividad')?.value.trim() || '',
+        tipoActividad:        valorTipoActividad,
+        descripcionActividad: descFinal,
         fechasConHorario:     fechasConHorario,
         fechas:               fechasConHorario.map(f => f.fecha),
         horaEntrada:          fechasConHorario[0]?.horaEntrada || '08:00',
@@ -992,7 +1102,7 @@
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Validando y registrando…';
       this._ocultarMensaje(msgDiv);
 
-      try {
+     try {
         let funcionApi = 'registrarReserva';
         if (datos.modoEdicion === 'S' && datos.idOriginal) {
           funcionApi = 'reenviarReservaCorregida';
@@ -1001,6 +1111,9 @@
         const resultado = await GasApi.ejecutar(funcionApi, datos, this.correoUsuario);
 
         if (resultado.exito) {
+
+          localStorage.setItem('coworking_telefono', datos.telefono);
+
           this._mostrarMensaje(msgDiv, resultado.mensaje, 'exito');
           document.getElementById('formReserva')?.reset();
           this.fechasSeleccionadas   = [];
@@ -1070,8 +1183,7 @@
     },
 
     resetear() {
-      // Limpiar campos opcionales de encargado y extensión
-      ['nombreEncargado', 'apellidosEncargado', 'correoEncargado'].forEach(id => {
+      ['nombreEncargado', 'apellidosEncargado', 'correoEncargado', 'telefonoEncargado'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.value = ''; el.required = false; }
       });
@@ -1094,9 +1206,16 @@
 
       document.querySelectorAll('input[name="ods_check"]').forEach(cb => { cb.checked = false; });
       document.querySelectorAll('input[name="tipoActividad"]').forEach(r => { r.checked = false; });
+      document.querySelectorAll('input[name="maquinas_check"]').forEach(cb => { cb.checked = false; });
+
+      const descCW3 = document.getElementById('descripcionUsoCW3');
+      if(descCW3) descCW3.value = '';
+      document.getElementById('errorDescCW3')?.classList.add('hidden');
+
       document.getElementById('errorTipoActividad')?.classList.add('hidden');
       document.getElementById('errorFechas')?.classList.add('hidden');
       document.getElementById('bannerReservaDevuelta')?.classList.add('hidden');
+      document.getElementById('errorODS')?.classList.add('hidden');
 
       const inputId = document.getElementById('inputReservaDevueltaId');
       if (inputId) inputId.value = '';
@@ -1124,6 +1243,7 @@
       const titulo    = boton.dataset.coworking || '';
       const desc      = boton.dataset.desc      || '';
       const capacidad = boton.dataset.cap       || '';
+      const imgSrc    = boton.dataset.img       || '';
       let   specs     = [];
 
       try { specs = JSON.parse(boton.dataset.specs || '[]'); }
@@ -1132,6 +1252,9 @@
       this._setTexto('modalTitulo',      titulo);
       this._setTexto('modalDescripcion', desc);
       this._setTexto('modalCapacidad',   capacidad);
+
+      const modalImg = document.getElementById('modalImagen');
+      if (modalImg) modalImg.src = imgSrc;
 
       const listaEsp = document.getElementById('modalEspecificaciones');
       if (listaEsp) {
@@ -1201,7 +1324,6 @@
       }
     },
 
-    // ── Tabs ──
     cambiarTab(tab) {
       const tabs = ['reservas', 'calendario', 'usuarios'];
       const vistas = {
@@ -1220,10 +1342,10 @@
         const btnEl   = document.getElementById(botones[t]);
         if (t === tab) {
           vistaEl?.classList.remove('hidden');
-          if (btnEl) btnEl.className = 'px-5 py-3 text-sm font-bold border-b-[3px] border-[#002f5c] text-[#002f5c] whitespace-nowrap bg-white/50 rounded-t-lg';
+          if (btnEl) btnEl.className = 'px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold border-b-[3px] border-[#002f5c] text-[#002f5c] whitespace-nowrap bg-white/50 rounded-t-lg transition-colors';
         } else {
           vistaEl?.classList.add('hidden');
-          if (btnEl) btnEl.className = 'px-5 py-3 text-sm font-bold border-b-[3px] border-transparent text-slate-500 hover:text-slate-800 hover:bg-white/50 transition-colors whitespace-nowrap rounded-t-lg';
+          if (btnEl) btnEl.className = 'px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold border-b-[3px] border-transparent text-slate-500 hover:text-slate-800 hover:bg-white/50 transition-colors whitespace-nowrap rounded-t-lg';
         }
       });
 
@@ -1232,7 +1354,6 @@
       }
     },
 
-    // ── Calendario Digital con FullCalendar ──
     _inicializarCalendario() {
       const contenedor = document.getElementById('contenedorCalendario');
       if (!contenedor) return;
@@ -1247,7 +1368,6 @@
         return;
       }
 
-      // Llenar selectores de filtro
       const espacioSelect = document.getElementById('filtroCalendarioEspacio');
       if (espacioSelect) {
         const espaciosUnicos = [...new Set(this.todasLasReservas.map(r => r.coworking))].sort();
@@ -1348,12 +1468,11 @@
       eventos.forEach(e => this._calendarioInstance.addEvent(e));
     },
 
-   // ── Usuarios y Roles (Nuevo Sistema Híbrido) ──
     async cargarUsuarios(adminCorreo) {
       try {
         const res = await GasApi.ejecutar('obtenerListaUsuarios', adminCorreo);
         if (res.exito) {
-          this.todosLosUsuarios = res.usuarios; // Ahora el servidor solo nos envía a los Admins
+          this.todosLosUsuarios = res.usuarios;
           this._renderizarTablaAdmins(this.todosLosUsuarios);
         }
       } catch (e) {
@@ -1366,7 +1485,7 @@
       if (!cuerpo) return;
 
       if (admins.length === 0) {
-        cuerpo.innerHTML = `<tr><td colspan="3" class="text-center p-4 text-slate-500 text-sm">No hay administradores registrados.</td></tr>`;
+        cuerpo.innerHTML = `<tr><td colspan="3" class="text-center p-4 text-slate-500 text-xs sm:text-sm">No hay administradores registrados.</td></tr>`;
         return;
       }
 
@@ -1375,23 +1494,22 @@
       cuerpo.innerHTML = admins.map(u => {
         const badgeClass = 'bg-purple-50 text-purple-700 border border-purple-200';
         const nextRol    = u.correo.includes('@alumnos') ? 'alumno' : 'maestro';
-        
-        // Candado de seguridad: No puedes quitarte el admin a ti mismo
+
         const esMiCuenta = String(u.correo).toLowerCase() === String(miCorreo).toLowerCase();
         const btnAccion = esMiCuenta
-          ? `<span class="text-[10px] font-bold text-slate-400 uppercase"><i class="fa-solid fa-lock mr-1"></i>Tu cuenta (Protegida)</span>`
-          : `<button onclick="AdminDashboard.cambiarRolUsuario('${this._escapar(u.id)}', '${this._escapar(nextRol)}')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200">Quitar Admin</button>`;
+          ? `<span class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap"><i class="fa-solid fa-lock mr-1"></i>Tú</span>`
+          : `<button onclick="AdminDashboard.cambiarRolUsuario('${this._escapar(u.id)}', '${this._escapar(nextRol)}')" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-colors shadow-sm text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 whitespace-nowrap">Quitar</button>`;
 
         return `
           <tr class="hover:bg-slate-50 transition-colors">
-            <td class="p-4">
-              <div class="font-bold text-slate-800 text-sm">${this._escapar(u.correo)}</div>
-              <div class="text-xs font-mono text-slate-500">${this._escapar(u.codigo)}</div>
+            <td class="p-3 sm:p-4 min-w-0 max-w-[150px] sm:max-w-none">
+              <div class="font-bold text-slate-800 text-[11px] sm:text-sm truncate" title="${this._escapar(u.correo)}">${this._escapar(u.correo)}</div>
+              <div class="text-[9px] sm:text-xs font-mono text-slate-500 truncate">${this._escapar(u.codigo)}</div>
             </td>
-            <td class="p-4 text-center">
-              <span class="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${badgeClass}">${u.rol}</span>
+            <td class="p-3 sm:p-4 text-center">
+              <span class="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full uppercase ${badgeClass}">${u.rol}</span>
             </td>
-            <td class="p-4 text-right pr-6">
+            <td class="p-3 sm:p-4 text-right pr-4 sm:pr-6">
               ${btnAccion}
             </td>
           </tr>
@@ -1448,7 +1566,7 @@
         if (isAdmin) badgeClass = 'bg-purple-50 text-purple-700 border-purple-200';
         else if (u.rol === 'maestro') badgeClass = 'bg-blue-50 text-blue-700 border-blue-200';
 
-        const btnAccion = isAdmin 
+        const btnAccion = isAdmin
           ? `<span class="text-[10px] font-bold text-slate-400 uppercase"><i class="fa-solid fa-check mr-1"></i>Ya es Admin</span>`
           : `<button onclick="AdminDashboard.cambiarRolUsuario('${this._escapar(u.id)}', 'admin')" class="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors shadow-sm bg-[#002f5c] text-white hover:bg-[#001f3f]"><i class="fa-solid fa-arrow-up mr-1"></i>Hacer Admin</button>`;
 
@@ -1475,7 +1593,6 @@
       try {
         const res = await GasApi.ejecutar('actualizarRolUsuario', idUsuario, nuevoRol, adminCorreo);
         if (res.exito) {
-          // Actualizamos la tabla de VIPs y el buscador
           this.cargarUsuarios(adminCorreo);
           const inputBusqueda = document.getElementById('inputBusquedaUsuario');
           if (inputBusqueda && inputBusqueda.value.trim() !== '') {
@@ -1489,7 +1606,6 @@
       }
     },
 
-    // ── Métricas ──
     _renderizarMetricas(metricas) {
       const contenedor = document.getElementById('tarjetasMetricas');
       if (!contenedor) return;
@@ -1514,7 +1630,6 @@
       `).join('');
     },
 
-    // ── Gráficas ──
     _renderizarGraficas(dataEstados, dataEspacios) {
       Object.values(this._charts).forEach(c => { if (c) c.destroy(); });
       this._charts = {};
@@ -1585,7 +1700,6 @@
       }
     },
 
-    // ── Tabla de Reservas ──
     _renderizarTabla(reservas) {
       const spinner      = document.getElementById('spinnerTabla');
       const contenedor   = document.getElementById('contenedorTabla');
@@ -1615,27 +1729,27 @@
 
         let btnAccion = '';
         if (esPendiente) {
-          btnAccion = `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')" class="text-xs bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2 rounded-lg transition-colors shadow-sm whitespace-nowrap"><i class="fa-solid fa-magnifying-glass mr-1"></i> Revisar</button>`;
+          btnAccion = `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')" class="text-[10px] sm:text-xs bg-[#002f5c] hover:bg-[#001f3f] text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors shadow-sm whitespace-nowrap"><i class="fa-solid fa-magnifying-glass sm:mr-1"></i> <span class="hidden sm:inline">Revisar</span></button>`;
         } else if (esDevuelta) {
-          btnAccion = `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg transition-colors shadow-sm whitespace-nowrap"><i class="fa-solid fa-eye mr-1"></i> Ver Devuelta</button>`;
+          btnAccion = `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')" class="text-[10px] sm:text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors shadow-sm whitespace-nowrap"><i class="fa-solid fa-eye sm:mr-1"></i> <span class="hidden sm:inline">Devuelta</span></button>`;
         } else {
-          btnAccion = `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg transition-colors whitespace-nowrap border border-slate-200"><i class="fa-solid fa-file-lines mr-1"></i> Detalle</button>`;
+          btnAccion = `<button onclick="event.stopPropagation(); AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')" class="text-[10px] sm:text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors whitespace-nowrap border border-slate-200"><i class="fa-solid fa-file-lines sm:mr-1"></i> <span class="hidden sm:inline">Detalle</span></button>`;
         }
 
         return `
           <tr onclick="AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')" class="hover:bg-slate-100 transition-colors border-b border-slate-100 last:border-0 cursor-pointer">
-            <td class="p-3 text-slate-500 font-mono text-[11px] whitespace-nowrap">${this._escapar(r.idReserva)}</td>
-            <td class="p-3">
-              <div class="font-bold text-slate-800 text-sm truncate max-w-[180px]">${this._escapar(r.nombreCompleto)}</div>
-              <div class="text-slate-500 text-xs truncate max-w-[180px]">${this._escapar(r.correo)}</div>
+            <td class="p-2 sm:p-3 text-slate-500 font-mono text-[9px] sm:text-[11px] whitespace-nowrap">${this._escapar(r.idReserva)}</td>
+            <td class="p-2 sm:p-3 min-w-[120px] max-w-[160px] sm:max-w-[200px]">
+              <div class="font-bold text-slate-800 text-xs sm:text-sm truncate" title="${this._escapar(r.nombreCompleto)}">${this._escapar(r.nombreCompleto)}</div>
+              <div class="text-slate-500 text-[10px] sm:text-xs truncate" title="${this._escapar(r.correo)}">${this._escapar(r.correo)}</div>
             </td>
-            <td class="p-3 text-sm text-slate-700 font-medium">${this._escapar(r.coworking)}</td>
-            <td class="p-3 text-sm text-slate-700 whitespace-nowrap">${fechaLegible}</td>
-            <td class="p-3 text-sm text-slate-700 whitespace-nowrap"><i class="fa-regular fa-clock text-slate-400 mr-1"></i> ${r.horaInicio} – ${r.horaFin}</td>
-            <td class="p-3 text-center">
-              <span class="text-[10px] font-bold px-2.5 py-1 rounded-full ${badgeClase}">${r.estado}</span>
+            <td class="p-2 sm:p-3 text-xs sm:text-sm text-slate-700 font-medium whitespace-nowrap">${this._escapar(r.coworking.replace('Coworking', 'CW'))}</td>
+            <td class="p-2 sm:p-3 text-xs sm:text-sm text-slate-700 whitespace-nowrap">${fechaLegible}</td>
+            <td class="p-2 sm:p-3 text-xs sm:text-sm text-slate-700 whitespace-nowrap"><i class="fa-regular fa-clock text-slate-400 mr-1 hidden sm:inline"></i> ${r.horaInicio} – ${r.horaFin}</td>
+            <td class="p-2 sm:p-3 text-center">
+              <span class="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full ${badgeClase}">${r.estado}</span>
             </td>
-            <td class="p-3 text-right pr-6">
+            <td class="p-2 sm:p-3 text-right pr-4 sm:pr-6">
               ${btnAccion}
             </td>
           </tr>
@@ -1649,8 +1763,8 @@
       document.querySelectorAll('.filtro-btn').forEach(btn => {
         const activo = btn.dataset.filtro === estado;
         btn.className = activo
-          ? 'filtro-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-colors bg-[#002f5c] text-white shadow-sm'
-          : 'filtro-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200';
+          ? 'filtro-btn px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-colors bg-[#002f5c] text-white shadow-sm'
+          : 'filtro-btn px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200';
       });
 
       const filtradas = estado === 'todos'
@@ -1660,17 +1774,15 @@
       this._renderizarTabla(filtradas);
     },
 
-    // ── Modal de Detalle (profesional) ──
     abrirModal(idReserva) {
       const reserva = this.todasLasReservas.find(r => r.idReserva === idReserva);
       if (!reserva) return;
 
       this._reservaEnModal = reserva;
 
-      // Estado badge
       const estadoEl = document.getElementById('modalAdminEstado');
       if (estadoEl) {
-        estadoEl.className   = `text-xs font-bold px-3 py-1 rounded-full ${this._obtenerClaseBadge(reserva.estado)}`;
+        estadoEl.className   = `text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 rounded-full shadow-sm ${this._obtenerClaseBadge(reserva.estado)}`;
         estadoEl.textContent = reserva.estado;
       }
 
@@ -1679,7 +1791,6 @@
       const [yyyy, mm, dd] = (reserva.fecha || '').split('-');
       const fechaLegible   = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : reserva.fecha;
 
-      // ── Tarjeta Solicitante ──
       const datosSolicitante = [
         { label: 'Nombre Completo', valor: reserva.nombreCompleto },
         { label: 'Correo',          valor: reserva.correo },
@@ -1693,13 +1804,12 @@
       if (solicitanteEl) {
         solicitanteEl.innerHTML = datosSolicitante.map(d => `
           <div>
-            <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">${d.label}</span>
-            <span class="block text-sm font-semibold text-slate-700">${this._escapar(d.valor)}</span>
+            <span class="block text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">${d.label}</span>
+            <span class="block text-xs sm:text-sm font-semibold text-slate-700 truncate">${this._escapar(d.valor)}</span>
           </div>
         `).join('');
       }
 
-      // ── Tarjeta Reserva ──
       const datosReserva = [
         { label: 'Espacio',      valor: reserva.coworking },
         { label: 'Fecha',        valor: fechaLegible },
@@ -1707,25 +1817,25 @@
         { label: 'Tipo',         valor: reserva.tipoActividad || 'No especificado' },
         { label: 'Registrado',   valor: reserva.fechaRegistro },
         { label: 'Responsable',  valor: [reserva.nombreEncargado || '', reserva.apellidosEncargado || ''].filter(Boolean).join(' ') || '—' },
-        { label: 'Correo responsable', valor: reserva.correoEncargado || reserva.correoResponsable || '—' }
+        { label: 'Correo res.',  valor: reserva.correoEncargado || reserva.correoResponsable || '—' },
+        { label: 'Teléfono res.',valor: reserva.telefonoEncargado || '—' }
       ];
 
       const reservaEl = document.getElementById('modalAdminDatosReserva');
       if (reservaEl) {
         reservaEl.innerHTML = datosReserva.map(d => `
           <div>
-            <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">${d.label}</span>
-            <span class="block text-sm font-semibold text-slate-700">${this._escapar(d.valor)}</span>
+            <span class="block text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">${d.label}</span>
+            <span class="block text-xs sm:text-sm font-semibold text-slate-700 truncate">${this._escapar(d.valor)}</span>
           </div>
         `).join('');
       }
 
-      // Actividad, Tipo, ODS y descripción
       this._setTextoModal('modalAdminActividad', reserva.actividad || 'Sin actividad');
 
       const tipoEl = document.getElementById('modalAdminTipoActividad');
       if (tipoEl) {
-          const iconos = { 'Conferencia': 'fa-microphone', 'Club': 'fa-people-group', 'Clases': 'fa-chalkboard-user' };
+          const iconos = { 'Conferencia': 'fa-microphone', 'Taller': 'fa-people-group', 'Reunion': 'fa-chalkboard-user', 'Emprendimiento/Startup': 'fa-rocket' };
           const icono = iconos[reserva.tipoActividad] || 'fa-tag';
           tipoEl.innerHTML = `<i class="fa-solid ${icono} opacity-70"></i> ${reserva.tipoActividad || 'General'}`;
       }
@@ -1733,7 +1843,6 @@
       this._setTextoModal('modalAdminOds',  reserva.ods && reserva.ods !== 'Ninguno seleccionado' ? reserva.ods : 'Sin ODS vinculados');
       this._setTextoModal('modalAdminDesc', reserva.descripcion || 'Sin descripción');
 
-      // ── Archivos adjuntos ──
       const secArchivos = document.getElementById('seccionArchivosAdmin');
       const listaArch   = document.getElementById('listaArchivosAdmin');
       if (reserva.archivosUrls && reserva.archivosUrls.length > 0) {
@@ -1741,8 +1850,8 @@
         if (listaArch) {
           listaArch.innerHTML = reserva.archivosUrls.map(a => `
             <a href="${this._escapar(a.url)}" target="_blank" class="flex items-center gap-2 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 p-2 rounded-lg transition-colors group">
-              <i class="fa-solid fa-file-lines text-slate-400 group-hover:text-blue-500 text-lg"></i>
-              <span class="text-xs font-semibold text-slate-600 group-hover:text-blue-700 truncate">${this._escapar(a.nombre)}</span>
+              <i class="fa-solid fa-file-lines text-slate-400 group-hover:text-blue-500 text-sm sm:text-base"></i>
+              <span class="text-[10px] sm:text-xs font-semibold text-slate-600 group-hover:text-blue-700 truncate">${this._escapar(a.nombre)}</span>
             </a>
           `).join('');
         }
@@ -1750,14 +1859,12 @@
         secArchivos?.classList.add('hidden');
       }
 
-      // Panel de rechazo: ocultar por defecto
       document.getElementById('panelRechazo')?.classList.add('hidden');
       const inputMotivo = document.getElementById('inputMotivoRechazo');
       if (inputMotivo) inputMotivo.value = '';
       const checkReenvio = document.getElementById('checkPermitirReenvio');
       if (checkReenvio) checkReenvio.checked = false;
 
-      // Renderizar botones según estado
       this._renderizarBotonesModal(reserva);
 
       const modal = document.getElementById('modalDetalleAdmin');
@@ -1770,17 +1877,14 @@
       if (!accionesEl) return;
 
       if (reserva.estado === 'Pendiente') {
-        
-        // ── INICIO UX ANTI-EMPALMES (Solo Advertencia) ──
         const inicioNuevo = StudentView._horaAMinutos(reserva.horaInicio);
         const finNuevo    = StudentView._horaAMinutos(reserva.horaFin);
-        
-        // Busca si hay otra reserva Aceptada que choque en el mismo espacio y fecha
-        const empalme = this.todasLasReservas.find(r => 
-          r.idReserva !== reserva.idReserva && 
-          r.estado === 'Aceptada' && 
-          r.coworking === reserva.coworking && 
-          r.fecha === reserva.fecha && 
+
+        const empalme = this.todasLasReservas.find(r =>
+          r.idReserva !== reserva.idReserva &&
+          r.estado === 'Aceptada' &&
+          r.coworking === reserva.coworking &&
+          r.fecha === reserva.fecha &&
           (inicioNuevo < StudentView._horaAMinutos(r.horaFin) && finNuevo > StudentView._horaAMinutos(r.horaInicio))
         );
 
@@ -1788,37 +1892,36 @@
 
         if (empalme) {
           alertaVisual = `
-            <div class="w-full text-left p-3 mb-3 bg-amber-50 text-amber-800 rounded-xl text-xs font-semibold border border-amber-200 flex items-start gap-2">
-              <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-              <span><b>¡Advertencia!</b> Este horario choca con la reserva aprobada <b>${empalme.idReserva}</b>. Queda a tu discreción aprobarla.</span>
+            <div class="w-full text-left p-3 mb-3 bg-amber-50 text-amber-800 rounded-xl text-xs sm:text-sm font-semibold border border-amber-200 flex items-start gap-2">
+              <i class="fa-solid fa-triangle-exclamation mt-0.5 shrink-0"></i>
+              <span><b>¡Advertencia!</b> Este horario choca con la reserva aprobada <b>${empalme.idReserva}</b>.</span>
             </div>`;
         }
-        // ── FIN UX ANTI-EMPALMES ──
 
         accionesEl.innerHTML = `
           ${alertaVisual}
-          <div class="flex flex-col sm:flex-row gap-3 w-full">
-            <button onclick="AdminDashboard.mostrarPanelRechazo()" class="flex-1 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 px-5 py-3 rounded-xl text-sm font-bold transition-colors shadow-sm">
-              <i class="fa-solid fa-ban mr-1"></i> Rechazar o Devolver
+          <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
+            <button onclick="AdminDashboard.mostrarPanelRechazo()" class="flex-1 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold transition-colors shadow-sm">
+              <i class="fa-solid fa-ban mr-1"></i> Rechazar / Devolver
             </button>
-            <button onclick="AdminDashboard.cambiarEstado('${this._escId(reserva.idReserva)}', 'Aceptada')" class="flex-1 bg-emerald-600 text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/30">
+            <button onclick="AdminDashboard.cambiarEstado('${this._escId(reserva.idReserva)}', 'Aceptada')" class="flex-1 bg-emerald-600 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/30">
               <i class="fa-solid fa-check mr-1"></i> Aprobar Solicitud
             </button>
           </div>
         `;
       } else if (reserva.estado === 'Aceptada') {
         accionesEl.innerHTML = `
-          <div class="w-full text-center p-3 bg-emerald-50 text-emerald-800 rounded-xl text-sm font-semibold border border-emerald-200 flex items-center justify-center gap-2">
+          <div class="w-full text-center p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs sm:text-sm font-semibold border border-emerald-200 flex items-center justify-center gap-2">
             <i class="fa-solid fa-circle-check"></i> Reserva aprobada. No puede modificarse.
           </div>`;
       } else if (reserva.estado === 'Devuelta') {
         accionesEl.innerHTML = `
-          <div class="w-full text-center p-3 bg-amber-50 text-amber-800 rounded-xl text-sm font-semibold border border-amber-200 flex items-center justify-center gap-2">
-            <i class="fa-solid fa-clock-rotate-left"></i> Devuelta para edición. Esperando reenvío del usuario.
+          <div class="w-full text-center p-3 bg-amber-50 text-amber-800 rounded-xl text-xs sm:text-sm font-semibold border border-amber-200 flex flex-col sm:flex-row items-center justify-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left"></i> <span>Devuelta para edición. Esperando al usuario.</span>
           </div>`;
       } else {
         accionesEl.innerHTML = `
-          <div class="w-full text-center p-3 bg-rose-50 text-rose-800 rounded-xl text-sm font-semibold border border-rose-200 flex items-center justify-center gap-2">
+          <div class="w-full text-center p-3 bg-rose-50 text-rose-800 rounded-xl text-xs sm:text-sm font-semibold border border-rose-200 flex items-center justify-center gap-2">
             <i class="fa-solid fa-circle-xmark"></i> Reserva rechazada. No puede modificarse.
           </div>`;
       }
@@ -1827,7 +1930,6 @@
     mostrarPanelRechazo() {
       document.getElementById('panelRechazo')?.classList.remove('hidden');
       document.getElementById('panelRechazo')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      // Ocultar botones de acción mientras se muestra el panel
       const accionesEl = document.getElementById('modalAdminAcciones');
       if (accionesEl) accionesEl.classList.add('hidden');
     },
@@ -1854,7 +1956,6 @@
 
       if (!idReserva) return;
 
-      // Mostrar cargando en el panel
       const panelRechazo = document.getElementById('panelRechazo');
       if (panelRechazo) {
         panelRechazo.innerHTML = `
@@ -1893,24 +1994,22 @@
         );
 
         if (resultado.exito) {
-          // Actualizar en memoria
           const idx = this.todasLasReservas.findIndex(r => r.idReserva === idReserva);
           if (idx !== -1) {
             this.todasLasReservas[idx].estado = nuevoEstado;
             if (motivoRechazo) this.todasLasReservas[idx].motivoRechazo = motivoRechazo;
           }
 
-          // Actualizar badge del estado en el modal
           const estadoEl = document.getElementById('modalAdminEstado');
           if (estadoEl) {
-            estadoEl.className   = `text-xs font-bold px-3 py-1 rounded-full ${this._obtenerClaseBadge(nuevoEstado)}`;
+            estadoEl.className   = `text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 rounded-full shadow-sm ${this._obtenerClaseBadge(nuevoEstado)}`;
             estadoEl.textContent = nuevoEstado;
           }
 
           if (accionesEl) {
             accionesEl.classList.remove('hidden');
             accionesEl.innerHTML = `
-              <div class="w-full text-center p-3 bg-emerald-50 text-emerald-800 rounded-xl text-sm font-bold border border-emerald-200">
+              <div class="w-full text-center p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs sm:text-sm font-bold border border-emerald-200">
                 <i class="fa-solid fa-check-circle mr-1"></i> ${resultado.mensaje}
               </div>`;
           }
@@ -1927,7 +2026,7 @@
           if (accionesEl) {
             accionesEl.classList.remove('hidden');
             accionesEl.innerHTML = `
-              <div class="w-full text-center p-3 bg-rose-50 text-rose-800 rounded-xl text-sm font-bold border border-rose-200">
+              <div class="w-full text-center p-3 bg-rose-50 text-rose-800 rounded-xl text-xs sm:text-sm font-bold border border-rose-200">
                 <i class="fa-solid fa-circle-exclamation mr-1"></i> ${resultado.mensaje}
               </div>`;
           }
@@ -1943,8 +2042,8 @@
         if (accionesEl) {
           accionesEl.classList.remove('hidden');
           accionesEl.innerHTML = `
-            <div class="w-full text-center p-3 bg-rose-50 text-rose-800 rounded-xl text-sm font-bold border border-rose-200">
-              <i class="fa-solid fa-triangle-exclamation mr-1"></i> Error de conexión: ${error.message || 'Inténtalo de nuevo.'}
+            <div class="w-full text-center p-3 bg-rose-50 text-rose-800 rounded-xl text-xs sm:text-sm font-bold border border-rose-200">
+              <i class="fa-solid fa-triangle-exclamation mr-1"></i> Error: ${error.message || 'Inténtalo de nuevo.'}
             </div>`;
         }
         if (this._reservaEnModal) {
@@ -1957,7 +2056,6 @@
       }
     },
 
-    // ── Buscador ──
     async buscar() {
       const inputEl     = document.getElementById('inputBusqueda');
       const resultadoEl = document.getElementById('resultadoBusqueda');
@@ -1966,7 +2064,7 @@
 
       if (!query) {
         this._mostrarResultadoBusqueda(resultadoEl,
-          '<div class="p-4 text-center text-slate-500 text-sm font-medium">Escribe un correo para buscar.</div>');
+          '<div class="p-4 text-center text-slate-500 text-xs sm:text-sm font-medium">Escribe un correo para buscar.</div>');
         return;
       }
 
@@ -1980,30 +2078,30 @@
 
         if (!resultado.exito) {
           this._mostrarResultadoBusqueda(resultadoEl,
-            `<div class="p-4 text-center text-rose-600 text-sm font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> ${resultado.mensaje}</div>`);
+            `<div class="p-4 text-center text-rose-600 text-xs sm:text-sm font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> ${resultado.mensaje}</div>`);
           return;
         }
 
         if (resultado.reservas.length === 0) {
           this._mostrarResultadoBusqueda(resultadoEl,
-            `<div class="p-6 text-center text-slate-500 text-sm"><i class="fa-solid fa-magnifying-glass text-2xl text-slate-300 block mb-2"></i>${resultado.mensaje}</div>`);
+            `<div class="p-6 text-center text-slate-500 text-xs sm:text-sm"><i class="fa-solid fa-magnifying-glass text-2xl text-slate-300 block mb-2"></i>${resultado.mensaje}</div>`);
           return;
         }
 
         const html = `
-          <div class="p-3 bg-blue-50 text-[#002f5c] text-sm font-bold border-b border-blue-100 flex items-center justify-between">
-            <span><i class="fa-solid fa-list-check mr-2"></i> ${resultado.mensaje}</span>
-            <button onclick="AdminDashboard.limpiarBusqueda()" class="text-blue-400 hover:text-blue-700 p-1"><i class="fa-solid fa-xmark"></i></button>
+          <div class="p-3 bg-blue-50 text-[#002f5c] text-xs sm:text-sm font-bold border-b border-blue-100 flex items-center justify-between">
+            <span class="truncate"><i class="fa-solid fa-list-check mr-1.5"></i> ${resultado.mensaje}</span>
+            <button onclick="AdminDashboard.limpiarBusqueda()" class="text-blue-400 hover:text-blue-700 p-1 shrink-0"><i class="fa-solid fa-xmark"></i></button>
           </div>
-          <div class="max-h-64 overflow-y-auto">
-            <table class="w-full text-left border-collapse">
-              <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase sticky top-0">
+          <div class="max-h-64 overflow-x-auto overflow-y-auto">
+            <table class="w-full text-left border-collapse min-w-[500px]">
+              <thead class="bg-slate-50 border-b border-slate-200 text-[10px] sm:text-xs text-slate-500 uppercase sticky top-0">
                 <tr>
-                  <th class="p-3 font-semibold">ID</th>
-                  <th class="p-3 font-semibold">Espacio</th>
-                  <th class="p-3 font-semibold">Fecha</th>
-                  <th class="p-3 font-semibold">Horario</th>
-                  <th class="p-3 font-semibold text-center">Estado</th>
+                  <th class="p-2 sm:p-3 font-semibold">ID</th>
+                  <th class="p-2 sm:p-3 font-semibold">Espacio</th>
+                  <th class="p-2 sm:p-3 font-semibold">Fecha</th>
+                  <th class="p-2 sm:p-3 font-semibold">Horario</th>
+                  <th class="p-2 sm:p-3 font-semibold text-center">Estado</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
@@ -2012,12 +2110,12 @@
                   const fecha = (yyyy && mm && dd) ? `${dd}/${mm}/${yyyy}` : r.fecha;
                   return `
                     <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="AdminDashboard.abrirModal('${this._escapar(r.idReserva)}')">
-                      <td class="p-3 text-xs font-mono text-slate-500">${this._escapar(r.idReserva)}</td>
-                      <td class="p-3 text-sm text-slate-800 font-semibold">${this._escapar(r.coworking)}</td>
-                      <td class="p-3 text-sm text-slate-600">${fecha}</td>
-                      <td class="p-3 text-sm text-slate-600 font-medium">${r.horaInicio} –${r.horaFin}</td>
-                      <td class="p-3 text-center">
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${this._obtenerClaseBadge(r.estado)}">${r.estado}</span>
+                      <td class="p-2 sm:p-3 text-[10px] sm:text-xs font-mono text-slate-500">${this._escapar(r.idReserva)}</td>
+                      <td class="p-2 sm:p-3 text-xs sm:text-sm text-slate-800 font-semibold truncate max-w-[120px]">${this._escapar(r.coworking.replace('Coworking', 'CW'))}</td>
+                      <td class="p-2 sm:p-3 text-xs sm:text-sm text-slate-600 whitespace-nowrap">${fecha}</td>
+                      <td class="p-2 sm:p-3 text-xs sm:text-sm text-slate-600 font-medium whitespace-nowrap">${r.horaInicio} –${r.horaFin}</td>
+                      <td class="p-2 sm:p-3 text-center">
+                        <span class="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full ${this._obtenerClaseBadge(r.estado)}">${r.estado}</span>
                       </td>
                     </tr>
                   `;
@@ -2030,7 +2128,7 @@
 
       } catch (error) {
         this._mostrarResultadoBusqueda(resultadoEl,
-          `<div class="p-4 text-center text-rose-600 text-sm font-semibold"><i class="fa-solid fa-circle-exclamation"></i> Error de conexión: ${error.message || 'Inténtalo de nuevo.'}</div>`);
+          `<div class="p-4 text-center text-rose-600 text-xs sm:text-sm font-semibold"><i class="fa-solid fa-circle-exclamation"></i> Error de conexión.</div>`);
       }
     },
 
@@ -2064,10 +2162,10 @@
       if (contenedor) {
         contenedor.classList.remove('hidden');
         contenedor.innerHTML = `
-          <div class="p-10 text-center bg-rose-50 rounded-xl border border-rose-200 m-6">
-            <i class="fa-solid fa-circle-exclamation text-4xl text-rose-500 mb-4"></i>
-            <p class="text-rose-800 font-bold mb-5">${mensaje}</p>
-            <button onclick="AdminDashboard.recargar()" class="bg-rose-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-rose-700 shadow shadow-rose-600/30 transition-colors">
+          <div class="p-6 sm:p-10 text-center bg-rose-50 rounded-xl border border-rose-200 m-4 sm:m-6">
+            <i class="fa-solid fa-circle-exclamation text-3xl sm:text-4xl text-rose-500 mb-3 sm:mb-4"></i>
+            <p class="text-rose-800 text-sm sm:text-base font-bold mb-4 sm:mb-5">${mensaje}</p>
+            <button onclick="AdminDashboard.recargar()" class="bg-rose-600 text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold hover:bg-rose-700 shadow shadow-rose-600/30 transition-colors">
               <i class="fa-solid fa-rotate-right mr-1"></i> Reintentar
             </button>
           </div>
@@ -2104,13 +2202,11 @@
     }
   };
 
-  // Constructor de fecha auxiliar para calendario si SpreadsheetApp no está disponible en frontend
   var SpreadsheetApp = window.SpreadsheetApp || {
     getActiveSpreadsheet: () => null,
     getSpreadsheetTimeZone: () => 'America/Mexico_City'
   };
 
-  // ── Exponer módulos globalmente ──
   global.GasApi          = GasApi;
   global.AuthService     = AuthService;
   global.StudentView     = StudentView;
@@ -2122,5 +2218,4 @@
   });
 
 })(window);
-
 </script>

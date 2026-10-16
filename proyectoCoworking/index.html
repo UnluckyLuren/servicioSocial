@@ -39,8 +39,8 @@
     .animate-fadeIn { animation: fadeIn 0.25s ease forwards; }
     .fade-in { animation: fadeIn 0.3s ease forwards; }
 
-    /* Modales Centrados Perfectamente */
-    .modal-overlay {
+    /* Modales Centrados Perfectamente - RESPONSIVE FIX */
+     .modal-overlay {
       position: fixed !important;
       inset: 0 !important;
       z-index: 999999 !important;
@@ -78,20 +78,58 @@
     .upload-zone { border: 2px dashed #cbd5e1; transition: all 0.2s; }
     .upload-zone:hover, .upload-zone.dragover { border-color: #002f5c; background: #eff6ff; }
 
-    /* FullCalendar Customization */
+    /* FullCalendar Customization & Mobile Fixes */
     .fc .fc-button-primary { background-color: #002f5c !important; border-color: #002f5c !important; }
     .fc .fc-button-primary:hover { background-color: #001f3f !important; }
     .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: #001f3f !important; }
     .fc-event { cursor: pointer; font-size: 11px; }
-    .fc .fc-toolbar-title { font-size: 1.125rem; font-weight: 700; color: #002f5c; }
+    .fc .fc-toolbar-title { font-size: 1.125rem; font-weight: 700; color: #002f5c; text-align: center; }
+    .fc .fc-toolbar { flex-wrap: wrap !important; gap: 0.5rem; justify-content: center !important; }
+    @media (max-width: 640px) {
+      .fc .fc-header-toolbar { flex-direction: column; }
+      .fc .fc-toolbar-chunk { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.25rem; }
+    }
+
+    /* Solución al calendario amontonado en celulares */
+    @media (max-width: 768px) {
+      /* Habilita el scroll horizontal en el contenedor del calendario */
+      .fc-view-harness {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      /* Fuerza un ancho mínimo de 700px para que los días no se aplasten */
+      .fc-scrollgrid {
+        min-width: 700px !important;
+      }
+      /* Ajusta los eventos para que el texto baje a la siguiente línea */
+      .fc-daygrid-event {
+        white-space: normal !important;
+        align-items: flex-start !important;
+        padding: 2px 4px !important;
+      }
+      /* Apila la hora y el título para mejor lectura */
+      .fc-event-time {
+        display: block !important;
+        font-size: 9px !important;
+        font-weight: normal !important;
+        margin-bottom: 2px;
+      }
+      .fc-event-title {
+        display: block !important;
+        font-size: 10px !important;
+        font-weight: bold !important;
+        line-height: 1.2 !important;
+      }
+    }
+
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col relative">
 
   <!-- PANTALLA GLOBAL DE CARGA -->
-  <div id="pantallaGlobalCarga" class="fixed inset-0 bg-slate-50 z-[100] flex flex-col items-center justify-center">
+  <div id="pantallaGlobalCarga" class="fixed inset-0 bg-slate-50 z-[100] flex flex-col items-center justify-center p-4 text-center">
     <div class="w-16 h-16 border-4 border-slate-200 border-t-[#002f5c] rounded-full spinner mb-4"></div>
-    <div class="text-[#002f5c] font-bold text-xl tracking-wide flex items-center gap-2">
+    <div class="text-[#002f5c] font-bold text-xl tracking-wide flex items-center gap-2 justify-center">
       <i class="fa-solid fa-building-columns"></i> UdeG
     </div>
     <p class="text-slate-500 mt-2 font-medium">Cargando sistema…</p>
@@ -99,37 +137,37 @@
 
   <!-- HEADER PRINCIPAL -->
   <header id="headerPrincipal" class="bg-[#002f5c] text-white shadow-lg sticky top-0 z-40 hidden">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <div class="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
+        <div class="bg-white/10 p-2 rounded-lg backdrop-blur-sm shrink-0">
           <i class="fa-solid fa-building-columns text-xl"></i>
         </div>
-        <div>
-          <h1 class="text-xs text-blue-200 font-semibold tracking-wider uppercase">UdeG</h1>
-          <h2 class="text-lg font-bold leading-tight">CUCEI</h2>
-          <p class="text-[10px] text-blue-100/80 hidden sm:block">Red de Espacios de Colaboración (Coworkings)</p>
+        <div class="min-w-0">
+          <h1 class="text-xs text-blue-200 font-semibold tracking-wider uppercase truncate">UdeG</h1>
+          <h2 class="text-base sm:text-lg font-bold leading-tight truncate">CUCEI</h2>
+          <p class="text-[10px] text-blue-100/80 hidden sm:block truncate">Red de Espacios de Colaboración (Coworkings)</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3 sm:gap-4 shrink-0">
         <!-- Controles NO logueados -->
-        <div id="headerAuthButtons" class="hidden flex gap-2">
-          <button onclick="AuthService.abrirModalAuth('login')" class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors border border-white/20">Iniciar Sesión</button>
-          <button onclick="AuthService.abrirModalAuth('register')" class="bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors">Registrarse</button>
+        <div id="headerAuthButtons" class="hidden flex flex-wrap gap-2 justify-end">
+          <button onclick="AuthService.abrirModalAuth('login')" class="bg-white/10 hover:bg-white/20 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-colors border border-white/20 whitespace-nowrap">Iniciar Sesión</button>
+          <button onclick="AuthService.abrirModalAuth('register')" class="bg-blue-500 hover:bg-blue-600 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-colors whitespace-nowrap">Registrarse</button>
         </div>
 
         <!-- Controles Logueados -->
-        <div id="headerUsuarioLogueado" class="hidden items-center gap-4">
-          <button id="btnMisReservas" class="hidden items-center gap-2 text-sm text-blue-200 hover:text-white transition-colors" onclick="StudentView.abrirPanelMisReservas()" title="Ver todas mis reservas">
-            <i class="fa-solid fa-folder-open"></i> Mis Reservas
+        <div id="headerUsuarioLogueado" class="hidden items-center gap-2 sm:gap-4 flex-wrap justify-end">
+          <button id="btnMisReservas" class="hidden items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-blue-200 hover:text-white transition-colors" onclick="StudentView.abrirPanelMisReservas()" title="Ver todas mis reservas">
+            <i class="fa-solid fa-folder-open"></i> <span class="hidden sm:inline">Mis Reservas</span>
             <span id="badgeReservasDevueltas" class="hidden bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">0</span>
           </button>
 
-          <div id="headerCorreoUsuario" class="hidden sm:block text-right border-l border-white/20 pl-4">
-            <p id="textoCorreoHeader" class="text-sm font-medium text-blue-50"></p>
+          <div id="headerCorreoUsuario" class="hidden sm:block text-right border-l border-white/20 pl-3 sm:pl-4">
+            <p id="textoCorreoHeader" class="text-xs sm:text-sm font-medium text-blue-50 max-w-[120px] sm:max-w-[200px] truncate"></p>
           </div>
           <span id="headerBadgeRol" class="hidden"></span>
-          <button onclick="AuthService.cerrarSesion()" class="bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-lg text-sm transition-colors text-white shadow" title="Cerrar Sesión">
+          <button onclick="AuthService.cerrarSesion()" class="bg-rose-500 hover:bg-rose-600 px-2 sm:px-3 py-1.5 rounded-lg text-sm transition-colors text-white shadow shrink-0" title="Cerrar Sesión">
             <i class="fa-solid fa-right-from-bracket"></i>
           </button>
         </div>
@@ -140,16 +178,16 @@
   <!-- MODAL AUTH -->
   <div id="modalAuth" class="modal-overlay hidden">
     <div class="modal-content-box max-w-sm fade-in relative">
-      <div class="bg-[#002f5c] px-6 py-4 flex items-center justify-between text-white shrink-0">
-        <h3 id="authModalTitle" class="text-lg font-bold">Autenticación</h3>
-        <button onclick="AuthService.cerrarModalAuth()" class="text-blue-200 hover:text-white transition-colors">
+      <div class="bg-[#002f5c] px-4 sm:px-6 py-4 flex items-center justify-between text-white shrink-0">
+        <h3 id="authModalTitle" class="text-base sm:text-lg font-bold">Autenticación</h3>
+        <button onclick="AuthService.cerrarModalAuth()" class="text-blue-200 hover:text-white transition-colors p-1">
           <i class="fa-solid fa-xmark text-xl"></i>
         </button>
       </div>
-      <div class="p-6 modal-body-scroll">
-          <div id="authTabs" class="flex bg-slate-100 rounded-lg p-1 mb-6 shrink-0">
-          <button id="btnTabLogin" onclick="AuthService.setAuthMode('login')" class="flex-1 text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c]">Ingresar</button>
-          <button id="btnTabRegister" onclick="AuthService.setAuthMode('register')" class="flex-1 text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700">Registrarse</button>
+      <div class="p-4 sm:p-6 modal-body-scroll">
+          <div id="authTabs" class="flex bg-slate-100 rounded-lg p-1 mb-5 sm:mb-6 shrink-0">
+          <button id="btnTabLogin" onclick="AuthService.setAuthMode('login')" class="flex-1 text-xs sm:text-sm font-bold py-2 rounded-md bg-white shadow text-[#002f5c] transition-all">Ingresar</button>
+          <button id="btnTabRegister" onclick="AuthService.setAuthMode('register')" class="flex-1 text-xs sm:text-sm font-bold py-2 rounded-md text-slate-500 hover:text-slate-700 transition-all">Registrarse</button>
         </div>
 
         <div id="formAuthMsg" class="hidden"></div>
@@ -157,57 +195,60 @@
         <form id="formLogin" onsubmit="AuthService.procesarLogin(event)" class="space-y-4">
           <div>
             <label class="block text-xs font-bold text-slate-500 mb-1">Correo o Código</label>
-            <input type="text" id="loginId" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            <input type="text" id="loginId" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-500 mb-1">Contraseña</label>
-            <input type="password" id="loginPass" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            <input type="password" id="loginPass" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow">
           </div>
-          <button type="submit" id="btnLoginSubmit" class="w-full bg-[#002f5c] hover:bg-[#001f3f] text-white py-2.5 rounded-xl text-sm font-bold transition-colors">
+          <button type="submit" id="btnLoginSubmit" class="w-full bg-[#002f5c] hover:bg-[#001f3f] text-white py-2.5 rounded-xl text-sm font-bold transition-all shadow-md active:scale-[0.98]">
             Iniciar Sesión
           </button>
         </form>
 
         <form id="formRegister" onsubmit="AuthService.procesarRegistro(event)" class="space-y-4 hidden">
-          <div>
-            <label class="block text-xs font-bold text-slate-500 mb-1">Nombres</label>
-            <input type="text" id="regNombres" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-500 mb-1">Apellidos</label>
-            <input type="text" id="regApellidos" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-1">Nombres</label>
+              <input type="text" id="regNombres" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-1">Apellidos</label>
+              <input type="text" id="regApellidos" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow">
+            </div>
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-500 mb-1">Correo Institucional</label>
-            <input type="email" id="regEmail" required placeholder="@alumnos.udg.mx" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            <input type="email" id="regEmail" required placeholder="@alumnos.udg.mx" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-500 mb-1">Código de Alumno/Trabajador</label>
-            <input type="text" id="regCodigo" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            <input type="text" id="regCodigo" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-500 mb-1">Contraseña</label>
-            <input type="password" id="regPass" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            <input type="password" id="regPass" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow">
           </div>
-          <button type="submit" id="btnRegSubmit" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold transition-colors">
+          <button type="submit" id="btnRegSubmit" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold transition-all shadow-md active:scale-[0.98]">
             Crear Cuenta
           </button>
         </form>
+
         <!-- FORMULARIO DE VERIFICACIÓN 2 PASOS -->
         <form id="formVerification" onsubmit="AuthService.procesarVerificacion(event)" class="space-y-4 hidden animate-fadeIn">
           <div class="text-center mb-4">
-            <div class="w-16 h-16 bg-blue-50 text-[#002f5c] border border-blue-100 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-blue-50 text-[#002f5c] border border-blue-100 rounded-full flex items-center justify-center text-xl sm:text-2xl mx-auto mb-3">
               <i class="fa-solid fa-envelope-open-text"></i>
             </div>
-            <h4 class="text-lg font-bold text-slate-800">Verifica tu cuenta</h4>
-            <p class="text-xs text-slate-500 mt-1">Hemos enviado un código seguro de 6 dígitos a tu correo institucional.</p>
-            <p id="verifEmailDisplay" class="text-sm font-bold text-[#002f5c] mt-2"></p>
+            <h4 class="text-base sm:text-lg font-bold text-slate-800">Verifica tu cuenta</h4>
+            <p class="text-[11px] sm:text-xs text-slate-500 mt-1">Hemos enviado un código seguro de 6 dígitos a tu correo.</p>
+            <p id="verifEmailDisplay" class="text-xs sm:text-sm font-bold text-[#002f5c] mt-2 break-all"></p>
           </div>
           <div>
-            <input type="text" id="verifCode" required pattern="[0-9]{6}" maxlength="6" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-4 text-center text-2xl tracking-[0.5em] font-black focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 transition-all shadow-inner" placeholder="••••••">
+            <input type="text" id="verifCode" required pattern="[0-9]{6}" maxlength="6" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-3 sm:py-4 text-center text-xl sm:text-2xl tracking-[0.3em] sm:tracking-[0.5em] font-black focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 transition-all shadow-inner" placeholder="••••••">
           </div>
           <button type="submit" id="btnVerifSubmit" class="w-full bg-[#002f5c] hover:bg-[#001f3f] text-white py-3 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-[0.98]">
-            Verificar y Activar Cuenta
+            Activar Cuenta
           </button>
           <button type="button" onclick="AuthService.setAuthMode('login')" class="w-full bg-white hover:bg-slate-50 text-slate-500 py-2 rounded-xl text-xs font-bold transition-colors border border-slate-200 mt-1">
             Volver al inicio de sesión
@@ -219,66 +260,67 @@
 
   <!-- VISTA: ACCESO DENEGADO -->
   <div id="vistaDenegada" class="hidden flex-grow flex items-center justify-center p-4">
-    <div class="bg-white max-w-md w-full p-8 rounded-2xl shadow-xl border border-slate-100 text-center fade-in">
-      <div class="w-20 h-20 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-6">
+    <div class="bg-white max-w-md w-full p-6 sm:p-8 rounded-2xl shadow-xl border border-slate-100 text-center fade-in">
+      <div class="w-16 h-16 sm:w-20 sm:h-20 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-2xl sm:text-3xl mx-auto mb-5 sm:mb-6">
         <i class="fa-solid fa-user-lock"></i>
       </div>
-      <h2 class="text-2xl font-black text-slate-800 mb-2">Acceso Denegado</h2>
-      <p id="mensajeDenegado" class="text-slate-600 mb-6 font-medium">No se pudo acceder.</p>
+      <h2 class="text-xl sm:text-2xl font-black text-slate-800 mb-2">Acceso Denegado</h2>
+      <p id="mensajeDenegado" class="text-sm sm:text-base text-slate-600 mb-6 font-medium">No se pudo acceder.</p>
     </div>
   </div>
 
   <!-- VISTA: ALUMNO Y MAESTRO -->
   <div id="vistaAlumno" class="hidden flex-grow flex flex-col fade-in">
     <!-- Hero Section -->
-    <section class="bg-gradient-to-b from-[#002f5c] to-[#004282] text-white py-12 px-4 relative overflow-hidden">
+    <section class="bg-gradient-to-b from-[#002f5c] to-[#004282] text-white py-8 sm:py-12 px-4 relative overflow-hidden">
       <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
       <div class="max-w-7xl mx-auto relative z-10 text-center">
-        <span class="inline-block py-1 px-3 rounded-full bg-blue-400/20 text-blue-200 text-xs font-bold uppercase tracking-wider mb-4 border border-blue-400/30">
+        <span class="inline-block py-1 px-3 rounded-full bg-blue-400/20 text-blue-200 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-3 sm:mb-4 border border-blue-400/30">
           <i class="fa-solid fa-sparkles mr-1"></i> ¡Nuevos Espacios Disponibles!
         </span>
-        <h2 class="text-4xl md:text-5xl font-black mb-4 tracking-tight">Centro de Innovación y Emprendimiento CUCEI</h2>
-        <p class="text-blue-100 max-w-2xl mx-auto text-sm md:text-base leading-relaxed">
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 tracking-tight leading-tight">Centro de Innovación y Emprendimiento CUCEI</h2>
+        <p class="text-blue-100 max-w-2xl mx-auto text-xs sm:text-sm md:text-base leading-relaxed px-2">
           Reserva un lugar en cualquiera de nuestros coworkings equipados dentro de CUCEI.
           Elige el que mejor se adapte a tus necesidades del día.
         </p>
       </div>
     </section>
 
-    <main class="max-w-7xl mx-auto px-4 py-12 w-full">
+    <main class="max-w-7xl mx-auto px-4 py-8 sm:py-12 w-full">
 
       <!-- Panel de Mis Reservas -->
       <div id="panelMisReservas" class="hidden mb-8">
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-            <div>
-              <h3 class="text-lg font-bold text-[#002f5c] flex items-center gap-2">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-wrap gap-3 justify-between items-center bg-slate-50">
+            <div class="min-w-0">
+              <h3 class="text-base sm:text-lg font-bold text-[#002f5c] flex items-center gap-2 truncate">
                 <i class="fa-solid fa-folder-open text-[#002f5c]"></i> Mis Reservas
               </h3>
-              <p class="text-xs text-slate-500 mt-1">Aquí puedes consultar todas las reservas que has realizado y su estado.</p>
+              <p class="text-[10px] sm:text-xs text-slate-500 mt-1 truncate">Consulta tus reservas y su estado.</p>
             </div>
-            <button onclick="StudentView.cerrarPanelMisReservas()" class="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-lg border border-slate-200 shadow-sm transition-all"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <button onclick="StudentView.cerrarPanelMisReservas()" class="text-slate-400 hover:text-slate-600 bg-white p-1.5 sm:p-2 rounded-lg border border-slate-200 shadow-sm transition-all shrink-0"><i class="fa-solid fa-xmark text-base sm:text-lg"></i></button>
           </div>
-          <div id="listaReservasDevueltas" class="p-5 space-y-4 max-h-96 overflow-y-auto"></div>
+          <div id="listaReservasDevueltas" class="p-4 sm:p-5 space-y-4 max-h-96 overflow-y-auto"></div>
         </div>
       </div>
 
-      <div class="mb-8">
-        <h3 class="text-2xl font-bold text-slate-800">Nuestros Espacios</h3>
-        <p class="text-slate-500 text-sm mt-1">Haz clic en "Ver detalles y reservar" para conocer el espacio. (Requiere iniciar sesión).</p>
+      <div class="mb-6 sm:mb-8">
+        <h3 class="text-xl sm:text-2xl font-bold text-slate-800">Nuestros Espacios</h3>
+        <p class="text-slate-500 text-xs sm:text-sm mt-1">Haz clic en "Ver detalles y reservar" para conocer el espacio. (Requiere iniciar sesión).</p>
+        <p class="text-slate-500 text-xs sm:text-sm mt-1">Al momento de realizar tu reserva, un acuerdo de confidencialidad podrá ser solicitado para firmar acorde a la revisión del proyecto.</p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <!-- Coworking 1 -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col">
-          <div class="h-48 bg-slate-200 relative overflow-hidden">
-            <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80" alt="Coworking Bosch" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+          <div class="h-40 sm:h-48 bg-slate-200 relative overflow-hidden shrink-0">
+            <img src="https://drive.google.com/thumbnail?id=1ePx7V1hOsq8Cv8bsnk4PIWr6JEqwLjGW&sz=w1000" alt="Coworking Bosch" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
           </div>
-          <div class="p-5 flex flex-col flex-grow">
-            <h4 class="text-lg font-bold text-slate-800 mb-2">Coworking 1 – Bosch</h4>
-            <p class="text-slate-500 text-sm mb-6 flex-grow">Espacio tecnológico ideal para desarrollo técnico con pantallas y mesas amplias de reuniones.</p>
-            <button class="w-full bg-slate-100 hover:bg-[#002f5c] text-slate-700 hover:text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
-              data-coworking="Coworking 1 - Bosch" data-desc="Espacio tecnológico ideal para desarrollo técnico." data-cap="15 personas" data-img="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80" data-specs='["Pantallas HD 4K","Mesas amplias modulares","Conexión Ethernet","Pintarrón"]' onclick="ModalController.abrir(this)">
+          <div class="p-4 sm:p-5 flex flex-col flex-grow">
+            <h4 class="text-base sm:text-lg font-bold text-slate-800 mb-2">Coworking 1 – Bosch</h4>
+            <p class="text-slate-500 text-xs sm:text-sm mb-4 sm:mb-6 flex-grow">Espacio tecnológico ideal para desarrollo técnico de cursos o talleres.</p>
+            <button class="w-full bg-slate-100 hover:bg-[#002f5c] text-slate-700 hover:text-white py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-colors shadow-sm"
+              data-coworking="Coworking 1 - Bosch" data-desc="Espacio tecnológico ideal para desarrollo técnico o talleres." data-cap="15 personas" data-img="https://drive.google.com/thumbnail?id=1ePx7V1hOsq8Cv8bsnk4PIWr6JEqwLjGW&sz=w1000" data-specs='["Pantalla HD 4K","Wi-fi (ICUCEI)","Aire Acondicionado","Pintarrón"]' onclick="ModalController.abrir(this)">
               Ver detalles y reservar
             </button>
           </div>
@@ -286,14 +328,14 @@
 
         <!-- Coworking 2 -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col">
-          <div class="h-48 bg-slate-200 relative overflow-hidden">
-            <img src="https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=600&q=80" alt="Coworking Eventos" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+          <div class="h-40 sm:h-48 bg-slate-200 relative overflow-hidden shrink-0">
+            <img src="https://drive.google.com/thumbnail?id=1DwSsBpIWSxUOq00-03E0rapnJzIJaDfA&sz=w1000" alt="Coworking Eventos" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
           </div>
-          <div class="p-5 flex flex-col flex-grow">
-            <h4 class="text-lg font-bold text-slate-800 mb-2">Coworking 2 – Eventos</h4>
-            <p class="text-slate-500 text-sm mb-6 flex-grow">Sala interactiva moderna pensada para exposiciones, conferencias y trabajo colaborativo ágil.</p>
-            <button class="w-full bg-slate-100 hover:bg-[#002f5c] text-slate-700 hover:text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
-              data-coworking="Coworking 2 - Eventos" data-desc="Sala interactiva moderna pensada para exposiciones y conferencias." data-cap="30 personas" data-img="https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=600&q=80" data-specs='["Proyector interactivo","Sistema de audio","Sillas tipo auditorio","Climatización"]' onclick="ModalController.abrir(this)">
+          <div class="p-4 sm:p-5 flex flex-col flex-grow">
+            <h4 class="text-base sm:text-lg font-bold text-slate-800 mb-2">Coworking 2 – Eventos</h4>
+            <p class="text-slate-500 text-xs sm:text-sm mb-4 sm:mb-6 flex-grow">Sala interactiva moderna pensada para exposiciones, conferencias o reuniones.</p>
+            <button class="w-full bg-slate-100 hover:bg-[#002f5c] text-slate-700 hover:text-white py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-colors shadow-sm"
+              data-coworking="Coworking 2 - Eventos" data-desc="Sala interactiva moderna pensada para exposiciones, conferencias o reuniones." data-cap="20 personas" data-img="https://drive.google.com/thumbnail?id=1DwSsBpIWSxUOq00-03E0rapnJzIJaDfA&sz=w1000" data-specs='["Pantalla HD 4K","Aire Acondicionado"]' onclick="ModalController.abrir(this)">
               Ver detalles y reservar
             </button>
           </div>
@@ -301,14 +343,14 @@
 
         <!-- Coworking 3 -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col">
-          <div class="h-48 bg-slate-200 relative overflow-hidden">
-            <img src="https://images.unsplash.com/photo-1581092335397-9583eb92d232?auto=format&fit=crop&w=600&q=80" alt="Coworking Creación" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+          <div class="h-40 sm:h-48 bg-slate-200 relative overflow-hidden shrink-0">
+            <img src="https://drive.google.com/thumbnail?id=1gnK6js-RhowyoP0FLfXLLJMcpHej8t2n&sz=w1000" alt="Coworking Creación" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
           </div>
-          <div class="p-5 flex flex-col flex-grow">
-            <h4 class="text-lg font-bold text-slate-800 mb-2">Coworking 3 – Creación y Maquinaria</h4>
-            <p class="text-slate-500 text-sm mb-6 flex-grow">Espacio adaptado para uso de maquinaria especializada como fresadoras CNC, impresoras 3D y grabadoras láser.</p>
-            <button class="w-full bg-slate-100 hover:bg-[#002f5c] text-slate-700 hover:text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
-              data-coworking="Coworking 3 - Creación" data-desc="Espacio adaptado para uso de maquinaria e impresión 3D." data-cap="10 personas" data-img="https://images.unsplash.com/photo-1581092335397-9583eb92d232?auto=format&fit=crop&w=600&q=80" data-specs='["Acceso a maquinaria CNC y 3D","Mesas de trabajo técnico","Contactos 110v especializados","Iluminación focalizada"]' onclick="ModalController.abrir(this)">
+          <div class="p-4 sm:p-5 flex flex-col flex-grow">
+            <h4 class="text-base sm:text-lg font-bold text-slate-800 mb-2">Coworking 3 – Creación</h4>
+            <p class="text-slate-500 text-xs sm:text-sm mb-4 sm:mb-6 flex-grow">Espacio adaptado para uso de maquinaria especializada como CNC y láser.</p>
+            <button class="w-full bg-slate-100 hover:bg-[#002f5c] text-slate-700 hover:text-white py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-colors shadow-sm"
+              data-coworking="Coworking 3 - Creación" data-desc="Espacio adaptado para uso de maquinaria e impresión 3D." data-cap="10 personas" data-img="https://drive.google.com/thumbnail?id=1gnK6js-RhowyoP0FLfXLLJMcpHej8t2n&sz=w1000" data-specs='["Acceso a maquinaria CNC y 3D","Mesas de trabajo técnico","Contactos 110v especializados","Aire Acondicionado","Iluminación focalizada"]' onclick="ModalController.abrir(this)">
               Ver detalles y reservar
             </button>
           </div>
@@ -316,53 +358,98 @@
 
         <!-- Coworking 4 -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col">
-          <div class="h-48 bg-slate-200 relative overflow-hidden">
-            <img src="https://images.unsplash.com/photo-1604328698692-f76ea9498e76?auto=format&fit=crop&w=600&q=80" alt="Coworking General" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+          <div class="h-40 sm:h-48 bg-slate-200 relative overflow-hidden shrink-0">
+            <img src="https://drive.google.com/thumbnail?id=14yf46T4HVf3jRZRLAbobgKTPKWEHf_La&sz=w1000" alt="Coworking General" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
           </div>
-          <div class="p-5 flex flex-col flex-grow">
-            <h4 class="text-lg font-bold text-slate-800 mb-2">Coworking 4 – General</h4>
-            <p class="text-slate-500 text-sm mb-6 flex-grow">Espacio dinámico lleno de color y pizarrones gigantes para lluvia de ideas y diseño de proyectos.</p>
-            <button class="w-full bg-slate-100 hover:bg-[#002f5c] text-slate-700 hover:text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
-              data-coworking="Coworking 4 - General" data-desc="Espacio dinámico para lluvia de ideas y diseño." data-cap="20 personas" data-img="https://images.unsplash.com/photo-1604328698692-f76ea9498e76?auto=format&fit=crop&w=600&q=80" data-specs='["Pizarrones gigantes","Puffs y sofás","Mesas altas","Cafetera básica"]' onclick="ModalController.abrir(this)">
+          <div class="p-4 sm:p-5 flex flex-col flex-grow">
+            <h4 class="text-base sm:text-lg font-bold text-slate-800 mb-2">Coworking 4 – General</h4>
+            <p class="text-slate-500 text-xs sm:text-sm mb-4 sm:mb-6 flex-grow">Espacio dinámico para lluvia de ideas, diseño, reuniones y trabajo administrativo o de investigación</p>
+            <button class="w-full bg-slate-100 hover:bg-[#002f5c] text-slate-700 hover:text-white py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-colors shadow-sm"
+              data-coworking="Coworking 4 - General" data-desc="Espacio dinámico para lluvia de ideas y diseño." data-cap="20 personas" data-img="https://drive.google.com/thumbnail?id=14yf46T4HVf3jRZRLAbobgKTPKWEHf_La&sz=w1000"data-specs='["Pizarron gigante","Pantalla HD 4K","Aire Acondicionado", "Mesa de reuniones","Escritorios para trabajo en equipo"]' onclick="ModalController.abrir(this)">
               Ver detalles y reservar
             </button>
           </div>
         </div>
       </div>
+
+      <div class="mt-12 sm:mt-16 rounded-2xl shadow-md border border-slate-200 overflow-hidden flex flex-col">
+        <!-- Sección Naranja -->
+        <div class="bg-gradient-to-br from-amber-500 to-orange-500 p-8 sm:p-12 text-center relative">
+          <!-- Textura sutil para darle profundidad -->
+          <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+          <div class="relative z-10 max-w-4xl mx-auto">
+            <p class="text-white text-lg sm:text-xl md:text-2xl font-bold leading-snug sm:leading-relaxed shadow-sm drop-shadow-md">
+              ¿Te gustaría usar un espacio del CIE de forma periódica para desarrollar tu proyecto? Acércate y cuéntanos qué quieres hacer, qué espacio necesitas y con qué frecuencia te gustaría utilizarlo. Revisaremos juntos la disponibilidad y las opciones para llevar a cabo tus actividades.
+            </p>
+          </div>
+        </div>
+
+        <!-- Sección Blanca (Contacto) -->
+        <div class="bg-white p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 border-t-4 border-orange-600">
+          <!-- Información Izquierda -->
+          <div class="text-[#002f5c] text-xs sm:text-sm md:text-base leading-relaxed tracking-wide">
+            <p class="font-bold">Centro de Innovación y Emprendimiento</p>
+            <p>CIE CUCEI</p>
+            <p class="font-bold mt-2 text-blue-800 tracking-wider">innovacion@cucei.udg.mx</p>
+            <p class="font-bold text-blue-800 tracking-wider">TEL: 33 1378 5900, EXT. 27319</p>
+          </div>
+
+          <!-- Información Derecha -->
+          <div class="text-[#002f5c] text-xs sm:text-sm md:text-base leading-relaxed md:text-right tracking-wide">
+            <p class="font-bold text-sm sm:text-base">Mtro. Hugo Esteban González Venegas</p>
+            <p>Responsable - CIE</p>
+            <p class="mt-2 font-bold">Coworking 4 - Módulo Z2, Planta baja</p>
+            <p>A un costado de la Lonaria del CUCEI</p>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 
   <!-- MODAL DE RESERVA -->
   <div id="modalReserva" class="modal-overlay hidden">
-    <div class="modal-content-box max-w-4xl fade-in flex flex-col">
-      <div class="bg-[#002f5c] px-6 py-4 flex items-center justify-between text-white shrink-0">
-        <h3 class="text-lg font-bold flex items-center gap-2">
+    <div class="modal-content-box max-w-4xl fade-in flex flex-col w-full h-full sm:h-auto">
+      <div class="bg-[#002f5c] px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between text-white shrink-0">
+        <h3 class="text-base sm:text-lg font-bold flex items-center gap-2 truncate">
           <i class="fa-solid fa-calendar-plus text-blue-300"></i> Nueva Reserva
         </h3>
-        <button onclick="ModalController.cerrar()" class="text-blue-200 hover:text-white transition-colors">
-          <i class="fa-solid fa-xmark text-xl"></i>
+        <button onclick="ModalController.cerrar()" class="text-blue-200 hover:text-white transition-colors p-1 shrink-0">
+          <i class="fa-solid fa-xmark text-lg sm:text-xl"></i>
         </button>
       </div>
 
+      <!-- El overflow-y-auto asegura que TODO el contenido del modal haga scroll en móviles -->
       <div class="flex flex-col md:flex-row flex-grow overflow-y-auto md:overflow-hidden">
-        <!-- Columna Izquierda (Info Espacio con Scroll Independiente) -->
+
+        <!-- Columna Izquierda (Info Espacio) -->
         <div class="w-full md:w-1/3 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col shrink-0 md:h-full md:overflow-y-auto">
-          <img id="modalImagen" src="" alt="Espacio" class="w-full h-48 md:h-56 object-cover object-center shrink-0 shadow-sm">
-          <div class="p-6 flex-grow">
-            <h4 id="modalTitulo" class="text-xl font-black text-slate-800 mb-2"></h4>
-            <p id="modalDescripcion" class="text-sm text-slate-600 mb-4"></p>
-            <div class="mb-6 flex items-center gap-2 text-sm font-bold text-slate-700 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+          <img id="modalImagen" src="" alt="Espacio" class="w-full h-40 md:h-56 object-cover object-center shrink-0 shadow-sm">
+          <div class="p-4 sm:p-6 flex-grow">
+            <h4 id="modalTitulo" class="text-lg sm:text-xl font-black text-slate-800 mb-2"></h4>
+            <p id="modalDescripcion" class="text-xs sm:text-sm text-slate-600 mb-4"></p>
+            <div class="mb-4 sm:mb-6 flex flex-wrap items-center gap-2 text-xs sm:text-sm font-bold text-slate-700 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
               <i class="fa-solid fa-users text-[#002f5c]"></i> Capacidad: <span id="modalCapacidad" class="text-[#002f5c]"></span>
             </div>
-            <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">¿Qué incluye?</h5>
-            <ul id="modalEspecificaciones" class="space-y-2 mb-4"></ul>
+            <h5 class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 sm:mb-3">¿Qué incluye?</h5>
+            <ul id="modalEspecificaciones" class="space-y-1.5 sm:space-y-2 mb-4"></ul>
 
-            <!-- APARTADO DE MAQUINARIA (Exclusivo Coworking 3) -->
-            <div id="infoMaquinasCW3" class="hidden mt-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <h5 class="text-xs font-bold text-[#002f5c] uppercase tracking-wider mb-3 flex items-center gap-2">
+            <!-- NUEVO TEXTO: AVISO CIE -->
+            <div class="mb-4 bg-blue-50/50 p-3 sm:p-4 rounded-xl border border-blue-100 shadow-sm text-[10px] sm:text-xs text-slate-700 leading-relaxed text-justify">
+              <p>
+                <i class="fa-solid fa-circle-info text-[#002f5c] mr-1"></i>
+                <strong class="text-[#002f5c]">Aviso importante:</strong> </br> El CIE es un espacio destinado al desarrollo de actividades de innovación y emprendimiento. Las solicitudes de actividades en otros ámbitos serán evaluadas conforme a su pertinencia y a la disponibilidad de las instalaciones. Como alternativa, se invita a revisar la página de eventos de CUCEI como una opción para identificar otros espacios del Centro Universitario.
+              </p>
+            </div>
+            <!-- FIN NUEVO TEXTO -->
+
+            <!-- APARTADO DE MAQUINARIA (Exclusivo Coworking 3) COMPLETO -->
+            <div id="infoMaquinasCW3" class="hidden mt-4 sm:mt-6 bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-sm">
+              <h5 class="text-[10px] sm:text-xs font-bold text-[#002f5c] uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
                 <i class="fa-solid fa-gears"></i> Maquinaria Disponible
               </h5>
-              <div class="space-y-3 pr-1 text-xs">
+              <!-- Scroll interno añadido aquí por si crece la lista -->
+              <div class="space-y-2 sm:space-y-3 pr-1 text-[10px] sm:text-xs max-h-48 sm:max-h-60 overflow-y-auto">
                 <div class="p-2 bg-slate-50 border border-slate-100 rounded">
                   <p class="font-bold text-slate-800">Fresadora CNC EMCO Concept Mill 55</p>
                   <p class="text-slate-500">Sustractivo | Vol: 190x140x260 mm</p>
@@ -376,6 +463,10 @@
                   <p class="text-slate-500">FDM | Vol: 256x256x256 mm</p>
                 </div>
                 <div class="p-2 bg-slate-50 border border-slate-100 rounded">
+                  <p class="font-bold text-slate-800">Impresora Raise3D Pro2 Plus</p>
+                  <p class="text-slate-500">FDM | Vol: 305x305x605 mm</p>
+                </div>
+                <div class="p-2 bg-slate-50 border border-slate-100 rounded">
                   <p class="font-bold text-slate-800">Sinterizadora Lisa Pro Rev.E</p>
                   <p class="text-slate-500">SLS (PA12) | Vol: 106x154x224 mm</p>
                 </div>
@@ -384,45 +475,48 @@
                   <p class="text-slate-500">Manual | Vol: 500x200x300 mm</p>
                 </div>
                 <div class="p-2 bg-slate-50 border border-slate-100 rounded">
-                  <p class="font-bold text-slate-800">Impresora Raise3D Pro2 Plus</p>
-                  <p class="text-slate-500">FDM | Vol: 305x305x605 mm</p>
-                </div>
-                <div class="p-2 bg-slate-50 border border-slate-100 rounded">
                   <p class="font-bold text-slate-800">Grabadora Láser Creality Falcon2 Pro 40W</p>
                   <p class="text-slate-500">Diodo Láser | Área: 400x415 mm</p>
+                </div>
+                <div class="p-2 bg-slate-50 border border-slate-100 rounded">
+                  <p class="font-bold text-slate-800">Absolute ARM 83</p>
+                  <p class="text-slate-500">Tecnología y metodología portátil | Volumen esférico 2m</p>
+                </div>
+                <div class="p-2 bg-slate-50 border border-slate-100 rounded">
+                  <p class="font-bold text-slate-800">Caja de Iluminación</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Columna Derecha (Formulario con Scroll Independiente) -->
-        <div class="w-full md:w-2/3 p-6 md:p-8 bg-white relative md:h-full md:overflow-y-auto">
+        <!-- Columna Derecha (Formulario) -->
+        <div class="w-full md:w-2/3 p-4 sm:p-6 md:p-8 bg-white relative md:h-full md:overflow-y-auto">
           <div id="contenedorFormulario" class="fade-in h-full flex flex-col">
 
             <!-- BANNER DE RESERVA DEVUELTA -->
-            <div id="bannerReservaDevuelta" class="hidden mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl animate-fadeIn shadow-sm">
-              <p class="text-sm font-bold text-amber-900 flex items-center gap-2 mb-1">
+            <div id="bannerReservaDevuelta" class="hidden mb-4 p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-xl animate-fadeIn shadow-sm">
+              <p class="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-2 mb-1">
                 <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Reserva devuelta para edición
               </p>
-              <p id="textoMotivoDevolucion" class="text-xs text-amber-800 font-medium"></p>
+              <p id="textoMotivoDevolucion" class="text-[10px] sm:text-xs text-amber-800 font-medium"></p>
             </div>
 
-            <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4 shrink-0">
-              <h3 class="text-xl font-bold text-slate-800">Completa tu reserva</h3>
+            <div class="flex flex-wrap items-center justify-between mb-4 sm:mb-6 border-b border-slate-100 pb-3 sm:pb-4 shrink-0 gap-2">
+              <h3 class="text-lg sm:text-xl font-bold text-slate-800">Completa tu reserva</h3>
               <span id="badgeRol"></span>
             </div>
 
-            <form id="formReserva" onsubmit="StudentView.enviarReserva(event)" class="space-y-6">
-              <!-- Hidden Inputs -->
+            <form id="formReserva" onsubmit="StudentView.enviarReserva(event)" class="space-y-5 sm:space-y-6">
+              <!-- Hidden Inputs se mantienen igual -->
               <input type="hidden" id="inputRol" name="rol">
               <input type="hidden" id="inputCoworking" name="coworking">
               <input type="hidden" id="inputModoEdicion" name="modoEdicion" value="N">
               <input type="hidden" id="inputIdOriginal" name="idOriginal" value="">
               <input type="hidden" id="inputReservaDevueltaId" name="reservaDevueltaId" value="">
 
-              <!-- Fila 1: Nombres (Bloqueados y precargados) -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Fila 1: Nombres -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label class="block text-xs font-bold text-slate-500 mb-1">Nombres</label>
                   <input type="text" id="nombres" required readonly class="w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-sm cursor-not-allowed outline-none">
@@ -434,7 +528,7 @@
               </div>
 
               <!-- Fila 2: Contacto -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label id="labelCodigo" class="block text-xs font-bold text-slate-500 mb-1">Código:</label>
                   <input type="text" id="codigo" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
@@ -446,207 +540,221 @@
               </div>
 
               <div id="campoExtension" class="hidden">
-                <label class="block text-xs font-bold text-slate-500 mb-1">Extensión Telefónica <span class="text-slate-400 font-normal">(opcional)</span></label>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Extensión <span class="text-slate-400 font-normal">(opcional)</span></label>
                 <input type="text" id="extension" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej. 1234">
               </div>
 
               <div>
-                <label class="block text-xs font-bold text-slate-500 mb-1">Correo Electrónico (Solo lectura)</label>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Correo Electrónico</label>
                 <input type="email" id="correo" required readonly class="w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-3 py-2 text-sm cursor-not-allowed">
               </div>
 
-              <!-- Encargado: solo para académicos y es opcional -->
-              <div id="campoResponsable" class="hidden space-y-4 pt-2">
-                <div class="border-t border-slate-100 pt-4">
-                  <p class="text-sm font-bold text-slate-800">Datos del encargado <span class="text-slate-400 font-normal text-xs">(opcional)</span></p>
-                  <p class="text-[10px] text-slate-400 mt-1">Si agregas un encargado, debes proporcionar los tres datos.</p>
+              <!-- Encargado -->
+              <div id="campoResponsable" class="hidden space-y-3 sm:space-y-4 pt-2">
+                <div class="border-t border-slate-100 pt-3 sm:pt-4">
+                  <p class="text-sm font-bold text-slate-800">Datos del encargado <span class="text-slate-400 font-normal text-xs">(opcional - En caso de que no sea usted)</span></p>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">Nombre(s) del encargado</label>
-                    <input type="text" id="nombreEncargado" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nombre(s)">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Nombre(s)</label>
+                    <input type="text" id="nombreEncargado" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                   </div>
                   <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">Apellidos del encargado</label>
-                    <input type="text" id="apellidosEncargado" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Apellidos">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Apellidos</label>
+                    <input type="text" id="apellidosEncargado" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                   </div>
-                </div>
-                <div>
-                  <label class="block text-xs font-bold text-slate-500 mb-1">Correo del encargado</label>
-                  <input type="email" id="correoEncargado" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="encargado@cucei.udg.mx">
-                  <p class="text-[10px] text-slate-400 mt-1">Permitidos: @alumnos.udg.mx, @academicos.udg.mx o @cucei.udg.mx</p>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Correo</label>
+                    <input type="email" id="correoEncargado" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Teléfono</label>
+                    <input type="tel" id="telefonoEncargado" pattern="[0-9]{10}" placeholder="10 dígitos" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                  </div>
                 </div>
               </div>
 
-              <!-- CONTENEDOR DINÁMICO DE EVENTOS -->
+              <!-- Eventos -->
               <div id="seccionEventos">
-                <!-- Tipo de actividad (Radio Cards) -->
-                <div id="tipoActividadContainer" class="pt-4 border-t border-slate-100">
-                  <label class="block text-xs font-bold text-slate-500 mb-3">Tipo de actividad <span class="text-rose-500">*</span></label>
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Conferencia">
+                <div id="tipoActividadContainer" class="pt-3 sm:pt-4 border-t border-slate-100">
+                  <label class="block text-xs font-bold text-slate-500 mb-2 sm:mb-3">Tipo de actividad <span class="text-rose-500">*</span></label>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                    <label class="cursor-pointer group flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Conferencia">
                       <input type="radio" name="tipoActividad" value="Conferencia" class="sr-only mt-1">
-                      <span class="text-2xl text-slate-400 mb-2 transition-colors"><i class="fa-solid fa-microphone"></i></span>
-                      <span class="font-bold text-sm text-slate-600 transition-colors">Conferencia</span>
+                      <span class="text-xl sm:text-2xl text-slate-400 mb-1 sm:mb-2 transition-colors"><i class="fa-solid fa-microphone"></i></span>
+                      <span class="font-bold text-xs sm:text-sm text-slate-600 transition-colors">Conferencia</span>
                     </label>
-                    <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Taller">
+                    <label class="cursor-pointer group flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Taller">
                       <input type="radio" name="tipoActividad" value="Taller" class="sr-only mt-1">
-                      <span class="text-2xl text-slate-400 mb-2 transition-colors"><i class="fa-solid fa-people-group"></i></span>
-                      <span class="font-bold text-sm text-slate-600 transition-colors">Taller</span>
+                      <span class="text-xl sm:text-2xl text-slate-400 mb-1 sm:mb-2 transition-colors"><i class="fa-solid fa-people-group"></i></span>
+                      <span class="font-bold text-xs sm:text-sm text-slate-600 transition-colors">Taller</span>
                     </label>
-                    <label class="cursor-pointer group flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Reunion">
+                    <label class="cursor-pointer group flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Reunion">
                       <input type="radio" name="tipoActividad" value="Reunion" class="sr-only mt-1">
-                      <span class="text-2xl text-slate-400 mb-2 transition-colors"><i class="fa-solid fa-chalkboard-user"></i></span>
-                      <span class="font-bold text-sm text-slate-600 transition-colors">Reunión</span>
+                      <span class="text-xl sm:text-2xl text-slate-400 mb-1 sm:mb-2 transition-colors"><i class="fa-solid fa-chalkboard-user"></i></span>
+                      <span class="font-bold text-xs sm:text-sm text-slate-600 transition-colors">Reunión</span>
+                    </label>
+                    <label class="cursor-pointer group flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-blue-50 transition-all tipo-actividad" data-valor="Emprendimiento/Startup">
+                      <input type="radio" name="tipoActividad" value="Emprendimiento/Startup" class="sr-only mt-1">
+                      <span class="text-xl sm:text-2xl text-slate-400 mb-1 sm:mb-2 transition-colors"><i class="fa-solid fa-rocket"></i></span>
+                      <span class="font-bold text-xs sm:text-sm text-center text-slate-600 transition-colors">Startup</span>
                     </label>
                   </div>
                   <p id="errorTipoActividad" class="hidden text-xs text-rose-500 mt-2"><i class="fa-solid fa-circle-exclamation mr-1"></i> Selecciona un tipo de actividad.</p>
                 </div>
 
                 <div class="mt-4">
-                  <label class="block text-xs font-bold text-slate-500 mb-1">Nombre del Evento o Actividad</label>
-                  <input type="text" id="actividad" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ej. Reunión de proyecto modular">
+                  <label class="block text-xs font-bold text-slate-500 mb-1">Nombre del Evento, Actividad o Proyecto</label>
+                  <input type="text" id="actividad" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
 
                 <div class="mt-4">
-                  <label class="block text-xs font-bold text-slate-500 mb-1">Breve Descripción de la Actividad</label>
-                  <textarea id="descripcionActividad" required rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Descripción breve del evento de Innovación o Emprendimiento"></textarea>
+                  <label class="block text-xs font-bold text-slate-500 mb-1">Breve Descripción del Evento, Actividad o Proyecto</label>
+                  <textarea id="descripcionActividad" required rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
                 </div>
               </div>
 
-              <!-- CONTENEDOR DINÁMICO DE MÁQUINAS (Solo Coworking 3) -->
-              <div id="seccionMaquinasForm" class="hidden pt-4 border-t border-slate-100">
-                <label class="block text-xs font-bold text-slate-500 mb-3">Selecciona la(s) máquina(s) a utilizar <span class="text-rose-500">*</span></label>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2">
-                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
-                    <input type="checkbox" name="maquinas_check" value="Fresadora CNC EMCO Concept Mill 55" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+              <!-- Máquinas (Con Scroll Interno Agregado y Lista Completa) -->
+              <div id="seccionMaquinasForm" class="hidden pt-3 sm:pt-4 border-t border-slate-100">
+                <label class="block text-xs font-bold text-slate-500 mb-2 sm:mb-3">
+                  Selecciona la(s) máquina(s) a utilizar. <br><br>
+                  NOTA: El uso del equipo podrá requerir una capacitación breve y/o una previa aceptación del diseño. Los materiales necesarios para la operación de las máquinas deberán ser proporcionados por los usuarios y su utilización estará sujeta a previo acuerdo con el técnico responsable del laboratorio. <span class="text-rose-500">*</span>
+                </label>
+                <!-- Agregado el scroll interno max-h-48 y padding derecho para que se vea cómodo en celular -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 max-h-48 sm:max-h-60 overflow-y-auto pr-2">
+                  <label class="flex items-start gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Fresadora CNC EMCO Concept Mill 55" class="mt-0.5 text-blue-600 focus:ring-blue-500 shrink-0">
                     <div><span class="font-bold text-slate-800 block">Fresadora CNC EMCO Concept Mill 55</span></div>
                   </label>
-                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
-                    <input type="checkbox" name="maquinas_check" value="Impresora Bambu Lab P1S" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                  <label class="flex items-start gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Impresora Bambu Lab P1S" class="mt-0.5 text-blue-600 focus:ring-blue-500 shrink-0">
                     <div><span class="font-bold text-slate-800 block">Impresora Bambu Lab P1S</span></div>
                   </label>
-                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
-                    <input type="checkbox" name="maquinas_check" value="Impresora Bambu Lab A1" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                  <label class="flex items-start gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Impresora Bambu Lab A1" class="mt-0.5 text-blue-600 focus:ring-blue-500 shrink-0">
                     <div><span class="font-bold text-slate-800 block">Impresora Bambu Lab A1</span></div>
                   </label>
-                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
-                    <input type="checkbox" name="maquinas_check" value="Sinterizadora Lisa Pro Rev.E" class="mt-0.5 text-blue-600 focus:ring-blue-500">
-                    <div><span class="font-bold text-slate-800 block">Sinterizadora Lisa Pro Rev.E</span></div>
-                  </label>
-                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
-                    <input type="checkbox" name="maquinas_check" value="Fresadora manual Marks Super SV" class="mt-0.5 text-blue-600 focus:ring-blue-500">
-                    <div><span class="font-bold text-slate-800 block">Fresadora manual Marks Super SV</span></div>
-                  </label>
-                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
-                    <input type="checkbox" name="maquinas_check" value="Impresora Raise3D Pro2 Plus" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                  <label class="flex items-start gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Impresora Raise3D Pro2 Plus" class="mt-0.5 text-blue-600 focus:ring-blue-500 shrink-0">
                     <div><span class="font-bold text-slate-800 block">Impresora Raise3D Pro2 Plus</span></div>
                   </label>
-                  <label class="flex items-start gap-2 text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
-                    <input type="checkbox" name="maquinas_check" value="Grabadora láser Creality Falcon2 Pro 40W" class="mt-0.5 text-blue-600 focus:ring-blue-500">
+                  <label class="flex items-start gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Sinterizadora Lisa Pro Rev.E" class="mt-0.5 text-blue-600 focus:ring-blue-500 shrink-0">
+                    <div><span class="font-bold text-slate-800 block">Sinterizadora Lisa Pro Rev.E</span></div>
+                  </label>
+                  <label class="flex items-start gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Fresadora manual Marks Super SV" class="mt-0.5 text-blue-600 focus:ring-blue-500 shrink-0">
+                    <div><span class="font-bold text-slate-800 block">Fresadora manual Marks Super SV</span></div>
+                  </label>
+                  <label class="flex items-start gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Grabadora láser Creality Falcon2 Pro 40W" class="mt-0.5 text-blue-600 focus:ring-blue-500 shrink-0">
                     <div><span class="font-bold text-slate-800 block">Grabadora láser Creality Falcon2 Pro 40W</span></div>
                   </label>
+                  <label class="flex items-start gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Absolute ARM 83" class="mt-0.5 text-blue-600 focus:ring-blue-500 shrink-0">
+                    <div><span class="font-bold text-slate-800 block">Absolute ARM 83</span></div>
+                  </label>
+                  <label class="flex items-start gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer border border-slate-200 hover:border-blue-300">
+                    <input type="checkbox" name="maquinas_check" value="Caja de iluminación" class="mt-0.5 text-blue-600 focus:ring-blue-500 shrink-0">
+                    <div><span class="font-bold text-slate-800 block">Caja de iluminación</span></div>
+                  </label>
                 </div>
-
-                <!-- NUEVO CAMPO: DESCRIPCIÓN DE USO -->
-                <div class="mt-4 pt-4 border-t border-slate-100">
+                <div class="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100">
                   <label class="block text-xs font-bold text-slate-500 mb-1">Descripción de uso <span class="text-rose-500">*</span></label>
-                  <textarea id="descripcionUsoCW3" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Describe brevemente qué harás con la(s) máquina(s) seleccionada(s)..."></textarea>
+                  <textarea id="descripcionUsoCW3" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
                   <p id="errorDescCW3" class="hidden text-xs text-rose-500 mt-1"><i class="fa-solid fa-circle-exclamation mr-1"></i> Este campo es obligatorio.</p>
                 </div>
               </div>
 
-              <!-- ODS (Contenedor con ID asignado) -->
-              <div id="seccionODS" class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <label class="block text-sm font-bold text-slate-800 mb-1">Objetivos de Desarrollo Sostenible (ODS)</label>
-                <div class="h-32 overflow-y-auto pr-2 grid grid-cols-1 sm:grid-cols-2 gap-2 border border-slate-200 rounded bg-white p-2">
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 1: Fin de la Pobreza"> ODS 1: Fin de la Pobreza</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 2: Hambre Cero"> ODS 2: Hambre Cero</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 3: Salud y Bienestar"> ODS 3: Salud y Bienestar</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 4: Educación de Calidad"> ODS 4: Educación de Calidad</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 5: Igualdad de Género"> ODS 5: Igualdad de Género</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 6: Agua Limpia y Saneamiento"> ODS 6: Agua Limpia y Saneamiento</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 7: Energía Asequible y No Contaminante"> ODS 7: Energía Asequible y No Contaminante</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 8: Trabajo Decente y Crecimiento Económico"> ODS 8: Trabajo Decente y Crecimiento Económico</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 9: Industria, Innovación e Infraestructura"> ODS 9: Industria, Innovación e Infraestructura</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 10: Reducción de las Desigualdades"> ODS 10: Reducción de las Desigualdades</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 11: Ciudades y Comunidades Sostenibles"> ODS 11: Ciudades y Comunidades Sostenibles</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 12: Producción y Consumo Responsables"> ODS 12: Producción y Consumo Responsables</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 13: Acción por el Clima"> ODS 13: Acción por el Clima</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 14: Vida Submarina"> ODS 14: Vida Submarina</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 15: Vida de Ecosistemas Terrestres"> ODS 15: Vida de Ecosistemas Terrestres</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 16: Paz, Justicia e Instituciones Sólidas"> ODS 16: Paz, Justicia e Instituciones Sólidas</label>
-                  <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 17: Alianzas para Lograr los Objetivos"> ODS 17: Alianzas para Lograr los Objetivos</label>
+              <div id="seccionODS" class="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200">
+                <label class="block text-xs sm:text-sm font-bold text-slate-800 mb-1">Objetivos de Desarrollo Sostenible (ODS) <span class="text-rose-500">*</span></label>
+                <div class="h-32 overflow-y-auto pr-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 border border-slate-200 rounded bg-white p-2">
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 1: Fin de la Pobreza" class="shrink-0"> ODS 1: Fin de la Pobreza</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 2: Hambre Cero" class="shrink-0"> ODS 2: Hambre Cero</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 3: Salud y Bienestar" class="shrink-0"> ODS 3: Salud y Bienestar</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 4: Educación de Calidad" class="shrink-0"> ODS 4: Educación de Calidad</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 5: Igualdad de Género" class="shrink-0"> ODS 5: Igualdad de Género</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 6: Agua Limpia y Saneamiento" class="shrink-0"> ODS 6: Agua Limpia y Saneamiento</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 7: Energía Asequible y No Contaminante" class="shrink-0"> ODS 7: Energía Asequible y No Contaminante</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 8: Trabajo Decente y Crecimiento Económico" class="shrink-0"> ODS 8: Trabajo Decente y Crecimiento Económico</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 9: Industria, Innovación e Infraestructura" class="shrink-0"> ODS 9: Industria, Innovación e Infraestructura</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 10: Reducción de las Desigualdades" class="shrink-0"> ODS 10: Reducción de las Desigualdades</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 11: Ciudades y Comunidades Sostenibles" class="shrink-0"> ODS 11: Ciudades y Comunidades Sostenibles</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 12: Producción y Consumo Responsables" class="shrink-0"> ODS 12: Producción y Consumo Responsables</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 13: Acción por el Clima" class="shrink-0"> ODS 13: Acción por el Clima</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 14: Vida Submarina" class="shrink-0"> ODS 14: Vida Submarina</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 15: Vida de Ecosistemas Terrestres" class="shrink-0"> ODS 15: Vida de Ecosistemas Terrestres</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 16: Paz, Justicia e Instituciones Sólidas" class="shrink-0"> ODS 16: Paz, Justicia e Instituciones Sólidas</label>
+                  <label class="flex items-center gap-2 text-[10px] sm:text-xs text-slate-700 hover:bg-slate-50 p-1.5 rounded transition-colors cursor-pointer"><input type="checkbox" name="ods_check" value="ODS 17: Alianzas para Lograr los Objetivos" class="shrink-0"> ODS 17: Alianzas para Lograr los Objetivos</label>
                 </div>
+                <p id="errorODS" class="hidden text-xs text-rose-500 mt-2"><i class="fa-solid fa-circle-exclamation mr-1"></i> Selecciona al menos un ODS.</p>
               </div>
 
-              <!-- Archivos Complementarios (Drag & Drop) -->
-              <div class="pt-4 border-t border-slate-100">
-                <label class="block text-sm font-bold text-slate-800 mb-1">Archivos complementarios <span class="text-slate-400 font-normal text-xs">(opcional, máx. 5 archivos)</span></label>
-
-                <div id="uploadZone" class="upload-zone rounded-xl p-6 text-center cursor-pointer bg-slate-50 relative mt-2" ondragover="StudentView.onDragOver(event)" ondragleave="StudentView.onDragLeave(event)" ondrop="StudentView.onDrop(event)">
+              <!-- Archivos Complementarios -->
+              <div class="pt-3 sm:pt-4 border-t border-slate-100">
+                <label class="block text-xs sm:text-sm font-bold text-slate-800 mb-1">Archivos <span class="text-slate-400 font-normal text-[10px] sm:text-xs">(opcional, máx. 5)</span></label>
+                <div id="uploadZone" class="upload-zone rounded-xl p-4 sm:p-6 text-center cursor-pointer bg-slate-50 relative mt-2" ondragover="StudentView.onDragOver(event)" ondragleave="StudentView.onDragLeave(event)" ondrop="StudentView.onDrop(event)">
                   <input type="file" id="inputArchivos" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="StudentView.procesarArchivos(event)" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg">
-                  <div class="pointer-events-none">
-                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-[#002f5c] mb-3"></i>
-                    <p class="text-sm font-semibold text-slate-700">Arrastra archivos aquí o haz clic para seleccionar</p>
-                    <p class="text-[10px] text-slate-400 mt-1">PDF, DOCX, XLSX, PNG, JPG (máx. 25MB c/u)</p>
+                  <div class="pointer-events-none flex flex-col items-center">
+                    <i class="fa-solid fa-cloud-arrow-up text-2xl sm:text-3xl text-[#002f5c] mb-2 sm:mb-3"></i>
+                    <p class="text-xs sm:text-sm font-semibold text-slate-700 px-2">Arrastra o haz clic para subir</p>
                   </div>
                 </div>
-
                 <div id="listaArchivos" class="space-y-2 mt-3 empty:hidden"></div>
               </div>
 
-              <!-- Selector de fechas / horarios dinámicos -->
-              <div class="pt-4 border-t border-slate-100">
-
-               <!-- Toggle Mismo Horario -->
-                <div class="flex flex-wrap items-center gap-3 mb-4 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                  <label class="flex items-center gap-3 text-sm font-bold text-[#002f5c] cursor-pointer">
-                    <div class="relative w-10 h-5">
+              <!-- Selector de fechas -->
+              <div class="pt-3 sm:pt-4 border-t border-slate-100">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-4 bg-blue-50/50 p-2.5 sm:p-3 rounded-xl border border-blue-100">
+                  <label class="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm font-bold text-[#002f5c] cursor-pointer w-full sm:w-auto">
+                    <div class="relative w-9 h-5 shrink-0">
                       <input type="checkbox" id="checkMismoHorario" class="sr-only peer" onchange="StudentView.toggleMismoHorario()" checked>
-                      <!-- Fondo del toggle que cambia a azul -->
                       <div class="w-full h-full bg-slate-300 rounded-full shadow-inner transition-colors peer-checked:bg-[#002f5c]"></div>
-                      <!-- Círculo blanco que se desliza a la derecha -->
-                      <div class="absolute left-0 top-0 w-5 h-5 bg-white rounded-full shadow border border-slate-200 transition-all peer-checked:translate-x-full"></div>
+                      <div class="absolute left-0 top-0 w-5 h-5 bg-white rounded-full shadow border border-slate-200 transition-all peer-checked:translate-x-full scale-90"></div>
                     </div>
-                    Usar el mismo horario para todas las fechas
+                    <span>Usar el mismo horario para todas las fechas</span>
                   </label>
                 </div>
 
-                <div class="flex items-end gap-2 mb-3">
+              <div class="flex flex-col sm:flex-row sm:items-end gap-2 mb-2">
                   <div class="flex-grow">
                     <label class="block text-xs font-bold text-slate-500 mb-1">Selecciona Fecha(s)</label>
                     <input type="date" id="selectorFecha" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                   </div>
-                  <button type="button" onclick="StudentView.agregarFecha()" class="bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shrink-0 shadow">
-                    <i class="fa-solid fa-plus mr-1"></i> Añadir
+                  <button type="button" onclick="StudentView.agregarFecha()" class="w-full sm:w-auto bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow">
+                    Añadir
                   </button>
                 </div>
+
+                <!-- NUEVO TEXTO DE AVISO -->
+                <p class="text-[10px] sm:text-xs text-amber-600 font-medium mb-3 flex items-start gap-1.5">
+                  <i class="fa-solid fa-triangle-exclamation mt-0.5 shrink-0"></i>
+                  <span>Aviso: Si tu evento es el día de mañana y lo registras hoy después de las 4 pm no te podemos asegurar ese lugar, agenda con tiempo.</span>
+                </p>
+                <!-- FIN NUEVO TEXTO -->
 
                 <div id="listaFechasAgregadas" class="flex flex-wrap gap-2 mb-3 empty:hidden"></div>
                 <p id="errorFechas" class="hidden text-xs text-rose-500 mt-1"><i class="fa-solid fa-circle-exclamation mr-1"></i> Agrega al menos una fecha al calendario.</p>
 
                 <!-- Horario Global -->
-                <div id="horarioGlobal" class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 mt-4">
+                <div id="horarioGlobal" class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200 mt-3 sm:mt-4">
                   <div class="col-span-full">
-                    <p class="text-xs font-bold text-slate-500 flex items-center gap-1.5"><i class="fa-regular fa-clock"></i> Horario para todas las fechas</p>
+                    <p class="text-[10px] sm:text-xs font-bold text-slate-500 flex items-center gap-1.5"><i class="fa-regular fa-clock"></i> Horario global</p>
                   </div>
                   <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">Hora de Entrada</label>
-                    <select id="horaEntrada" required onchange="StudentView.filtrarHoraSalida()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#002f5c] outline-none"></select>
+                    <label class="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1">Entrada</label>
+                    <select id="horaEntrada" required onchange="StudentView.filtrarHoraSalida()" class="w-full bg-white border border-slate-200 rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#002f5c] outline-none"></select>
                   </div>
                   <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">Hora de Salida</label>
-                    <select id="horaSalida" required class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#002f5c] outline-none"></select>
+                    <label class="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1">Salida</label>
+                    <select id="horaSalida" required class="w-full bg-white border border-slate-200 rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#002f5c] outline-none"></select>
                   </div>
                 </div>
 
-                <!-- Horarios por Fecha (Oculto por defecto) -->
                 <div id="horariosPorFecha" class="hidden space-y-3 mt-4 max-h-64 overflow-y-auto pr-1"></div>
-
               </div>
 
-              <button type="submit" id="btnEnviar" class="w-full bg-[#002f5c] hover:bg-[#001f3f] text-white py-3.5 rounded-xl text-base font-bold transition-all shadow-lg shadow-[#002f5c]/30 active:scale-[0.98]">
+              <button type="submit" id="btnEnviar" class="w-full bg-[#002f5c] hover:bg-[#001f3f] text-white py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-bold transition-all shadow-lg shadow-[#002f5c]/30 active:scale-[0.98]">
                 Confirmar mi reserva
               </button>
               <div id="mensajeResultado" class="hidden"></div>
@@ -659,122 +767,112 @@
 
   <!-- VISTA: ADMIN DASHBOARD -->
   <div id="vistaAdmin" class="hidden flex-grow flex flex-col bg-slate-100 fade-in">
-    <div class="max-w-7xl mx-auto px-4 py-8 w-full">
-      <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+    <div class="max-w-7xl mx-auto px-4 py-6 sm:py-8 w-full">
+      <div class="flex flex-col md:flex-row md:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
         <div>
-          <h2 class="text-2xl font-black text-slate-800">Panel de Administración</h2>
-          <p class="text-slate-500 text-sm">Gestiona reservas, calendarios y permisos del sistema.</p>
+          <h2 class="text-xl sm:text-2xl font-black text-slate-800">Panel de Administración</h2>
+          <p class="text-xs sm:text-sm text-slate-500">Gestiona reservas, calendarios y permisos del sistema.</p>
         </div>
       </div>
 
       <!-- TABS NAVEGACIÓN -->
-      <div class="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto no-scrollbar">
-        <button id="tabBtnReservas" onclick="AdminDashboard.cambiarTab('reservas')" class="px-5 py-3 text-sm font-bold border-b-[3px] border-[#002f5c] text-[#002f5c] whitespace-nowrap bg-white/50 rounded-t-lg">
-          <i class="fa-solid fa-list-check mr-2"></i> Gestión de Reservas
+      <div class="flex gap-2 mb-4 sm:mb-6 border-b border-slate-200 overflow-x-auto no-scrollbar pb-[1px]">
+        <button id="tabBtnReservas" onclick="AdminDashboard.cambiarTab('reservas')" class="px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold border-b-[3px] border-[#002f5c] text-[#002f5c] whitespace-nowrap bg-white/50 rounded-t-lg transition-colors">
+          <i class="fa-solid fa-list-check mr-1.5 sm:mr-2"></i> Reservas
         </button>
-        <button id="tabBtnCalendario" onclick="AdminDashboard.cambiarTab('calendario')" class="px-5 py-3 text-sm font-bold border-b-[3px] border-transparent text-slate-500 hover:text-slate-800 hover:bg-white/50 transition-colors whitespace-nowrap rounded-t-lg">
-          <i class="fa-solid fa-calendar-days mr-2"></i> Calendario Digital
+        <button id="tabBtnCalendario" onclick="AdminDashboard.cambiarTab('calendario')" class="px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold border-b-[3px] border-transparent text-slate-500 hover:text-slate-800 hover:bg-white/50 transition-colors whitespace-nowrap rounded-t-lg">
+          <i class="fa-solid fa-calendar-days mr-1.5 sm:mr-2"></i> Calendario
         </button>
-        <button id="tabBtnUsuarios" onclick="AdminDashboard.cambiarTab('usuarios')" class="px-5 py-3 text-sm font-bold border-b-[3px] border-transparent text-slate-500 hover:text-slate-800 hover:bg-white/50 transition-colors whitespace-nowrap rounded-t-lg">
-          <i class="fa-solid fa-users-gear mr-2"></i> Usuarios y Roles
+        <button id="tabBtnUsuarios" onclick="AdminDashboard.cambiarTab('usuarios')" class="px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold border-b-[3px] border-transparent text-slate-500 hover:text-slate-800 hover:bg-white/50 transition-colors whitespace-nowrap rounded-t-lg">
+          <i class="fa-solid fa-users-gear mr-1.5 sm:mr-2"></i> Usuarios
         </button>
       </div>
 
       <!-- TAB 1: RESERVAS -->
       <div id="adminVistaReservas">
-        <div id="tarjetasMetricas" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"></div>
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm col-span-1">
-            <h3 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-[#002f5c]"></i> Reservas por Estado</h3>
-            <div class="h-48 relative"><canvas id="graficaEstados"></canvas></div>
+        <div id="tarjetasMetricas" class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm col-span-1">
+            <h3 class="text-xs sm:text-sm font-bold text-slate-700 mb-3 sm:mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-[#002f5c]"></i> Reservas por Estado</h3>
+            <div class="h-40 sm:h-48 relative"><canvas id="graficaEstados"></canvas></div>
           </div>
-          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm col-span-1 lg:col-span-2">
-            <h3 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-bar text-[#002f5c]"></i> Reservas por Espacio</h3>
-            <div class="h-48 w-full"><canvas id="graficaEspacios"></canvas></div>
+          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm col-span-1 lg:col-span-2">
+            <h3 class="text-xs sm:text-sm font-bold text-slate-700 mb-3 sm:mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-bar text-[#002f5c]"></i> Reservas por Espacio</h3>
+            <div class="h-40 sm:h-48 w-full"><canvas id="graficaEspacios"></canvas></div>
           </div>
         </div>
 
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-          <div class="p-5 border-b border-slate-200 bg-slate-50 flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[400px] sm:min-h-[500px]">
+          <div class="p-4 sm:p-5 border-b border-slate-200 bg-slate-50 flex flex-col lg:flex-row gap-3 sm:gap-4 items-start lg:items-center justify-between">
             <div class="w-full lg:w-1/2">
-              <label class="block text-xs font-bold text-slate-500 mb-1">Buscador rápido de reservas</label>
-              <div class="flex gap-2">
-                <div class="relative flex-grow">
+              <label class="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1">Buscador rápido</label>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <div class="relative flex-grow w-full">
                   <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                   <input type="text" id="inputBusqueda" placeholder="Buscar por correo institucional..." class="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#002f5c] outline-none shadow-sm">
                 </div>
-                <button onclick="AdminDashboard.buscar()" class="bg-[#002f5c] hover:bg-[#001f3f] text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow">Buscar</button>
-                <button onclick="AdminDashboard.limpiarBusqueda()" title="Limpiar búsqueda" class="bg-slate-200 hover:bg-slate-300 text-slate-600 px-4 py-2.5 rounded-lg text-sm transition-colors"><i class="fa-solid fa-eraser"></i></button>
+                <div class="flex gap-2 w-full sm:w-auto">
+                  <button onclick="AdminDashboard.buscar()" class="bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-colors shadow flex-grow sm:flex-grow-0">Buscar</button>
+                  <button onclick="AdminDashboard.limpiarBusqueda()" title="Limpiar búsqueda" class="bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-2.5 rounded-lg text-sm transition-colors shrink-0"><i class="fa-solid fa-eraser"></i></button>
+                </div>
               </div>
             </div>
-            <div id="resultadoBusqueda" class="hidden w-full mt-2 lg:mt-0 bg-white border border-blue-200 rounded-xl shadow-lg overflow-hidden z-10"></div>
           </div>
 
-          <div class="p-5 border-b border-slate-200 flex flex-col xl:flex-row gap-4 justify-between items-center bg-white">
-            <h3 class="text-lg font-bold text-slate-800">Directorio de Reservas</h3>
+          <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col xl:flex-row gap-3 sm:gap-4 justify-between items-start xl:items-center bg-white">
+            <h3 class="text-base sm:text-lg font-bold text-slate-800">Directorio</h3>
             <div class="flex flex-wrap items-center gap-2">
-              <span class="text-xs font-bold text-slate-400 uppercase mr-2">Filtros:</span>
-              <button data-filtro="todos" onclick="AdminDashboard.filtrarPorEstado('todos')" class="filtro-btn bg-[#002f5c] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm">Todos</button>
-              <button data-filtro="Pendiente" onclick="AdminDashboard.filtrarPorEstado('Pendiente')" class="filtro-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-slate-200">Pendientes</button>
-              <button data-filtro="Aceptada" onclick="AdminDashboard.filtrarPorEstado('Aceptada')" class="filtro-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-slate-200">Aceptadas</button>
-              <button data-filtro="Rechazada" onclick="AdminDashboard.filtrarPorEstado('Rechazada')" class="filtro-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-slate-200">Rechazadas</button>
-              <button data-filtro="Devuelta" onclick="AdminDashboard.filtrarPorEstado('Devuelta')" class="filtro-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-slate-200">Devueltas</button>
+              <button data-filtro="todos" onclick="AdminDashboard.filtrarPorEstado('todos')" class="filtro-btn bg-[#002f5c] text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-colors shadow-sm">Todos</button>
+              <button data-filtro="Pendiente" onclick="AdminDashboard.filtrarPorEstado('Pendiente')" class="filtro-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-colors border border-slate-200">Pendientes</button>
+              <button data-filtro="Aceptada" onclick="AdminDashboard.filtrarPorEstado('Aceptada')" class="filtro-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-colors border border-slate-200">Aceptadas</button>
+              <button data-filtro="Rechazada" onclick="AdminDashboard.filtrarPorEstado('Rechazada')" class="filtro-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-colors border border-slate-200">Rechazadas</button>
+              <button data-filtro="Devuelta" onclick="AdminDashboard.filtrarPorEstado('Devuelta')" class="filtro-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-colors border border-slate-200">Devueltas</button>
 
-              <div class="w-px h-6 bg-slate-300 mx-2 hidden sm:block"></div>
-              <button onclick="AdminDashboard.recargar()" class="text-slate-400 hover:text-[#002f5c] p-2 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors" title="Actualizar datos"><i class="fa-solid fa-rotate"></i></button>
+              <button onclick="AdminDashboard.recargar()" class="text-slate-400 hover:text-[#002f5c] p-1.5 sm:p-2 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors ml-auto sm:ml-2"><i class="fa-solid fa-rotate"></i></button>
             </div>
           </div>
 
           <div class="relative flex-grow">
-            <div id="spinnerTabla" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
-              <i class="fa-solid fa-circle-notch fa-spin text-3xl text-[#002f5c] mb-2"></i>
-              <span class="text-sm font-bold text-[#002f5c]">Cargando directorio…</span>
-            </div>
             <div id="contenedorTabla" class="hidden overflow-x-auto h-full">
-              <table class="tabla-admin w-full text-left border-collapse min-w-[900px]">
-                <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase sticky top-0 z-0">
+              <!-- Las tablas con overflow-x-auto y min-w-[] garantizan excelente UI en móviles -->
+              <table class="tabla-admin w-full text-left border-collapse min-w-[700px] md:min-w-[900px]">
+                <thead class="bg-slate-50 border-b border-slate-200 text-[10px] sm:text-xs text-slate-500 uppercase sticky top-0 z-0">
                   <tr>
-                    <th class="p-3 font-semibold">ID</th>
-                    <th class="p-3 font-semibold">Solicitante</th>
-                    <th class="p-3 font-semibold">Espacio</th>
-                    <th class="p-3 font-semibold">Fecha</th>
-                    <th class="p-3 font-semibold">Horario</th>
-                    <th class="p-3 font-semibold text-center">Estado</th>
-                    <th class="p-3 font-semibold text-right pr-6">Acción</th>
+                    <th class="p-2 sm:p-3 font-semibold">ID</th>
+                    <th class="p-2 sm:p-3 font-semibold">Solicitante</th>
+                    <th class="p-2 sm:p-3 font-semibold">Espacio</th>
+                    <th class="p-2 sm:p-3 font-semibold">Fecha</th>
+                    <th class="p-2 sm:p-3 font-semibold">Horario</th>
+                    <th class="p-2 sm:p-3 font-semibold text-center">Estado</th>
+                    <th class="p-2 sm:p-3 font-semibold text-right pr-4 sm:pr-6">Acción</th>
                   </tr>
                 </thead>
                 <tbody id="cuerpoTabla" class="divide-y divide-slate-100"></tbody>
               </table>
-              <div id="mensajeTablaVacia" class="hidden flex flex-col items-center justify-center p-16 text-slate-400">
-                <i class="fa-solid fa-folder-open text-4xl text-slate-200 mb-3"></i>
-                <p class="text-sm font-semibold text-slate-500">No hay reservas que coincidan con el filtro seleccionado.</p>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- TAB 2: CALENDARIO DIGITAL -->
+      <!-- TAB 2: CALENDARIO -->
       <div id="adminVistaCalendario" class="hidden">
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col h-[800px]">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 flex flex-col h-[600px] sm:h-[800px]">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 border-b border-slate-100 pb-3 sm:pb-4">
             <div>
-              <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-calendar-days text-[#002f5c]"></i> Agenda General
+              <h3 class="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-calendar-days text-[#002f5c]"></i> Agenda
               </h3>
-              <p class="text-xs text-slate-500 mt-1">Vista interactiva de todas las solicitudes registradas.</p>
             </div>
-            <div class="flex flex-wrap items-center gap-3">
-              <div class="relative">
-                <i class="fa-solid fa-filter absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                <select id="filtroCalendarioEspacio" onchange="AdminDashboard.filtrarCalendario()" class="text-sm pl-8 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#002f5c] outline-none font-medium text-slate-700 hover:bg-white transition-colors cursor-pointer">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
+              <div class="relative flex-grow sm:flex-grow-0">
+                <i class="fa-solid fa-filter absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <select id="filtroCalendarioEspacio" onchange="AdminDashboard.filtrarCalendario()" class="w-full sm:w-auto text-[10px] sm:text-sm pl-7 pr-6 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#002f5c] outline-none font-medium text-slate-700 hover:bg-white transition-colors cursor-pointer">
                   <option value="">Todos los espacios</option>
-                  <!-- Opciones dinámicas -->
                 </select>
               </div>
-              <div class="relative">
-                <i class="fa-solid fa-layer-group absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                <select id="filtroCalendarioEstado" onchange="AdminDashboard.filtrarCalendario()" class="text-sm pl-8 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#002f5c] outline-none font-medium text-slate-700 hover:bg-white transition-colors cursor-pointer">
+              <div class="relative flex-grow sm:flex-grow-0">
+                <i class="fa-solid fa-layer-group absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <select id="filtroCalendarioEstado" onchange="AdminDashboard.filtrarCalendario()" class="w-full sm:w-auto text-[10px] sm:text-sm pl-7 pr-6 py-1.5 sm:py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#002f5c] outline-none font-medium text-slate-700 hover:bg-white transition-colors cursor-pointer">
                   <option value="">Todos los estados</option>
                   <option value="Pendiente">Pendiente</option>
                   <option value="Aceptada">Aceptada</option>
@@ -784,35 +882,31 @@
               </div>
             </div>
           </div>
-          <!-- Contenedor FullCalendar -->
           <div id="contenedorCalendario" class="flex-grow w-full relative z-0"></div>
         </div>
       </div>
 
-      <!-- TAB 3: USUARIOS (NUEVO DISEÑO HÍBRIDO) -->
+      <!-- TAB 3: USUARIOS -->
       <div id="adminVistaUsuarios" class="hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          <!-- Columna Izquierda: Admins Actuales -->
-          <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
-            <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
-              <div>
-                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <i class="fa-solid fa-user-shield text-[#002f5c]"></i> Administradores del Sistema
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[500px] sm:h-[600px]">
+            <div class="p-4 sm:p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+              <div class="min-w-0 pr-2">
+                <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2 truncate">
+                  <i class="fa-solid fa-user-shield text-[#002f5c]"></i> Administradores
                 </h3>
-                <p class="text-xs text-slate-500 mt-1">Usuarios con acceso total a este panel directivo.</p>
               </div>
-              <button onclick="AdminDashboard.cargarUsuarios(AuthService.usuario.correo)" class="bg-white border border-slate-200 text-[#002f5c] hover:bg-slate-50 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm">
-                <i class="fa-solid fa-rotate mr-1"></i> Actualizar
+              <button onclick="AdminDashboard.cargarUsuarios(AuthService.usuario.correo)" class="shrink-0 bg-white border border-slate-200 text-[#002f5c] hover:bg-slate-50 px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-colors shadow-sm">
+                <i class="fa-solid fa-rotate mr-1"></i> <span class="hidden sm:inline">Actualizar</span>
               </button>
             </div>
             <div class="overflow-x-auto flex-grow bg-white">
-              <table class="w-full text-left border-collapse min-w-[500px]">
-                <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase sticky top-0 z-0">
+              <table class="w-full text-left border-collapse min-w-[400px] sm:min-w-[500px]">
+                <thead class="bg-slate-50 border-b border-slate-200 text-[10px] sm:text-xs text-slate-500 uppercase sticky top-0 z-0">
                   <tr>
-                    <th class="p-4 font-semibold">Correo Institucional</th>
-                    <th class="p-4 font-semibold text-center">Rol</th>
-                    <th class="p-4 font-semibold text-right pr-6">Acción</th>
+                    <th class="p-3 sm:p-4 font-semibold">Correo Institucional</th>
+                    <th class="p-3 sm:p-4 font-semibold text-center">Rol</th>
+                    <th class="p-3 sm:p-4 font-semibold text-right pr-4 sm:pr-6">Acción</th>
                   </tr>
                 </thead>
                 <tbody id="cuerpoTablaAdmins" class="divide-y divide-slate-100"></tbody>
@@ -820,167 +914,151 @@
             </div>
           </div>
 
-          <!-- Columna Derecha: Buscador para Promover -->
-          <div class="lg:col-span-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[600px]">
-            <div class="p-5 border-b border-slate-200 bg-slate-50 shrink-0">
-              <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <div class="lg:col-span-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[500px] sm:h-[600px]">
+            <div class="p-4 sm:p-5 border-b border-slate-200 bg-slate-50 shrink-0">
+              <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
                 <i class="fa-solid fa-magnifying-glass-plus text-[#002f5c]"></i> Buscar Usuario
               </h3>
-              <p class="text-xs text-slate-500 mt-1">Busca alumnos o docentes para darles permisos.</p>
             </div>
-            <div class="p-5 flex-grow flex flex-col">
-              <label class="block text-xs font-bold text-slate-500 mb-2">Código o Correo</label>
-              <div class="flex gap-2 mb-4 shrink-0">
-                <div class="relative flex-grow">
+            <div class="p-4 sm:p-5 flex-grow flex flex-col">
+              <div class="flex flex-col sm:flex-row gap-2 mb-4 shrink-0">
+                <div class="relative flex-grow w-full">
                   <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                   <input type="text" id="inputBusquedaUsuario" placeholder="Ej. 218... o @alumnos" class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#002f5c] outline-none shadow-sm" onkeydown="if(event.key === 'Enter') AdminDashboard.buscarUsuariosSistema()">
                 </div>
-                <button onclick="AdminDashboard.buscarUsuariosSistema()" class="bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow">Buscar</button>
+                <button onclick="AdminDashboard.buscarUsuariosSistema()" class="w-full sm:w-auto bg-[#002f5c] hover:bg-[#001f3f] text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow">Buscar</button>
               </div>
 
               <div id="contenedorResultadosUsuarios" class="flex-grow border border-slate-200 rounded-xl overflow-hidden flex flex-col bg-slate-50 h-full">
-                <div id="mensajeResultadosUsuarios" class="p-6 text-center text-slate-400 text-sm flex flex-col justify-center h-full">
-                  <i class="fa-solid fa-users text-3xl mb-2 opacity-50"></i>
-                  <span>Realiza una búsqueda para ver resultados.</span>
+                <div id="mensajeResultadosUsuarios" class="p-4 sm:p-6 text-center text-slate-400 text-xs sm:text-sm flex flex-col justify-center h-full">
+                  <i class="fa-solid fa-users text-2xl sm:text-3xl mb-2 opacity-50"></i>
+                  <span>Realiza una búsqueda.</span>
                 </div>
                 <div id="listaResultadosUsuarios" class="hidden overflow-y-auto h-full divide-y divide-slate-100 bg-white"></div>
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL DETALLE ADMIN PROFESIONAL -->
+  <!-- MODAL DETALLE ADMIN -->
   <div id="modalDetalleAdmin" class="modal-overlay hidden">
-    <div class="modal-content-box max-w-3xl fade-in relative">
-      <div class="bg-[#002f5c] px-6 py-4 flex items-center justify-between text-white shrink-0">
-        <h3 class="text-lg font-bold flex items-center gap-2">
-          <i class="fa-solid fa-receipt text-blue-300"></i> Expediente de Reserva
+    <div class="modal-content-box max-w-3xl fade-in relative w-full h-full sm:h-auto">
+      <div class="bg-[#002f5c] px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between text-white shrink-0">
+        <h3 class="text-base sm:text-lg font-bold flex items-center gap-2 truncate">
+          <i class="fa-solid fa-receipt text-blue-300"></i> Expediente
         </h3>
-        <button onclick="AdminDashboard.cerrarModal()" class="text-blue-200 hover:text-white transition-colors p-1 bg-white/10 rounded hover:bg-white/20">
-          <i class="fa-solid fa-xmark text-xl"></i>
+        <button onclick="AdminDashboard.cerrarModal()" class="text-blue-200 hover:text-white transition-colors p-1 bg-white/10 rounded hover:bg-white/20 shrink-0">
+          <i class="fa-solid fa-xmark text-lg sm:text-xl"></i>
         </button>
       </div>
 
-      <div class="p-6 modal-body-scroll bg-slate-50/50">
-        <!-- Estado Rápido -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-slate-200 gap-3">
-          <div class="flex items-center gap-3">
-            <span class="text-sm font-bold text-slate-500 uppercase tracking-wider">Estado actual de la solicitud:</span>
-            <span id="modalAdminEstado" class="text-xs font-bold px-3 py-1 rounded-full shadow-sm"></span>
+      <div class="p-4 sm:p-6 modal-body-scroll bg-slate-50/50">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-slate-200 gap-2 sm:gap-3">
+          <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+            <span class="text-[10px] sm:text-sm font-bold text-slate-500 uppercase tracking-wider">Estado actual:</span>
+            <span id="modalAdminEstado" class="text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 rounded-full shadow-sm"></span>
           </div>
-          <div class="text-xs text-slate-400 font-mono">
+          <div class="text-[10px] sm:text-xs text-slate-400 font-mono text-left sm:text-right break-all">
             ID: <span id="modalAdminIdReservaTxt" class="font-bold text-slate-600"></span>
           </div>
         </div>
 
-        <!-- Grid de Tarjetas (Usuario / Reserva) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-
-          <!-- Tarjeta Usuario -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-4 sm:mb-6">
           <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="bg-slate-50 p-3 border-b border-slate-200 flex items-center gap-2">
-              <i class="fa-solid fa-user-circle text-[#002f5c] text-lg"></i>
-              <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Perfil del Solicitante</span>
+            <div class="bg-slate-50 p-2 sm:p-3 border-b border-slate-200 flex items-center gap-2">
+              <i class="fa-solid fa-user-circle text-[#002f5c] text-base sm:text-lg"></i>
+              <span class="text-[10px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">Perfil Solicitante</span>
             </div>
-            <div class="p-4">
-              <div id="modalAdminDatosSolicitante" class="grid grid-cols-1 gap-y-3"></div>
+            <div class="p-3 sm:p-4">
+              <div id="modalAdminDatosSolicitante" class="grid grid-cols-1 gap-y-2 sm:gap-y-3"></div>
             </div>
           </div>
 
-          <!-- Tarjeta Reserva -->
           <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="bg-slate-50 p-3 border-b border-slate-200 flex items-center gap-2">
-              <i class="fa-solid fa-file-lines text-[#002f5c] text-lg"></i>
-              <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Detalles de la Reserva</span>
+            <div class="bg-slate-50 p-2 sm:p-3 border-b border-slate-200 flex items-center gap-2">
+              <i class="fa-solid fa-file-lines text-[#002f5c] text-base sm:text-lg"></i>
+              <span class="text-[10px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider">Detalles Reserva</span>
             </div>
-            <div class="p-4">
-              <div id="modalAdminDatosReserva" class="grid grid-cols-1 gap-y-3"></div>
+            <div class="p-3 sm:p-4">
+              <div id="modalAdminDatosReserva" class="grid grid-cols-1 gap-y-2 sm:gap-y-3"></div>
             </div>
           </div>
         </div>
 
         <!-- Ficha de Actividad -->
-        <div class="bg-[#002f5c] text-white rounded-xl p-5 mb-6 shadow-md relative overflow-hidden">
-          <div class="absolute right-0 top-0 opacity-10 text-9xl -translate-y-4 translate-x-4 pointer-events-none">
+        <div class="bg-[#002f5c] text-white rounded-xl p-4 sm:p-5 mb-4 sm:mb-6 shadow-md relative overflow-hidden">
+          <div class="absolute right-0 top-0 opacity-10 text-7xl sm:text-9xl -translate-y-2 sm:-translate-y-4 translate-x-2 sm:translate-x-4 pointer-events-none">
             <i class="fa-solid fa-book-open"></i>
           </div>
           <div class="relative z-10">
             <div class="flex items-center gap-2 mb-2">
               <i class="fa-solid fa-circle-info text-blue-300"></i>
-              <span class="text-xs font-bold uppercase tracking-wider text-blue-200">Actividad a realizar</span>
+              <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-blue-200">Actividad</span>
             </div>
-            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 sm:gap-4">
               <div class="md:w-1/2">
-                <p id="modalAdminActividad" class="text-lg font-black leading-tight"></p>
-                <p id="modalAdminTipoActividad" class="text-sm font-semibold text-blue-200 mt-1 inline-flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-lg"></p>
+                <p id="modalAdminActividad" class="text-base sm:text-lg font-black leading-tight"></p>
+                <p id="modalAdminTipoActividad" class="text-xs sm:text-sm font-semibold text-blue-200 mt-1 inline-flex items-center gap-1 bg-white/10 px-2 py-1 rounded-lg"></p>
               </div>
               <div class="md:w-1/2">
-                <p class="text-xs text-blue-200 font-bold mb-1 uppercase tracking-wider">Descripción:</p>
-                <p id="modalAdminDesc" class="text-sm text-blue-50 leading-relaxed bg-black/20 p-3 rounded-lg border border-white/10"></p>
+                <p class="text-[10px] sm:text-xs text-blue-200 font-bold mb-1 uppercase tracking-wider">Descripción:</p>
+                <p id="modalAdminDesc" class="text-xs sm:text-sm text-blue-50 leading-relaxed bg-black/20 p-2 sm:p-3 rounded-lg border border-white/10 break-words"></p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Archivos y ODS (Fila Dividida) -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
-          <!-- ODS -->
-          <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm h-full">
-            <h5 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <i class="fa-solid fa-seedling text-emerald-500 text-base"></i> ODS Vinculados
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 mb-4 sm:mb-6">
+          <div class="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-sm h-full">
+            <h5 class="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-seedling text-emerald-500 text-sm sm:text-base"></i> ODS Vinculados
             </h5>
-            <div id="modalAdminOds" class="bg-slate-50 p-3 rounded-lg text-sm text-slate-700 border border-slate-100 font-medium"></div>
+            <div id="modalAdminOds" class="bg-slate-50 p-2.5 sm:p-3 rounded-lg text-xs sm:text-sm text-slate-700 border border-slate-100 font-medium break-words"></div>
           </div>
-
-          <!-- Archivos -->
-          <div id="seccionArchivosAdmin" class="hidden bg-white rounded-xl border border-slate-200 p-4 shadow-sm h-full">
-            <h5 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <i class="fa-solid fa-paperclip text-blue-500 text-base"></i> Archivos Complementarios
+          <div id="seccionArchivosAdmin" class="hidden bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-sm h-full">
+            <h5 class="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-paperclip text-blue-500 text-sm sm:text-base"></i> Archivos Complementarios
             </h5>
             <div id="listaArchivosAdmin" class="flex flex-col gap-2 max-h-32 overflow-y-auto pr-1"></div>
           </div>
         </div>
 
-        <!-- Panel Dinámico de Rechazo (Oculto por defecto) -->
-        <div id="panelRechazo" class="hidden bg-rose-50 border-2 border-rose-200 p-5 rounded-xl mb-6 shadow-inner animate-fadeIn">
-          <div class="flex items-center gap-2 text-rose-800 text-sm font-black mb-3">
+        <div id="panelRechazo" class="hidden bg-rose-50 border-2 border-rose-200 p-4 sm:p-5 rounded-xl mb-4 sm:mb-6 shadow-inner animate-fadeIn">
+          <div class="flex items-center gap-2 text-rose-800 text-xs sm:text-sm font-black mb-2 sm:mb-3">
             <i class="fa-solid fa-ban text-rose-500"></i> Motivo de Rechazo / Devolución
           </div>
-          <div class="mb-4">
-            <label class="text-xs font-bold text-slate-600 mb-1.5 block">Explica claramente la razón <span class="text-rose-500">*</span></label>
-            <textarea id="inputMotivoRechazo" rows="3" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none shadow-sm transition-shadow" placeholder="Ej: Falta anexar el documento de responsabilidades o el horario está fuera de rango..."></textarea>
+          <div class="mb-3 sm:mb-4">
+            <label class="text-[10px] sm:text-xs font-bold text-slate-600 mb-1 sm:mb-1.5 block">Explica claramente la razón <span class="text-rose-500">*</span></label>
+            <textarea id="inputMotivoRechazo" rows="3" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 sm:px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-rose-500 outline-none shadow-sm transition-shadow"></textarea>
           </div>
 
-          <label class="flex items-start gap-3 cursor-pointer bg-white p-3 rounded-lg border border-slate-200 hover:border-[#002f5c] transition-colors mb-4 shadow-sm">
-            <input type="checkbox" id="checkPermitirReenvio" class="mt-0.5 w-4 h-4 rounded text-[#002f5c] focus:ring-[#002f5c] cursor-pointer">
-            <span class="text-sm text-slate-700 leading-snug">
-              <span class="font-bold text-[#002f5c] block mb-0.5"><i class="fa-solid fa-pen-to-square mr-1"></i> Permitir al usuario editar y reenviar esta solicitud</span>
-              <span class="text-slate-500 text-xs">El estado cambiará a <b>Devuelta</b>. El usuario verá tu motivo en su panel, podrá corregir el formulario y enviarlo nuevamente.</span>
+          <label class="flex items-start gap-2 sm:gap-3 cursor-pointer bg-white p-2.5 sm:p-3 rounded-lg border border-slate-200 hover:border-[#002f5c] transition-colors mb-3 sm:mb-4 shadow-sm">
+            <input type="checkbox" id="checkPermitirReenvio" class="mt-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded text-[#002f5c] focus:ring-[#002f5c] cursor-pointer shrink-0">
+            <span class="text-xs sm:text-sm text-slate-700 leading-snug">
+              <span class="font-bold text-[#002f5c] block mb-0.5"><i class="fa-solid fa-pen-to-square mr-1"></i> Permitir al usuario editar y reenviar</span>
+              <span class="text-slate-500 text-[10px] sm:text-xs block mt-1">El estado cambiará a <b>Devuelta</b> y el usuario podrá corregirlo.</span>
             </span>
           </label>
 
-          <div class="flex gap-3 justify-end pt-2 border-t border-rose-100">
-            <button onclick="AdminDashboard.cancelarRechazo()" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 px-5 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm">Cancelar</button>
-            <button onclick="AdminDashboard.confirmarRechazo()" class="bg-rose-600 text-white hover:bg-rose-700 px-5 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm shadow-rose-600/30">Confirmar acción</button>
+          <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-end pt-2 border-t border-rose-100">
+            <button onclick="AdminDashboard.cancelarRechazo()" class="w-full sm:w-auto bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-colors shadow-sm">Cancelar</button>
+            <button onclick="AdminDashboard.confirmarRechazo()" class="w-full sm:w-auto bg-rose-600 text-white hover:bg-rose-700 px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-colors shadow-sm shadow-rose-600/30">Confirmar acción</button>
           </div>
         </div>
 
-        <!-- Acciones Inferiores -->
-        <div id="modalAdminAcciones" class="flex flex-col sm:flex-row gap-3 pt-2"></div>
+        <div id="modalAdminAcciones" class="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2"></div>
       </div>
     </div>
   </div>
 
-  <footer class="bg-slate-800 text-slate-400 text-center py-6 text-xs mt-auto z-10 relative border-t border-slate-700">
-    © 2026 Coordinación de Ingeniería en Computación – CUCEI<br>
+  <footer class="bg-slate-800 text-slate-400 text-center py-4 sm:py-6 text-[10px] sm:text-xs mt-auto z-10 relative border-t border-slate-700">
+    © 2026 Centro de Innovación y Emprendimiento – CUCEI<br>
     Universidad de Guadalajara
   </footer>
 
-  <!-- SCRIPT DINÁMICO DE INTERCEPTACIÓN PARA MODIFICACIÓN UI COWORKING 3 -->
   <script>
     document.addEventListener('click', function(e) {
       const btn = e.target.closest('button[data-coworking]');
@@ -993,13 +1071,11 @@
         const inputActividad = document.getElementById('actividad');
         const inputDesc = document.getElementById('descripcionActividad');
 
-        // Habilitar / Deshabilitar requerimientos y secciones basándonos en la naturaleza de uso
         if(isCW3) {
           if(secEventos) secEventos.classList.add('hidden');
           if(secMaquinasForm) secMaquinasForm.classList.remove('hidden');
           if(infoMaquinas) infoMaquinas.classList.remove('hidden');
 
-          // Ocultar ODS y limpiar selecciones previas por seguridad
           if(secOds) {
             secOds.classList.add('hidden');
             secOds.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
@@ -1012,7 +1088,7 @@
           if(secMaquinasForm) secMaquinasForm.classList.add('hidden');
           if(infoMaquinas) infoMaquinas.classList.add('hidden');
 
-          // Mostrar ODS de nuevo para el resto de coworkings
+
           if(secOds) secOds.classList.remove('hidden');
 
           if(inputActividad) { inputActividad.required = true; inputActividad.value = ""; }

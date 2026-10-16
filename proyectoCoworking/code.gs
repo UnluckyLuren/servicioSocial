@@ -68,7 +68,8 @@ const CONFIG = {
     ID_CALENDAR:       22,
     NOMBRE_ENCARGADO:  23,
     APELLIDOS_ENCARGADO: 24,
-    CORREO_ENCARGADO:  25
+    CORREO_ENCARGADO:  25,
+    TELEFONO_ENCARGADO: 26
   }
 };
 
@@ -116,9 +117,9 @@ function inicializarHojas_() {
       'Rol','Actividad','Descripcion','ODS','Fecha_Registro',
       'Motivo_Rechazo','Archivos_URLs','Tipo_Actividad','Correo_Responsable',
       'ID_Original', 'Fecha_Actualizacion', 'ID_Calendar',
-       'Nombre_Encargado', 'Apellidos_Encargado', 'Correo_Encargado'
+      'Nombre_Encargado', 'Apellidos_Encargado', 'Correo_Encargado', 'Telefono_Encargado'
     ]);
-    hR.getRange(1,1,1,26).setFontWeight('bold').setBackground(CONFIG.COLOR_PRIMARIO).setFontColor('#ffffff');
+    hR.getRange(1,1,1,27).setFontWeight('bold').setBackground(CONFIG.COLOR_PRIMARIO).setFontColor('#ffffff');
   }
 
   const hL = obtenerOCrearHoja_(ss, CONFIG.SHEET_LOGS);
@@ -150,7 +151,8 @@ function asegurarHeadersReservas_() {
     'ID_Calendar',
     'Nombre_Encargado',
     'Apellidos_Encargado',
-    'Correo_Encargado'
+    'Correo_Encargado',
+    'Telefono_Encargado'
   ];
 
   for (let i = 0; i < nuevosHeaders.length; i++) {
@@ -495,7 +497,8 @@ function registrarReserva(datos, sesionCorreo) {
         idCalendar,                       // 22 ID_Calendar
         datos.nombreEncargado || '',      // 23 Nombre_Encargado
         datos.apellidosEncargado || '',   // 24 Apellidos_Encargado
-        datos.correoEncargado || ''       // 25 Correo_Encargado
+        datos.correoEncargado || '',      // 25 Correo_Encargado
+        datos.telefonoEncargado || ''     // 26 Telefono_Encargado
       ]);
       reservasCreadas.push(idReserva);
     }
@@ -589,7 +592,7 @@ function obtenerDashboardAdmin(adminCorreo) {
       };
     }
 
-    const numCols = CONFIG.COL.CORREO_ENCARGADO + 1;
+    const numCols = CONFIG.COL.TELEFONO_ENCARGADO + 1;
     const datos   = sheetReservas.getRange(2, 1, ultimaFila - 1, numCols).getValues();
     const tz      = ss.getSpreadsheetTimeZone();
     const reservas = [];
@@ -646,6 +649,7 @@ function obtenerDashboardAdmin(adminCorreo) {
         nombreEncargado:   String(fila[CONFIG.COL.NOMBRE_ENCARGADO] || ''),
         apellidosEncargado:String(fila[CONFIG.COL.APELLIDOS_ENCARGADO] || ''),
         correoEncargado:   String(fila[CONFIG.COL.CORREO_ENCARGADO] || ''),
+        telefonoEncargado: String(fila[CONFIG.COL.TELEFONO_ENCARGADO] || ''),
         idCalendar:        String(fila[CONFIG.COL.ID_CALENDAR] || '')
       });
     }
@@ -679,7 +683,7 @@ function actualizarEstadoReserva(idReserva, nuevoEstado, adminCorreo, motivoRech
     const ultimaFila    = sheetReservas.getLastRow();
     if (ultimaFila <= 1) return { exito: false, mensaje: 'No hay reservas.' };
 
-    const datos = sheetReservas.getRange(2, 1, ultimaFila - 1, CONFIG.COL.CORREO_ENCARGADO + 1).getValues();
+    const datos = sheetReservas.getRange(2, 1, ultimaFila - 1, CONFIG.COL.TELEFONO_ENCARGADO + 1).getValues();
 
     for (let i = 0; i < datos.length; i++) {
       if (String(datos[i][CONFIG.COL.ID_RESERVA]).trim() !== String(idReserva).trim()) continue;
@@ -733,7 +737,7 @@ function buscarReservasPorCorreo(correoBusqueda, adminCorreo) {
     const ultimaFila    = sheetReservas.getLastRow();
     if (ultimaFila <= 1) return { exito: true, reservas: [], mensaje: 'No hay reservas.' };
 
-    const datos      = sheetReservas.getRange(2, 1, ultimaFila - 1, CONFIG.COL.CORREO_ENCARGADO + 1).getValues();
+    const datos      = sheetReservas.getRange(2, 1, ultimaFila - 1, CONFIG.COL.TELEFONO_ENCARGADO + 1).getValues();
     const tz         = ss.getSpreadsheetTimeZone();
     const resultados = [];
     const busqueda   = correoBusqueda.trim().toLowerCase();
@@ -773,7 +777,7 @@ function obtenerMisReservas(correoUsuario) {
     const ultimaFila    = sheetReservas.getLastRow();
     if (ultimaFila <= 1) return { exito: true, reservas: [] };
 
-    const datos    = sheetReservas.getRange(2, 1, ultimaFila - 1, CONFIG.COL.CORREO_ENCARGADO + 1).getValues();
+    const datos    = sheetReservas.getRange(2, 1, ultimaFila - 1, CONFIG.COL.TELEFONO_ENCARGADO + 1).getValues();
     const tz       = ss.getSpreadsheetTimeZone();
     const reservas = [];
     const correo = String(correoUsuario || '').trim().toLowerCase();
@@ -812,6 +816,7 @@ function obtenerMisReservas(correoUsuario) {
         nombreEncargado:    String(fila[CONFIG.COL.NOMBRE_ENCARGADO] || ''),
         apellidosEncargado: String(fila[CONFIG.COL.APELLIDOS_ENCARGADO] || ''),
         correoEncargado:    String(fila[CONFIG.COL.CORREO_ENCARGADO] || ''),
+        telefonoEncargado:  String(fila[CONFIG.COL.TELEFONO_ENCARGADO] || ''),
         idCalendar:         String(fila[CONFIG.COL.ID_CALENDAR] || '')
       });
     }
@@ -842,7 +847,7 @@ function obtenerDetalleReserva(idReserva, correoUsuario) {
     const ultimaFila    = sheetReservas.getLastRow();
     if (ultimaFila <= 1) return { exito: false, mensaje: 'No hay reservas.' };
 
-    const datos = sheetReservas.getRange(2, 1, ultimaFila - 1, CONFIG.COL.CORREO_ENCARGADO + 1).getValues();
+    const datos = sheetReservas.getRange(2, 1, ultimaFila - 1, CONFIG.COL.TELEFONO_ENCARGADO + 1).getValues();
     const tz    = ss.getSpreadsheetTimeZone();
     const correoSolicitante = String(correoUsuario || '').trim().toLowerCase();
 
@@ -891,6 +896,7 @@ function obtenerDetalleReserva(idReserva, correoUsuario) {
           nombreEncargado:   String(fila[CONFIG.COL.NOMBRE_ENCARGADO] || ''),
           apellidosEncargado:String(fila[CONFIG.COL.APELLIDOS_ENCARGADO] || ''),
           correoEncargado:   String(fila[CONFIG.COL.CORREO_ENCARGADO] || ''),
+          telefonoEncargado: String(fila[CONFIG.COL.TELEFONO_ENCARGADO] || ''),
           archivosExistentes: archivosUrls
         }
       };
@@ -1105,9 +1111,6 @@ function generarPlantillaCorporativa_(opciones) {
   </html>`;
 }
 
-// =========================================================================
-// MODIFICACIÓN PRINCIPAL: Enlaces embebidos en el correo (Sin attachments)
-// =========================================================================
 function enviarCorreoConfirmacion_(datos, nombreCompleto, odsTexto, idsReservas, fechasConHorario) {
   try {
     const fechasStr = (fechasConHorario || []).map(fh => {
@@ -1115,7 +1118,6 @@ function enviarCorreoConfirmacion_(datos, nombreCompleto, odsTexto, idsReservas,
       return `${d}/${m}/${y} (${fh.horaEntrada}–${fh.horaSalida})`;
     }).join('<br>');
 
-    // Preparamos el mensaje adicional dinámico para el Coworking 3
     let mensajeExtra = null;
     if (String(datos.coworking).includes('Coworking 3')) {
       mensajeExtra = `<b>Importante:</b> Por favor revisa los siguientes manuales antes de usar el espacio:<br>
@@ -1202,9 +1204,6 @@ function notificarNuevaReservaAdmin_(datos, nombreCompleto, idsReservas, fechasC
   }
 }
 
-// =========================================================================
-// MODIFICACIÓN REFUERZO: Enlaces embebidos cuando la reserva se APRUEBA
-// =========================================================================
 function enviarNotificacionCambioEstado_(correoUsuario, idReserva, nuevoEstado, filaReserva, motivoRechazo) {
   try {
     const esAprobada = nuevoEstado === CONFIG.ESTADOS.ACEPTADA;
@@ -1242,7 +1241,6 @@ function enviarNotificacionCambioEstado_(correoUsuario, idReserva, nuevoEstado, 
       fechaStr = `${d}/${m}/${y}`;
     } catch (e) { /* ignore */ }
 
-    // Agregar los links de los manuales al mensaje adicional si fue aprobada y es para CW3
     let mensajeExtra = motivoRechazo ? `Motivo especificado por el administrador: ${motivoRechazo}` : '';
     if (esAprobada && String(coworking).includes('Coworking 3')) {
       const linksManuales = `<br><br><b>Documentos importantes para tu uso:</b><br>
@@ -1393,11 +1391,12 @@ function validarDatosReserva_(datos) {
     const nombreEncargado = String(datos.nombreEncargado || '').trim();
     const apellidosEncargado = String(datos.apellidosEncargado || '').trim();
     const correoEncargado = String(datos.correoEncargado || '').trim().toLowerCase();
+    const telefonoEncargado = String(datos.telefonoEncargado || '').trim();
 
-    const hayDatosEncargado = nombreEncargado || apellidosEncargado || correoEncargado;
+    const hayDatosEncargado = nombreEncargado || apellidosEncargado || correoEncargado || telefonoEncargado;
     if (hayDatosEncargado) {
-      if (!nombreEncargado || !apellidosEncargado || !correoEncargado) {
-        return { valido: false, mensaje: 'Si agregas un encargado, debes capturar nombre, apellidos y correo.' };
+      if (!nombreEncargado || !apellidosEncargado || !correoEncargado || !telefonoEncargado) {
+        return { valido: false, mensaje: 'Si agregas un encargado, debes capturar nombre, apellidos, correo y teléfono.' };
       }
       if (!correoInstitucionalValido_(correoEncargado)) {
         return { valido: false, mensaje: 'El correo del encargado debe terminar en @alumnos.udg.mx, @academicos.udg.mx o @cucei.udg.mx.' };
@@ -1410,6 +1409,13 @@ function validarDatosReserva_(datos) {
     return { valido: false, mensaje: 'Selecciona al menos una fecha.' };
   }
   if (!datos.tipoActividad) return { valido: false, mensaje: 'Selecciona un tipo de actividad.' };
+
+  if (datos.tipoActividad !== 'Uso de Maquinaria') {
+    if (!datos.ods || datos.ods.length === 0) {
+      return { valido: false, mensaje: 'Selecciona al menos un ODS.' };
+    }
+  }
+
   return { valido: true };
 }
 
