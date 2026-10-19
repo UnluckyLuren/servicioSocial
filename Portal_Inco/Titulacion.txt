@@ -1,0 +1,193 @@
+/**
+ * =========================================================================
+ * MÓDULO BACKEND: OPCIONES DE TITULACIÓN DINÁMICAS (INCO CUCEI)
+ * Cumple con Semilla Reglamentaria, CacheService, LockService, RBAC y Logs.
+ * =========================================================================
+ */
+
+const TITULACION_PROP_KEY = 'TITULACION_DATA';
+const TITULACION_CACHE_KEY = 'PORTAL_TITULACION_CACHE_V1';
+const TITULACION_CACHE_TTL = 600; // 10 minutos (600 segundos)
+
+/**
+ * Retorna el objeto JSON semilla oficial basado en el reglamento de CUCEI.
+ */
+function getSeedTitulacionData() {
+  return {
+    "urlOficial": "https://www.cucei.udg.mx/carreras/computacion/es/contenido/titulacion-0",
+    "documentacionBase": "Independientemente de la modalidad que elijas, siempre deberás presentar como mínimo: Formato A, Kardex actualizado y Certificado de Inglés. Algunas modalidades requerirán anexos adicionales.",
+    "categorias": [
+      {
+        "titulo": "DESEMPEÑO ACADÉMICO SOBRESALIENTE",
+        "modalidades": [
+          { "nombre": "Excelencia Académica", "descripcion": "Promedio global mínimo de 95. Aprobación del 90% de asignaturas en período ordinario." },
+          { "nombre": "Titulación por Promedio", "descripcion": "Promedio global mínimo de 90. Aprobación de todas las asignaturas en períodos ordinarios (sin SD ni extraordinarios)." }
+        ]
+      },
+      {
+        "titulo": "EXÁMENES",
+        "modalidades": [
+          { "nombre": "Global Teórico-Práctico / Teórico", "descripcion": "Prueba oral o escrita de conocimientos generales. Requiere promedio igual o mayor a 80." },
+          { "nombre": "General de Certificación Profesional (CENEVAL)", "descripcion": "Evaluación CENEVAL con testimonio de Desempeño Satisfactorio o Sobresaliente." },
+          { "nombre": "Capacitación Profesional", "descripcion": "Certificaciones en tecnologías afines evaluadas por el Comité de Titulación." }
+        ]
+      },
+      {
+        "titulo": "PRODUCCIÓN DE MATERIALES EDUCATIVOS",
+        "modalidades": [
+          { "nombre": "Guías Comentadas o Ilustradas", "descripcion": "Documentos pedagógicos elaborados para facilitar la enseñanza." },
+          { "nombre": "Paquete Didáctico", "descripcion": "Material de apoyo didáctico para una disciplina específica." }
+        ]
+      },
+      {
+        "titulo": "INVESTIGACIÓN Y ESTUDIOS DE POSGRADO",
+        "modalidades": [
+          { "nombre": "Cursos de Maestría o Doctorado", "descripcion": "Aprobación de al menos 4 materias en un programa reconocido." },
+          { "nombre": "Seminario de Investigación / Titulación", "descripcion": "Trabajos individuales o colectivos que fundamentan una investigación." },
+          { "nombre": "Diseño o Rediseño de Equipo", "descripcion": "Trabajo escrito especificando planos, cálculos y diseño de maquinaria." }
+        ]
+      },
+      {
+        "titulo": "TESIS, TESINA E INFORMES",
+        "modalidades": [
+          { "nombre": "Tesis", "descripcion": "Investigación académica inédita que presenta y aporta nuevos conocimientos." },
+          { "nombre": "Informe de Prácticas Profesionales", "descripcion": "Documento analítico sobre los problemas y soluciones enfrentados en la práctica profesional." }
+        ]
+      }
+    ]
+  };
+}
+
+/**
+ * 1. OBTENER INFORMACIÓN DE TITULACIÓN (Lectura optimizada con CacheService)
+ * Si no existen datos en PropertiesService, inicializa la semilla automáticamente.
+ */
+function getTitulacionData() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const cachedJson = cache.get(TITULACION_CACHE_KEY);
+    if (cachedJson) {
+      return JSON.parse(cachedJson);
+    }
+
+    const scriptProps = PropertiesService.getScriptProperties();
+    let storedJson = scriptProps.getProperty(TITULACION_PROP_KEY);
+    let parsedData = null;
+
+    if (storedJson) {
+      try {
+        parsedData = JSON.parse(storedJson);
+      } catch (e) {
+        parsedData = null;
+      }
+    }
+
+    // Si aún no hay datos guardados, inicializamos y persistimos la semilla oficial
+    if (!parsedData || !Array.isArray(parsedData.categorias)) {
+      parsedData = getSeedTitulacionData();
+      scriptProps.setProperty(TITULACION_PROP_KEY, JSON.stringify(parsedData));
+    }
+
+    cache.put(TITULACION_CACHE_KEY, JSON.stringify(parsedData), TITULACION_CACHE_TTL);
+    return parsedData;
+
+  } catch (error) {
+    logSystemEvent('ERROR', 'SISTEMA', 'Error Lectura Titulacion', error.toString());
+    return getSeedTitulacionData();
+  }
+}
+
+/**
+ * 2. ACTUALIZAR INFORMACIÓN DE TITULACIÓN (Exclusivo Rol 'Coordinacion')
+ * Valida permisos RBAC, sanitiza campos, aplica LockService, invalida caché y audita en Logs.
+ */
+function updateTitulacionData(newData, rawUserCode) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeUserCode = sanitizeInput(String(rawUserCode || '').trim());
+    if (!safeUserCode) {
+      return { success: false, message: "Sesión inválida: No se proporcionó código de usuario." };
+    }
+
+    if (!newData || typeof newData !== 'object' || !Array.isArray(newData.categorias)) {
+      return { success: false, message: "Estructura de datos de titulación inválida." };
+    }
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "El servidor está ocupado. Intenta nuevamente en unos segundos." };
+    }
+
+    // MANDATO DE SEGURIDAD (Validación RBAC en Servidor):
+    // Verificar en memoria con getValues() que el usuario tenga rol 'Coordinacion'
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const usersSheet = ss.getSheetByName(TABLES.USERS);
+    const usersData = usersSheet.getDataRange().getValues();
+
+    let isCoordinator = false;
+    for (let u = 1; u < usersData.length; u++) {
+      if (String(usersData[u][0]).trim() === safeUserCode) {
+        const roleInDb = String(usersData[u][2] || '').trim();
+        if (roleInDb === 'Coordinacion') {
+          isCoordinator = true;
+        }
+        break;
+      }
+    }
+
+    if (!isCoordinator) {
+      logSystemEvent('SEC', safeUserCode, 'Intento no autorizado de editar Titulación', 'Acceso bloqueado por RBAC.');
+      return { success: false, message: "Acceso denegado: Solo la Coordinación puede modificar las opciones de titulación." };
+    }
+
+    // Sanitización recursiva de toda la estructura JSON recibida
+    const sanitizedData = {
+      urlOficial: sanitizeInput(String(newData.urlOficial || '').trim()),
+      documentacionBase: sanitizeInput(String(newData.documentacionBase || '').trim()),
+      categorias: newData.categorias.map(function(cat) {
+        const rawMods = Array.isArray(cat.modalidades) ? cat.modalidades : [];
+        return {
+          titulo: sanitizeInput(String(cat.titulo || '').trim()),
+          modalidades: rawMods.map(function(mod) {
+            return {
+              nombre: sanitizeInput(String(mod.nombre || '').trim()),
+              descripcion: sanitizeInput(String(mod.descripcion || '').trim())
+            };
+          })
+        };
+      })
+    };
+
+    const serialized = JSON.stringify(sanitizedData);
+
+    // Guardar en ScriptProperties e invalidar CacheService inmediatamente
+    PropertiesService.getScriptProperties().setProperty(TITULACION_PROP_KEY, serialized);
+    const cache = CacheService.getScriptCache();
+    cache.remove(TITULACION_CACHE_KEY);
+    cache.put(TITULACION_CACHE_KEY, serialized, TITULACION_CACHE_TTL);
+
+    // MANDATO DE AUDITORÍA OBLIGATORIO
+    logSystemEvent(
+      'INFO',
+      safeUserCode,
+      'Actualización de información de Titulación',
+      `Se actualizaron ${sanitizedData.categorias.length} categorías en el catálogo oficial de Titulación.`
+    );
+
+    return {
+      success: true,
+      data: sanitizedData
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', rawUserCode || 'COORD', 'Error Actualizar Titulación', error.toString());
+    return { success: false, message: "Error interno al guardar los cambios: " + error.message };
+  } finally {
+    if (lockAcquired) {
+      lock.releaseLock();
+    }
+  }
+}

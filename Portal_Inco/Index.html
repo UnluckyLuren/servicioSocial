@@ -373,6 +373,8 @@ const getNavSections = () => {
           { id: 'admin_justificantes', label: 'Aprobar Justificantes', icon: 'shield-check', badge: 'Revisión' },
           { id: 'avisos', label: 'Publicar Avisos', icon: 'bell', badge: null },
           { id: 'dudas', label: 'Preguntas Frecuentes', icon: 'help-circle', badge: null },
+          { id: 'admin_horas', label: 'Revisión Horas Integrales', icon: 'award', badge: 'Revisión' },
+          { id: 'titulacion', label: 'Opciones de Titulación (Editar)', icon: 'graduation-cap', badge: 'CMS' },
           { id: 'admin_constancias', label: 'Emisión de Constancias', icon: 'file-text', badge: 'Gestión' },
         ]
       }
@@ -420,7 +422,7 @@ const getNavSections = () => {
         { id: 'constancias', label: 'Kardex y Constancias', icon: 'file-text', badge: 'Digital' },
         { id: 'titulacion', label: 'Opciones de Titulación', icon: 'graduation-cap', badge: 'EGEL' },
         { id: 'modulares', label: 'Proyectos Modulares', icon: 'layers', badge: 'Protocolo' },
-        { id: 'horas', label: 'Horas Integrales', icon: 'award', badge: `${user.integralHours || 0}/60h` },
+        { id: 'horas', label: 'Horas Integrales', icon: 'award', badge: `${user.integralHours || 0}/64h` },
         { id: 'malla', label: 'Malla Curricular INCO', icon: 'grid', badge: null },
       ]
     }
@@ -947,7 +949,7 @@ const getNavSections = () => {
                 />
               )}
 
-              {activeTab === 'titulacion' && <TitulacionModule showToast={showToast} />}
+              {activeTab === 'titulacion' && <TitulacionModule user={user} showToast={showToast} addNotification={addNotification} />}
               {activeTab === 'constancias' && (
                 <ConstanciasModule 
                   user={user} 
@@ -961,7 +963,13 @@ const getNavSections = () => {
               {activeTab === 'modulares' && <ProyectosModularesModule showToast={showToast} user={user} />}
               {activeTab === 'ajuste' && <AjusteMateriasModule showToast={showToast} addNotification={addNotification} />}
               {activeTab === 'art33_35' && <ArticulosReglamentoModule user={user} showToast={showToast} addNotification={addNotification} />}
-              {activeTab === 'horas' && <HorasIntegralesModule user={user} showToast={showToast} />}
+              {activeTab === 'horas' && (
+                <HorasIntegralesModule 
+                  user={user} 
+                  showToast={showToast} 
+                  addNotification={addNotification}
+                />
+              )}
               {activeTab === 'malla' && <MallaCurricularModule />}
               {activeTab === 'avisos' && <AvisosModule notices={MOCK_NOTICES} user={user} showToast={showToast} />}
 
@@ -988,6 +996,14 @@ const getNavSections = () => {
                   user={user}
                   showToast={showToast} 
                   addNotification={addNotification} 
+                />
+              )}
+
+              {activeTab === 'admin_horas' && (
+                <AdminHorasIntegralesModule 
+                  user={user} 
+                  showToast={showToast} 
+                  addNotification={addNotification}
                 />
               )}
 
@@ -2621,34 +2637,618 @@ function JustificantesModule({ user, showToast, addNotification, isLoggedIn, set
     </div>
   );
 }
-    function TitulacionModule({ showToast }) {
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
-          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
-            <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold">
-              <i data-lucide="graduation-cap" className="w-5 h-5"></i>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">Modalidades de Titulación - INCO</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Reglamento General de Titulación de la Universidad de Guadalajara.</p>
+    // ============================================================================
+// SEMILLA OFICIAL DE DATOS DE TITULACIÓN (Fallback local y estructura base)
+// ============================================================================
+const DEFAULT_TITULACION_DATA = {
+  urlOficial: "https://www.cucei.udg.mx/carreras/computacion/es/contenido/titulacion-0",
+  documentacionBase: "Independientemente de la modalidad que elijas, siempre deberás presentar como mínimo: Formato A, Kardex actualizado y Certificado de Inglés. Algunas modalidades requerirán anexos adicionales.",
+  categorias: [
+    {
+      titulo: "DESEMPEÑO ACADÉMICO SOBRESALIENTE",
+      modalidades: [
+        { nombre: "Excelencia Académica", descripcion: "Promedio global mínimo de 95. Aprobación del 90% de asignaturas en período ordinario." },
+        { nombre: "Titulación por Promedio", descripcion: "Promedio global mínimo de 90. Aprobación de todas las asignaturas en períodos ordinarios (sin SD ni extraordinarios)." }
+      ]
+    },
+    {
+      titulo: "EXÁMENES",
+      modalidades: [
+        { nombre: "Global Teórico-Práctico / Teórico", descripcion: "Prueba oral o escrita de conocimientos generales. Requiere promedio igual o mayor a 80." },
+        { nombre: "General de Certificación Profesional (CENEVAL)", descripcion: "Evaluación CENEVAL con testimonio de Desempeño Satisfactorio o Sobresaliente." },
+        { nombre: "Capacitación Profesional", descripcion: "Certificaciones en tecnologías afines evaluadas por el Comité de Titulación." }
+      ]
+    },
+    {
+      titulo: "PRODUCCIÓN DE MATERIALES EDUCATIVOS",
+      modalidades: [
+        { nombre: "Guías Comentadas o Ilustradas", descripcion: "Documentos pedagógicos elaborados para facilitar la enseñanza." },
+        { nombre: "Paquete Didáctico", descripcion: "Material de apoyo didáctico para una disciplina específica." }
+      ]
+    },
+    {
+      titulo: "INVESTIGACIÓN Y ESTUDIOS DE POSGRADO",
+      modalidades: [
+        { nombre: "Cursos de Maestría o Doctorado", descripcion: "Aprobación de al menos 4 materias en un programa reconocido." },
+        { nombre: "Seminario de Investigación / Titulación", descripcion: "Trabajos individuales o colectivos que fundamentan una investigación." },
+        { nombre: "Diseño o Rediseño de Equipo", descripcion: "Trabajo escrito especificando planos, cálculos y diseño de maquinaria." }
+      ]
+    },
+    {
+      titulo: "TESIS, TESINA E INFORMES",
+      modalidades: [
+        { nombre: "Tesis", descripcion: "Investigación académica inédita que presenta y aporta nuevos conocimientos." },
+        { nombre: "Informe de Prácticas Profesionales", descripcion: "Documento analítico sobre los problemas y soluciones enfrentados en la práctica profesional." }
+      ]
+    }
+  ]
+};
+
+// ============================================================================
+// MÓDULO DE OPCIONES DE TITULACIÓN (Modo Lectura Alumno / Modo Edición Admin)
+// ============================================================================
+function TitulacionModule({ user, showToast, addNotification }) {
+  const [data, setData] = useState(DEFAULT_TITULACION_DATA);
+  const [draftData, setDraftData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const activeRole = String(user?.role || user?.rol || 'Estudiante');
+  const isCoordinator = activeRole === 'Coordinacion';
+  const userCode = String(user?.code || user?.codigo || '');
+
+  // Garantizar hidratación de íconos Lucide tras cada cambio de estado o modo
+  useEffect(() => {
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  });
+
+  // Cargar datos dinámicos desde Google Apps Script al montar el componente
+  const fetchTitulacionInfo = () => {
+    setIsLoading(true);
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          if (res && Array.isArray(res.categorias)) {
+            setData(res);
+          } else {
+            setData(DEFAULT_TITULACION_DATA);
+          }
+          setIsLoading(false);
+        })
+        .withFailureHandler(() => {
+          if (typeof showToast === 'function') {
+            showToast("Error al obtener las modalidades del servidor, mostrando catálogo base.", "error");
+          }
+          setData(DEFAULT_TITULACION_DATA);
+          setIsLoading(false);
+        })
+        .getTitulacionData();
+    } else {
+      setTimeout(() => {
+        setData(DEFAULT_TITULACION_DATA);
+        setIsLoading(false);
+      }, 800);
+    }
+  };
+
+  useEffect(() => {
+    fetchTitulacionInfo();
+  }, []);
+
+  // Paleta de temas visuales e íconos por tarjeta (fiel a las capturas del portal)
+  const getCategoryVisualTheme = (index, title = '') => {
+    const upper = title.toUpperCase();
+    if (upper.includes('DESEMPEÑO') || index % 5 === 0) {
+      return {
+        headerBg: 'bg-amber-50/70 dark:bg-amber-950/30 border-b border-amber-100 dark:border-slate-700',
+        iconColor: 'text-amber-600 dark:text-amber-400',
+        dotColor: 'bg-amber-500',
+        icon: 'award'
+      };
+    }
+    if (upper.includes('EXÁMENES') || upper.includes('EXAMEN') || index % 5 === 1) {
+      return {
+        headerBg: 'bg-blue-50/70 dark:bg-blue-950/30 border-b border-blue-100 dark:border-slate-700',
+        iconColor: 'text-blue-600 dark:text-blue-400',
+        dotColor: 'bg-blue-600',
+        icon: 'file-check-2'
+      };
+    }
+    if (upper.includes('MATERIALES') || upper.includes('PRODUCCIÓN') || index % 5 === 2) {
+      return {
+        headerBg: 'bg-emerald-50/70 dark:bg-emerald-950/30 border-b border-emerald-100 dark:border-slate-700',
+        iconColor: 'text-emerald-600 dark:text-emerald-400',
+        dotColor: 'bg-emerald-500',
+        icon: 'book-open'
+      };
+    }
+    if (upper.includes('INVESTIGACIÓN') || upper.includes('POSGRADO') || index % 5 === 3) {
+      return {
+        headerBg: 'bg-purple-50/70 dark:bg-purple-950/30 border-b border-purple-100 dark:border-slate-700',
+        iconColor: 'text-purple-600 dark:text-purple-400',
+        dotColor: 'bg-purple-600',
+        icon: 'flask-conical'
+      };
+    }
+    return {
+      headerBg: 'bg-indigo-50/70 dark:bg-indigo-950/30 border-b border-indigo-100 dark:border-slate-700',
+      iconColor: 'text-indigo-600 dark:text-indigo-400',
+      dotColor: 'bg-indigo-600',
+      icon: 'library'
+    };
+  };
+
+  // --- Funciones de Edición Dinámica (Exclusivo Coordinación) ---
+  const handleStartEditing = () => {
+    // Clonación profunda para permitir cancelar sin alterar el estado de lectura
+    setDraftData(JSON.parse(JSON.stringify(data)));
+    setIsEditing(true);
+  };
+
+  const handleCancelEditing = () => {
+    setDraftData(null);
+    setIsEditing(false);
+  };
+
+  const handleCategoryTitleChange = (catIdx, newTitle) => {
+    setDraftData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy.categorias[catIdx].titulo = newTitle;
+      return copy;
+    });
+  };
+
+  const handleDeleteCategory = (catIdx) => {
+    setDraftData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy.categorias.splice(catIdx, 1);
+      return copy;
+    });
+  };
+
+  const handleAddCategory = () => {
+    setDraftData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy.categorias.push({
+        titulo: "NUEVA CATEGORÍA DE TITULACIÓN",
+        modalidades: [
+          { nombre: "Nueva Modalidad", descripcion: "Escribe aquí los requisitos y criterios de esta modalidad." }
+        ]
+      });
+      return copy;
+    });
+  };
+
+  const handleModalidadChange = (catIdx, modIdx, field, value) => {
+    setDraftData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy.categorias[catIdx].modalidades[modIdx][field] = value;
+      return copy;
+    });
+  };
+
+  const handleDeleteModalidad = (catIdx, modIdx) => {
+    setDraftData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy.categorias[catIdx].modalidades.splice(modIdx, 1);
+      return copy;
+    });
+  };
+
+  const handleAddModalidad = (catIdx) => {
+    setDraftData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy.categorias[catIdx].modalidades.push({
+        nombre: "",
+        descripcion: ""
+      });
+      return copy;
+    });
+  };
+
+  // Guardar el JSON actualizado en el Backend
+  const handleSaveChanges = () => {
+    if (!draftData) return;
+
+    if (!draftData.urlOficial?.trim() || !draftData.documentacionBase?.trim()) {
+      if (typeof showToast === 'function') {
+        showToast("La URL oficial y la documentación base no pueden estar vacías.", "error");
+      }
+      return;
+    }
+
+    // Validar que todas las categorías y modalidades tengan contenido válido
+    for (let i = 0; i < draftData.categorias.length; i++) {
+      const cat = draftData.categorias[i];
+      if (!cat.titulo.trim()) {
+        if (typeof showToast === 'function') showToast(`La categoría #${i + 1} requiere un título.`, "error");
+        return;
+      }
+      for (let j = 0; j < cat.modalidades.length; j++) {
+        const mod = cat.modalidades[j];
+        if (!mod.nombre.trim() || !mod.descripcion.trim()) {
+          if (typeof showToast === 'function') {
+            showToast(`Completa el nombre y descripción de todas las modalidades en "${cat.titulo}".`, "error");
+          }
+          return;
+        }
+      }
+    }
+
+    setIsSaving(true);
+
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          setIsSaving(false);
+          if (res && res.success) {
+            setData(res.data || draftData);
+            setIsEditing(false);
+            setDraftData(null);
+            if (typeof showToast === 'function') {
+              showToast("Catálogo de Opciones de Titulación actualizado correctamente");
+            }
+            if (typeof addNotification === 'function') {
+              addNotification(
+                "Titulación Actualizada",
+                "Se guardaron los cambios en el módulo de Opciones de Titulación.",
+                "success"
+              );
+            }
+          } else {
+            if (typeof showToast === 'function') {
+              showToast(res ? res.message : "Error al guardar los cambios", "error");
+            }
+          }
+        })
+        .withFailureHandler(() => {
+          setIsSaving(false);
+          if (typeof showToast === 'function') {
+            showToast("Error de conexión con el servidor al actualizar Titulación", "error");
+          }
+        })
+        .updateTitulacionData(draftData, userCode);
+    } else {
+      setTimeout(() => {
+        setIsSaving(false);
+        setData(draftData);
+        setIsEditing(false);
+        setDraftData(null);
+        if (typeof showToast === 'function') showToast("Simulación: Cambios guardados con éxito");
+      }, 900);
+    }
+  };
+
+  // Renderizado del Skeleton Screen durante la carga inicial
+  if (isLoading) {
+    return (
+      <div className="space-y-5 animate-pulse">
+        {/* Skeleton Cabecera */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-slate-200 dark:bg-slate-700"></div>
+            <div className="space-y-2">
+              <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-48"></div>
+              <div className="h-3.5 bg-slate-100 dark:bg-slate-700/60 rounded w-72"></div>
             </div>
           </div>
+          <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded-xl w-48"></div>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
-              <h4 className="font-bold text-slate-900 dark:text-white text-sm font-display">1. Examen Global CENEVAL (EGEL Plus)</h4>
-              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">Obtener resultado Satisfactorio o Sobresaliente en la evaluación nacional de la carrera de Computación.</p>
-              <button onClick={() => showToast("Descargando guía de registro EGEL CENEVAL")} className="bg-slate-800 hover:bg-slate-700 text-white px-3.5 py-1.5 rounded-xl font-semibold">Ver Guía de Examen</button>
+        {/* Skeleton Banner Documentación Base */}
+        <div className="h-20 bg-amber-50/60 dark:bg-slate-800 rounded-2xl border border-amber-200/60 dark:border-slate-700 p-5"></div>
+
+        {/* Skeleton Grid de 2 Columnas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {[1, 2, 3, 4].map((n) => (
+            <div key={n} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="h-12 bg-slate-100 dark:bg-slate-700/50 px-5"></div>
+              <div className="p-5 space-y-4">
+                <div className="space-y-2">
+                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+                  <div className="h-3 bg-slate-100 dark:bg-slate-700/60 rounded w-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/5"></div>
+                  <div className="h-3 bg-slate-100 dark:bg-slate-700/60 rounded w-5/6"></div>
+                </div>
+              </div>
             </div>
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
-              <h4 className="font-bold text-slate-900 dark:text-white text-sm font-display">2. Desempeño Sobresaliente / Promedio</h4>
-              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">Promedio general mínimo de 90 con un máximo del 10% de exámenes extraordinarios acumulados.</p>
-              <button onClick={() => showToast("Verificación completada: Promedio ELEGIBLE para Titulación Automática")} className="bg-udg-navy hover:bg-udg-blue text-white px-3.5 py-1.5 rounded-xl font-semibold">Verificar Elegibilidad</button>
-            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const activeSource = isEditing && draftData ? draftData : data;
+  const safeCategorias = Array.isArray(activeSource?.categorias) ? activeSource.categorias : [];
+
+  return (
+    <div className="space-y-5 relative text-xs">
+      {/* Overlay de bloqueo mientras se guarda en el Backend */}
+      {isSaving && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
+            <span className="flex items-center justify-center animate-spin">
+              <i data-lucide="loader-2" className="w-8 h-8 text-udg-gold shrink-0"></i>
+            </span>
+            <h4 className="font-bold text-sm text-slate-900 dark:text-white font-display">
+              Guardando Opciones de Titulación...
+            </h4>
+            <p className="text-xs text-slate-500">
+              Sincronizando cambios en el servidor, actualizando memoria caché y registrando auditoría.
+            </p>
           </div>
         </div>
-      );
-    }
+      )}
+
+      {/* =====================================================================
+          1. ENCABEZADO Y BOTÓN DE PORTAL OFICIAL / CONTROLES DE EDICIÓN
+         ===================================================================== */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold border border-slate-200/80 dark:border-slate-600 shrink-0">
+            <i data-lucide="graduation-cap" className="w-5 h-5 shrink-0"></i>
+          </div>
+          <div>
+            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white font-display">
+              Opciones de Titulación
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Conoce las modalidades disponibles para obtener tu título como Ingeniero(a) en Computación.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Botón exclusivo para Coordinación: Habilitar / Salir Modo Edición */}
+          {isCoordinator && !isEditing && (
+            <button
+              type="button"
+              onClick={handleStartEditing}
+              className="bg-amber-50 hover:bg-amber-100 text-amber-900 dark:bg-slate-700 dark:text-amber-300 border border-amber-300 dark:border-slate-600 font-bold px-4 py-2.5 rounded-xl inline-flex items-center gap-2 transition-all"
+            >
+              <i data-lucide="edit-3" className="w-4 h-4 text-udg-gold shrink-0"></i>
+              <span>Habilitar Modo Edición</span>
+            </button>
+          )}
+
+          {isEditing ? (
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={handleCancelEditing}
+                disabled={isSaving}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveChanges}
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md transition-all"
+              >
+                <i data-lucide="save" className="w-4 h-4 shrink-0"></i>
+                <span>Guardar Cambios</span>
+              </button>
+            </div>
+          ) : (
+            <a
+              href={activeSource.urlOficial}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md transition-all"
+            >
+              <i data-lucide="external-link" className="w-4 h-4 shrink-0"></i>
+              <span>Portal Oficial de Titulación</span>
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Input para editar la URL Oficial cuando el Modo Edición está activo */}
+      {isEditing && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border-2 border-udg-blue/40 shadow-sm space-y-2 animate-in fade-in">
+          <label className="block font-extrabold text-udg-navy dark:text-blue-400 uppercase text-[10px] tracking-wider">
+            URL del Portal Oficial de Titulación (Botón Superior Derecho) *
+          </label>
+          <div className="flex items-center gap-2">
+            <i data-lucide="link" className="w-4 h-4 text-slate-400 shrink-0"></i>
+            <input
+              type="url"
+              value={draftData.urlOficial}
+              onChange={(e) => setDraftData({ ...draftData, urlOficial: e.target.value })}
+              placeholder="https://www.cucei.udg.mx/carreras/computacion/es/contenido/titulacion-0"
+              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          2. PANEL DE DOCUMENTACIÓN BASE OBLIGATORIA
+         ===================================================================== */}
+      <div className="bg-amber-50/90 dark:bg-amber-950/30 rounded-2xl p-5 border border-amber-200 dark:border-amber-800/70 shadow-sm">
+        <div className="flex items-start gap-3">
+          <i data-lucide="info" className="w-5 h-5 text-udg-gold shrink-0 mt-0.5"></i>
+          <div className="flex-1 space-y-1.5">
+            <h4 className="font-extrabold text-amber-900 dark:text-amber-300 text-xs font-display">
+              Documentación Base Obligatoria
+            </h4>
+            {isEditing ? (
+              <textarea
+                rows="3"
+                value={draftData.documentacionBase}
+                onChange={(e) => setDraftData({ ...draftData, documentacionBase: e.target.value })}
+                className="w-full bg-white dark:bg-slate-900 border border-amber-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-udg-gold outline-none leading-relaxed"
+              ></textarea>
+            ) : (
+              <p className="text-amber-900/90 dark:text-amber-200/90 text-xs leading-relaxed">
+                {activeSource.documentacionBase}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* =====================================================================
+          3. CUADRÍCULA DE CATEGORÍAS Y MODALIDADES (2 Columnas en Desktop)
+         ===================================================================== */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {safeCategorias.map((cat, catIdx) => {
+          const theme = getCategoryVisualTheme(catIdx, cat.titulo);
+          const modalidadesList = Array.isArray(cat.modalidades) ? cat.modalidades : [];
+
+          return (
+            <div
+              key={catIdx}
+              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col justify-between"
+            >
+              <div>
+                {/* Cabecera de la Categoría */}
+                <div className={`px-5 py-3.5 flex items-center justify-between gap-2 ${theme.headerBg}`}>
+                  <div className="flex items-center gap-2.5 flex-1">
+                    <i data-lucide={theme.icon} className={`w-4 h-4 shrink-0 ${theme.iconColor}`}></i>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={cat.titulo}
+                        onChange={(e) => handleCategoryTitleChange(catIdx, e.target.value)}
+                        placeholder="TÍTULO DE LA CATEGORÍA"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-2.5 py-1 rounded-lg font-extrabold text-xs uppercase tracking-wider text-slate-800 dark:text-white focus:ring-2 focus:ring-udg-blue outline-none"
+                      />
+                    ) : (
+                      <h4 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-wider font-display">
+                        {cat.titulo}
+                      </h4>
+                    )}
+                  </div>
+
+                  {isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCategory(catIdx)}
+                      className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors"
+                      title="Eliminar Categoría Completa"
+                    >
+                      <i data-lucide="trash-2" className="w-3.5 h-3.5 shrink-0"></i>
+                    </button>
+                  )}
+                </div>
+
+                {/* Lista de Modalidades dentro de la Categoría */}
+                <div className="p-5 space-y-4">
+                  {modalidadesList.length === 0 ? (
+                    <p className="text-slate-400 italic text-[11px]">
+                      Sin modalidades registradas en esta categoría.
+                    </p>
+                  ) : (
+                    modalidadesList.map((mod, modIdx) => (
+                      <div key={modIdx} className="space-y-1">
+                        {isEditing ? (
+                          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <input
+                                type="text"
+                                value={mod.nombre}
+                                onChange={(e) => handleModalidadChange(catIdx, modIdx, 'nombre', e.target.value)}
+                                placeholder="Nombre de la modalidad (ej. Tesis)"
+                                className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 rounded-lg font-bold text-slate-900 dark:text-white text-xs outline-none focus:ring-1 focus:ring-udg-blue"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteModalidad(catIdx, modIdx)}
+                                className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg"
+                                title="Eliminar esta modalidad"
+                              >
+                                <i data-lucide="x" className="w-3.5 h-3.5 shrink-0"></i>
+                              </button>
+                            </div>
+                            <textarea
+                              rows="2"
+                              value={mod.descripcion}
+                              onChange={(e) => handleModalidadChange(catIdx, modIdx, 'descripcion', e.target.value)}
+                              placeholder="Descripción o requisitos principales..."
+                              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-lg text-[11px] text-slate-600 dark:text-slate-300 outline-none focus:ring-1 focus:ring-udg-blue"
+                            ></textarea>
+                          </div>
+                        ) : (
+                          <div className="flex items-start gap-2.5">
+                            <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${theme.dotColor}`}></span>
+                            <div className="space-y-0.5">
+                              <h5 className="font-bold text-slate-900 dark:text-white text-xs">
+                                {mod.nombre}
+                              </h5>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                {mod.descripcion}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Pie de Tarjeta en Modo Edición: Agregar Nueva Modalidad */}
+              {isEditing && (
+                <div className="px-5 py-3 bg-slate-50/80 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => handleAddModalidad(catIdx)}
+                    className="w-full py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 hover:border-udg-blue text-udg-navy dark:text-blue-400 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <i data-lucide="plus-circle" className="w-3.5 h-3.5 shrink-0"></i>
+                    <span>Agregar Modalidad a esta Categoría</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Botón Final en Modo Edición: Agregar Nueva Categoría y Guardar */}
+      {isEditing && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={handleAddCategory}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 text-udg-navy dark:text-white font-bold inline-flex items-center justify-center gap-2 transition-all"
+          >
+            <i data-lucide="folder-plus" className="w-4 h-4 text-udg-gold shrink-0"></i>
+            <span>Agregar Nueva Categoría</span>
+          </button>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={handleCancelEditing}
+              disabled={isSaving}
+              className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold"
+            >
+              Descartar Cambios
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveChanges}
+              disabled={isSaving}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md"
+            >
+              <i data-lucide="check-circle-2" className="w-4 h-4 shrink-0"></i>
+              <span>Guardar Cambios Oficiales</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ============================================================================
 // VISTA DEL ALUMNO: ConstanciasModule (Trámite de Constancias Oficiales)
@@ -3692,26 +4292,1178 @@ function AdminConstanciasModule({ user, showToast, addNotification }) {
       );
     }
 
-    function HorasIntegralesModule({ user }) {
-      const percentage = Math.min(100, Math.round(((user.integralHours || 52) / (user.requiredHours || 60)) * 100));
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="award" className="w-5 h-5 text-udg-gold"></i>
-            Horas Integrales ({user.integralHours || 52} / {user.requiredHours || 60} hrs)
-          </h3>
-          <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
-            <div className="flex justify-between font-semibold">
-              <span>Porcentaje de cumplimiento</span>
-              <span className="text-udg-navy dark:text-blue-400 font-mono font-bold">{percentage}%</span>
+ // ============================================================================
+// VISTA DEL ALUMNO: HorasIntegralesModule (Acreditación de 64 Horas Integrales)
+// ============================================================================
+function HorasIntegralesModule({ user, showToast, addNotification }) {
+  if (!user) return null;
+
+  const REQUIRED_HOURS = 64;
+
+  // Hidratación segura de iconos Lucide
+  useEffect(() => {
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  });
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Estado de la solicitud actual del alumno ('Ninguna' si no existe registro previo)
+  const [solicitudActiva, setSolicitudActiva] = useState(null);
+
+  // Lista dinámica de archivos por subir: [{ id, name, mimeType, base64, evento, horas }]
+  const [archivosList, setArchivosList] = useState([]);
+
+  const studentCode = String(user.code || user.codigo || '');
+  const studentName = String(user.name || user.nombre || '');
+  const studentEmail = String(user.email || user.correo || '');
+
+  const fetchMyHorasStatus = () => {
+    setIsLoading(true);
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          setSolicitudActiva(res && res.found ? res.solicitud : null);
+          setIsLoading(false);
+        })
+        .withFailureHandler(() => {
+          if (typeof showToast === 'function') showToast("Error al verificar tu expediente de horas integrales", "error");
+          setSolicitudActiva(null);
+          setIsLoading(false);
+        })
+        .getStudentHorasIntegrales(studentCode);
+    } else {
+      setTimeout(() => {
+        setSolicitudActiva(null);
+        setIsLoading(false);
+      }, 900);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyHorasStatus();
+  }, [studentCode]);
+
+  // Procesar múltiples archivos seleccionados o arrastrados (Drag & Drop)
+  const processSelectedFiles = (fileListObj) => {
+    const filesArray = Array.from(fileListObj || []);
+    if (filesArray.length === 0) return;
+
+    filesArray.forEach((file) => {
+      if (file.size > 8 * 1024 * 1024) {
+        if (typeof showToast === 'function') showToast(`El archivo "${file.name}" excede el límite de 8 MB`, "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result.split(',')[1];
+        setArchivosList((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            name: file.name,
+            mimeType: file.type || 'application/pdf',
+            base64: base64String,
+            evento: '',
+            horas: ''
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileInputChange = (e) => {
+    processSelectedFiles(e.target.files);
+    e.target.value = '';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer && e.dataTransfer.files) {
+      processSelectedFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleUpdateFileField = (id, field, value) => {
+    setArchivosList((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const handleRemoveFile = (id) => {
+    setArchivosList((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  // Cálculo dinámico del total de horas y validación estricta de campos
+  const totalHorasCalculadas = archivosList.reduce((acc, item) => {
+    const h = Number(item.horas);
+    return acc + (isNaN(h) || h < 0 ? 0 : h);
+  }, 0);
+
+  const allFieldsComplete =
+    archivosList.length > 0 &&
+    archivosList.every(
+      (item) => item.evento.trim().length > 0 && Number(item.horas) > 0
+    );
+
+  const canSubmit = totalHorasCalculadas >= REQUIRED_HOURS && allFieldsComplete && !isSubmitting;
+  const progressPercent = Math.min(100, Math.round((totalHorasCalculadas / REQUIRED_HOURS) * 100));
+
+  const handleSubmitExpediente = (e) => {
+    e.preventDefault();
+    if (!canSubmit) {
+      if (typeof showToast === 'function') {
+        showToast("Asegúrate de completar todos los eventos y sumar al menos 64 horas.", "error");
+      }
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const payload = {
+      codigo: studentCode,
+      nombre: studentName,
+      correo: studentEmail,
+      total_horas: totalHorasCalculadas,
+      archivos: archivosList.map((f) => ({
+        name: f.name,
+        mimeType: f.mimeType,
+        base64: f.base64,
+        evento: f.evento.trim(),
+        horas: Number(f.horas)
+      }))
+    };
+
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          setIsSubmitting(false);
+          if (res && res.success) {
+            setSolicitudActiva(res.solicitud);
+            setArchivosList([]);
+            if (typeof showToast === 'function') {
+              showToast(`Expediente #${res.solicitud.id_solicitud} enviado correctamente (${totalHorasCalculadas} hrs).`);
+            }
+            if (typeof addNotification === 'function') {
+              addNotification(
+                "Expediente de Horas Enviado",
+                `Tu solicitud #${res.solicitud.id_solicitud} por ${totalHorasCalculadas} horas está en revisión.`,
+                "info"
+              );
+            }
+          } else {
+            if (typeof showToast === 'function') {
+              showToast(res ? res.message : "Error al enviar el expediente", "error");
+            }
+          }
+        })
+        .withFailureHandler(() => {
+          setIsSubmitting(false);
+          if (typeof showToast === 'function') {
+            showToast("Error de conexión al subir los comprobantes a Google Drive", "error");
+          }
+        })
+        .submitHorasIntegrales(payload);
+    } else {
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setSolicitudActiva({
+          id_solicitud: 'HRS-demo01',
+          codigo_estudiante: studentCode,
+          nombre_estudiante: studentName,
+          total_horas: totalHorasCalculadas,
+          estatus: 'Pendiente',
+          motivo_devolucion: '',
+          fecha_solicitud: new Date().toLocaleDateString('es-MX'),
+          comprobantes: payload.archivos
+        });
+        setArchivosList([]);
+        if (typeof showToast === 'function') showToast("Simulación: Expediente registrado");
+      }, 1400);
+    }
+  };
+
+  // Determinar estado actual ('Ninguna', 'Pendiente', 'En revisión en control Escolar', 'Aprobadas', 'En kardex', 'Devuelta')
+  const currentStatus = solicitudActiva ? String(solicitudActiva.estatus || 'Pendiente') : 'Ninguna';
+  const isFormMode = currentStatus === 'Ninguna' || currentStatus === 'Devuelta';
+
+  // Fases para el Stepper Visual (Escenario B)
+  const getActiveStepIndex = (status) => {
+    const s = status.toLowerCase();
+    if (s.includes('kardex') || s.includes('aprobada')) return 3;
+    if (s.includes('control escolar') || s.includes('revisión')) return 2;
+    return 1; // 'Pendiente'
+  };
+
+  return (
+    <div className="space-y-6 relative">
+      {/* Overlay de bloqueo para subida múltiple de archivos */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
+            <span className="flex items-center justify-center animate-spin">
+              <i data-lucide="loader-2" className="w-8 h-8 text-udg-gold shrink-0"></i>
+            </span>
+            <h4 className="font-bold text-sm text-slate-900 dark:text-white font-display">
+              Subiendo {archivosList.length} comprobante(s) a Drive...
+            </h4>
+            <p className="text-xs text-slate-500">
+              Cifrando permisos de tus constancias y generando tu expediente oficial de Horas Integrales. Por favor no cierres esta ventana.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Encabezado Principal del Módulo */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-slate-700 text-udg-gold flex items-center justify-center font-bold border border-amber-200/60 dark:border-slate-600 shrink-0">
+              <i data-lucide="award" className="w-6 h-6 shrink-0"></i>
             </div>
-            <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div className="h-full bg-udg-gold transition-all" style={{ width: `${percentage}%` }}></div>
+            <div>
+              <h3 className="text-lg font-extrabold text-slate-900 dark:text-white font-display">
+                Acreditación de Horas Integrales (Plan INCO)
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Recepción de expediente único de actividades extracurriculares, talleres, conferencias y hackathones.
+              </p>
+            </div>
+          </div>
+
+          <span className="self-start sm:self-center px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-mono font-bold text-xs">
+            Meta Requerida: {REQUIRED_HOURS} hrs
+          </span>
+        </div>
+
+        {/* SKELETON SCREEN DURANTE CARGA INICIAL */}
+        {isLoading ? (
+          <div className="space-y-4 animate-pulse">
+            <div className="h-14 bg-slate-100 dark:bg-slate-700/60 rounded-xl w-full"></div>
+            <div className="h-36 bg-slate-100 dark:bg-slate-700/40 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700"></div>
+            <div className="h-16 bg-slate-100 dark:bg-slate-700/60 rounded-xl w-full"></div>
+          </div>
+        ) : isFormMode ? (
+          /* =====================================================================
+             ESCENARIO A: FORMULANDO SOLICITUD (Estado 'Ninguna' o 'Devuelta')
+             ===================================================================== */
+          <form onSubmit={handleSubmitExpediente} className="space-y-6 text-xs">
+            
+            {/* Banner Destacado si la solicitud fue DEVUELTA por el Coordinador */}
+            {currentStatus === 'Devuelta' && (
+              <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/80 flex items-start gap-3 animate-in fade-in">
+                <i data-lucide="alert-octagon" className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5"></i>
+                <div className="space-y-1">
+                  <h4 className="font-extrabold text-red-800 dark:text-red-300 text-xs uppercase tracking-wide">
+                    Atención: Tu expediente anterior fue devuelto para corrección
+                  </h4>
+                  <p className="text-red-700 dark:text-red-200 font-semibold leading-relaxed">
+                    Tu solicitud fue devuelta. Motivo: {solicitudActiva?.motivo_devolucion || 'Verifica que tus constancias sean legibles y cuenten con firma o sello oficial.'}
+                  </p>
+                  <p className="text-[11px] text-red-600/80 dark:text-red-300/80">
+                    Por favor vuelve a adjuntar tu expediente completo corrigiendo las observaciones señaladas.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Aviso Importante de 64 Horas */}
+            <div className="p-4 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 flex items-start gap-3">
+              <i data-lucide="alert-triangle" className="w-5 h-5 text-udg-gold shrink-0 mt-0.5"></i>
+              <p className="text-amber-900 dark:text-amber-200 font-bold leading-relaxed">
+                IMPORTANTE: Solo envía tu solicitud cuando la suma de todos tus comprobantes alcance o supere las 64 horas integrales requeridas.
+              </p>
+            </div>
+
+            {/* Zona Drag & Drop para Subida Múltiple de Archivos */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
+                isDragging
+                  ? 'border-udg-blue bg-blue-50/60 dark:bg-slate-700/50'
+                  : 'border-slate-300 dark:border-slate-600 bg-slate-50/60 dark:bg-slate-900/40 hover:border-udg-blue'
+              }`}
+            >
+              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center mx-auto mb-3 text-udg-navy dark:text-blue-400">
+                <i data-lucide="upload-cloud" className="w-6 h-6 shrink-0"></i>
+              </div>
+              <h4 className="font-bold text-slate-800 dark:text-white text-sm font-display">
+                Arrastra y suelta tus constancias aquí, o selecciónalas desde tu equipo
+              </h4>
+              <p className="text-[11px] text-slate-500 mt-1 mb-4">
+                Puedes seleccionar múltiples archivos PDF, JPG o PNG a la vez (máx. 8 MB por archivo).
+              </p>
+
+              <label className="cursor-pointer bg-udg-navy hover:bg-udg-blue text-white font-bold px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-sm transition-all">
+                <i data-lucide="folder-plus" className="w-4 h-4 text-udg-gold shrink-0"></i>
+                <span>Seleccionar Comprobantes (Múltiples)</span>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,image/*"
+                  onChange={handleFileInputChange}
+                  disabled={isSubmitting}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Listado Dinámico de Archivos Seleccionados */}
+            {archivosList.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">
+                    Comprobantes Adjuntos ({archivosList.length})
+                  </h5>
+                  <span className="text-[11px] text-slate-400">
+                    Completa el nombre del evento y las horas que acredita cada archivo
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {archivosList.map((fileItem, index) => (
+                    <div
+                      key={fileItem.id}
+                      className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex flex-col lg:flex-row lg:items-center justify-between gap-3 shadow-sm"
+                    >
+                      {/* Nombre del Archivo */}
+                      <div className="flex items-center gap-2.5 min-w-0 lg:w-1/3">
+                        <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-udg-blue shrink-0 font-mono font-bold text-[11px]">
+                          {index + 1}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 dark:text-slate-100 truncate" title={fileItem.name}>
+                            {fileItem.name}
+                          </p>
+                          <span className="text-[10px] text-slate-400 uppercase font-mono">
+                            {fileItem.mimeType.split('/')[1] || 'DOC'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Inputs Obligatorios: Evento y Horas */}
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            required
+                            placeholder="Nombre del evento (Ej: Hackathon CUCEI 2026, Taller IA...)"
+                            value={fileItem.evento}
+                            onChange={(e) => handleUpdateFileField(fileItem.id, 'evento', e.target.value)}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                          />
+                        </div>
+
+                        <div className="w-full sm:w-36">
+                          <input
+                            type="number"
+                            min="1"
+                            max="200"
+                            required
+                            placeholder="Horas (ej. 16)"
+                            value={fileItem.horas}
+                            onChange={(e) => handleUpdateFileField(fileItem.id, 'horas', e.target.value)}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl font-mono font-bold text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(fileItem.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition-colors self-end sm:self-center"
+                          title="Quitar archivo"
+                        >
+                          <i data-lucide="trash-2" className="w-4 h-4 shrink-0"></i>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Contador Dinámico, Barra de Progreso y Botón de Envío */}
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                    PROGRESO DE ACREDITACIÓN
+                  </span>
+                  <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-display">
+                    Total acumulado:{' '}
+                    <span className={totalHorasCalculadas >= REQUIRED_HOURS ? 'text-emerald-600 dark:text-emerald-400' : 'text-udg-gold'}>
+                      {totalHorasCalculadas}
+                    </span>{' '}
+                    / {REQUIRED_HOURS} horas
+                  </p>
+                </div>
+
+                {totalHorasCalculadas >= REQUIRED_HOURS ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold text-[11px]">
+                    <i data-lucide="check-circle-2" className="w-4 h-4 shrink-0"></i>
+                    <span>Meta de 64 horas alcanzada</span>
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-semibold text-slate-500">
+                    Te faltan <strong>{Math.max(0, REQUIRED_HOURS - totalHorasCalculadas)} horas</strong> para habilitar el envío
+                  </span>
+                )}
+              </div>
+
+              <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    totalHorasCalculadas >= REQUIRED_HOURS ? 'bg-emerald-500' : 'bg-udg-gold'
+                  }`}
+                  style={{ width: `${progressPercent}%` }}
+                ></div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={!canSubmit}
+                  className={`font-bold px-6 py-3 rounded-xl flex items-center gap-2 shadow-md transition-all ${
+                    canSubmit
+                      ? 'bg-udg-navy hover:bg-udg-blue text-white cursor-pointer'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  <i data-lucide="send" className="w-4 h-4 shrink-0"></i>
+                  <span>Enviar Solicitud ({totalHorasCalculadas} hrs)</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        ) : (
+          /* =====================================================================
+             ESCENARIO B: SOLICITUD ACTIVA (Stepper / Línea de Tiempo Visual)
+             ===================================================================== */
+          <div className="space-y-6 text-xs animate-in fade-in">
+            <div className="p-5 rounded-2xl bg-blue-50/50 dark:bg-slate-900/60 border border-blue-200/70 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="inline-block px-2.5 py-0.5 rounded-md bg-udg-navy text-white font-mono font-bold text-[10px]">
+                  EXPEDIENTE #{solicitudActiva.id_solicitud}
+                </span>
+                <h4 className="text-base font-extrabold text-slate-900 dark:text-white font-display pt-1">
+                  Seguimiento de Trámite de Horas Integrales
+                </h4>
+                <p className="text-slate-500 text-[11px]">
+                  Enviado el {solicitudActiva.fecha_solicitud} • Total reportado:{' '}
+                  <strong className="text-udg-navy dark:text-blue-400">{solicitudActiva.total_horas} horas</strong>
+                </p>
+              </div>
+
+              <span className={`self-start sm:self-center px-3.5 py-1.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                getActiveStepIndex(currentStatus) === 3
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : 'bg-blue-100 text-blue-800 border-blue-300'
+              }`}>
+                {currentStatus}
+              </span>
+            </div>
+
+            {/* Stepper / Línea de Tiempo de 3 Fases */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              {[
+                {
+                  step: 1,
+                  title: '1. Solicitud Recibida',
+                  desc: 'Tu expediente de comprobantes está en validación por la Coordinación INCO.',
+                  icon: 'file-clock'
+                },
+                {
+                  step: 2,
+                  title: '2. En Revisión en Control Escolar',
+                  desc: 'La Coordinación avaló tus constancias y turnó el oficio a Control Escolar.',
+                  icon: 'building-2'
+                },
+                {
+                  step: 3,
+                  title: '3. Aprobadas / En Kardex',
+                  desc: 'Tus horas integrales han sido acreditadas oficialmente en tu historial académico.',
+                  icon: 'check-circle-2'
+                }
+              ].map((phase) => {
+                const activeIdx = getActiveStepIndex(currentStatus);
+                const isCompleted = activeIdx > phase.step || (activeIdx === 3 && phase.step === 3);
+                const isCurrent = activeIdx === phase.step && phase.step !== 3;
+
+                return (
+                  <div
+                    key={phase.step}
+                    className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
+                      isCompleted
+                        ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800'
+                        : isCurrent
+                          ? 'bg-blue-50/70 dark:bg-blue-950/30 border-udg-blue shadow-sm ring-2 ring-udg-blue/20'
+                          : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700 opacity-60'
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                          isCompleted
+                            ? 'bg-emerald-600 text-white'
+                            : isCurrent
+                              ? 'bg-udg-navy text-white'
+                              : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                        }`}>
+                          <i data-lucide={isCompleted ? 'check' : phase.icon} className="w-5 h-5 shrink-0"></i>
+                        </div>
+                        <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                          isCompleted
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : isCurrent
+                              ? 'bg-blue-100 text-udg-blue animate-pulse'
+                              : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {isCompleted ? 'Completado' : isCurrent ? 'Fase Actual' : 'Pendiente'}
+                        </span>
+                      </div>
+
+                      <h5 className="font-bold text-slate-900 dark:text-white text-sm font-display">
+                        {phase.title}
+                      </h5>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                        {phase.desc}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Resumen de Comprobantes Registrados */}
+            {Array.isArray(solicitudActiva.comprobantes) && solicitudActiva.comprobantes.length > 0 && (
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 space-y-3">
+                <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">
+                  Desglose de Constancias Enviadas ({solicitudActiva.comprobantes.length})
+                </h5>
+                <div className="divide-y divide-slate-200/70 dark:divide-slate-700">
+                  {solicitudActiva.comprobantes.map((comp, idx) => (
+                    <div key={idx} className="py-2.5 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-bold text-slate-800 dark:text-slate-100">{comp.evento}</p>
+                        <p className="text-[11px] text-slate-400">{comp.name}</p>
+                      </div>
+                      <span className="font-mono font-bold text-udg-navy dark:text-blue-400 bg-white dark:bg-slate-800 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                        {comp.horas} hrs
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// VISTA DEL COORDINADOR: AdminHorasIntegralesModule
+// ============================================================================
+function AdminHorasIntegralesModule({ user, showToast, addNotification }) {
+  const [items, setItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Bloqueo de pantalla durante transiciones de estado en servidor
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoadingMsg, setActionLoadingMsg] = useState('');
+
+  // Filtros: 'Pendiente', 'En revisión en control Escolar', 'Aprobadas', 'Devuelta', 'Todos'
+  const [filter, setFilter] = useState('Pendiente');
+  const [search, setSearch] = useState('');
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Modal de Revisión Detallada
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showRejectBox, setShowRejectBox] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
+  // Regla UX: Estado de confirmación de doble paso para "Aprobar y pasar a En Kardex"
+  const [confirmApproveStep, setConfirmApproveStep] = useState(false);
+
+  useEffect(() => {
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  });
+
+  const fetchAllExpedientes = () => {
+    setIsLoading(true);
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((data) => {
+          setItems(Array.isArray(data) ? data : []);
+          setIsLoading(false);
+        })
+        .withFailureHandler(() => {
+          if (typeof showToast === 'function') showToast("Error al cargar los expedientes de horas integrales", "error");
+          setItems([]);
+          setIsLoading(false);
+        })
+        .getAllHorasIntegrales();
+    } else {
+      setTimeout(() => {
+        setItems([
+          {
+            id_solicitud: 'HRS-98a2k1',
+            codigo_estudiante: '220470399',
+            nombre_estudiante: 'Kevin Vazquez Delgado',
+            correo_estudiante: 'kevin.vazquez7039@alumnos.udg.mx',
+            total_horas: 68,
+            estatus: 'Pendiente',
+            motivo_devolucion: '',
+            fecha_solicitud: '16/10/2026',
+            comprobantes: [
+              { name: 'constancia_hackathon.pdf', evento: 'Hackathon CUCEI AI 2026', horas: 24, url: '#' },
+              { name: 'conferencia_redes.pdf', evento: 'Ciclo de Conferencias IEEE', horas: 20, url: '#' },
+              { name: 'taller_docker.pdf', evento: 'Taller Intensivo Docker y Linux', horas: 24, url: '#' }
+            ]
+          }
+        ]);
+        setIsLoading(false);
+      }, 900);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllExpedientes();
+  }, []);
+
+  const openModalWithItem = (item) => {
+    setSelectedItem(item);
+    setShowRejectBox(false);
+    setRejectReason('');
+    setConfirmApproveStep(false);
+  };
+
+  const closeModal = () => {
+    setSelectedItem(null);
+    setShowRejectBox(false);
+    setRejectReason('');
+    setConfirmApproveStep(false);
+  };
+
+  const safeItems = Array.isArray(items) ? items : [];
+
+  const matchesFilterTab = (itemStatus, activeFilter) => {
+    if (activeFilter === 'Todos') return true;
+    const s = String(itemStatus || '').toLowerCase();
+    if (activeFilter === 'Pendientes' || activeFilter === 'Pendiente') return s === 'pendiente';
+    if (activeFilter === 'En revisión') return s.includes('control escolar') || s.includes('revisión');
+    if (activeFilter === 'Aprobadas') return s.includes('aprobada') || s.includes('kardex');
+    if (activeFilter === 'Devueltas') return s === 'devuelta';
+    return true;
+  };
+
+  const filteredItems = safeItems.filter((item) => {
+    const matchTab = matchesFilterTab(item.estatus, filter);
+    const q = search.toLowerCase();
+    const target = `${item.nombre_estudiante || ''} ${item.codigo_estudiante || ''} ${item.id_solicitud || ''}`.toLowerCase();
+    return matchTab && target.includes(q);
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentItems = filteredItems.slice(indexOfFirst, indexOfLast);
+
+  // Ejecutar cambio de estado en el Backend ('Devuelta', 'En revisión en control Escolar', 'En kardex')
+  const executeStatusUpdate = (newStatus, motivoText = '') => {
+    if (!selectedItem) return;
+
+    if (newStatus === 'Devuelta' && !motivoText.trim()) {
+      showToast("Debes redactar el motivo por el cual devuelves la solicitud", "error");
+      return;
+    }
+
+    setActionLoading(true);
+    setActionLoadingMsg(
+      newStatus === 'Devuelta'
+        ? 'Devolviendo solicitud y enviando observaciones por correo al alumno...'
+        : newStatus === 'En revisión en control Escolar'
+          ? 'Turnando expediente a Control Escolar...'
+          : 'Acreditando horas en el Kardex del alumno y enviando notificación oficial...'
+    );
+
+    const adminCode = user?.code || user?.codigo || 'COORD_INCO';
+
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          setActionLoading(false);
+          if (res && res.success) {
+            const targetId = selectedItem.id_solicitud;
+            const updatedObj = {
+              ...selectedItem,
+              estatus: newStatus,
+              motivo_devolucion: motivoText.trim()
+            };
+            setItems((prev) =>
+              prev.map((it) => (it.id_solicitud === targetId ? updatedObj : it))
+            );
+            setSelectedItem(updatedObj);
+            setShowRejectBox(false);
+            setConfirmApproveStep(false);
+
+            showToast(`Expediente #${targetId} actualizado a "${newStatus}"`);
+            if (newStatus === 'Devuelta' || newStatus === 'En kardex') {
+              closeModal();
+            }
+          } else {
+            showToast(res ? res.message : "Error al actualizar la solicitud", "error");
+          }
+        })
+        .withFailureHandler(() => {
+          setActionLoading(false);
+          showToast("Error de conexión con el servidor", "error");
+        })
+        .updateHorasIntegralesStatus(
+          selectedItem.id_solicitud,
+          newStatus,
+          motivoText.trim(),
+          adminCode
+        );
+    } else {
+      setTimeout(() => {
+        setActionLoading(false);
+        const targetId = selectedItem.id_solicitud;
+        const updatedObj = { ...selectedItem, estatus: newStatus, motivo_devolucion: motivoText.trim() };
+        setItems((prev) => prev.map((it) => (it.id_solicitud === targetId ? updatedObj : it)));
+        setSelectedItem(updatedObj);
+        setShowRejectBox(false);
+        setConfirmApproveStep(false);
+        showToast(`Simulación: Estado actualizado a ${newStatus}`);
+      }, 1000);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const s = String(status || '').toLowerCase();
+    if (s.includes('kardex') || s.includes('aprobada')) {
+      return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+    }
+    if (s.includes('control escolar') || s.includes('revisión')) {
+      return 'bg-blue-100 text-blue-800 border-blue-300';
+    }
+    if (s === 'devuelta') {
+      return 'bg-red-100 text-red-800 border-red-300';
+    }
+    return 'bg-amber-100 text-amber-800 border-amber-300';
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5 text-xs relative">
+      
+      {/* Overlay de bloqueo durante acciones del Coordinador */}
+      {actionLoading && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
+            <span className="flex items-center justify-center animate-spin">
+              <i data-lucide="loader-2" className="w-8 h-8 text-udg-blue shrink-0"></i>
+            </span>
+            <h4 className="font-bold text-sm text-slate-900 dark:text-white font-display">Procesando Expediente...</h4>
+            <p className="text-xs text-slate-500">{actionLoadingMsg}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Encabezado */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+        <div>
+          <h3 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+            <i data-lucide="award" className="w-5 h-5 text-udg-gold shrink-0"></i>
+            <span>Revisión de Expedientes de Horas Integrales</span>
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Valida las constancias adjuntas, turna a Control Escolar o acredita en Kardex.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={fetchAllExpedientes}
+          disabled={isLoading}
+          className="self-start sm:self-auto px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1.5 disabled:opacity-50"
+        >
+          <span className={`flex items-center justify-center ${isLoading ? 'animate-spin' : ''}`}>
+            <i data-lucide="refresh-cw" className="w-3.5 h-3.5 shrink-0"></i>
+          </span>
+          <span>Actualizar</span>
+        </button>
+      </div>
+
+      {/* Buscador y Filtros por Estado */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <i data-lucide="search" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 shrink-0"></i>
+          <input
+            type="text"
+            placeholder="Buscar alumno por nombre o código..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
+          {[
+            { id: 'Pendiente', label: 'Pendientes' },
+            { id: 'En revisión', label: 'En revisión' },
+            { id: 'Aprobadas', label: 'Aprobadas' },
+            { id: 'Devueltas', label: 'Devueltas' },
+            { id: 'Todos', label: 'Todos' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setFilter(tab.id);
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                filter === tab.id
+                  ? 'bg-udg-navy text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-white/60'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Listado de Tarjetas con Skeleton Screen */}
+      <div className="space-y-3 min-h-[280px]">
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                className="p-5 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 flex justify-between items-center animate-pulse"
+              >
+                <div className="space-y-2">
+                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-52"></div>
+                  <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-36"></div>
+                </div>
+                <div className="h-9 bg-slate-200 dark:bg-slate-700 rounded-xl w-40"></div>
+              </div>
+            ))}
+          </div>
+        ) : currentItems.length === 0 ? (
+          <div className="py-12 text-center text-slate-400 space-y-2">
+            <i data-lucide="inbox" className="w-8 h-8 mx-auto opacity-50 shrink-0"></i>
+            <p>No hay expedientes de horas integrales en esta categoría.</p>
+          </div>
+        ) : (
+          currentItems.map((item) => (
+            <div
+              key={item.id_solicitud}
+              className="p-5 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 transition-all"
+            >
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-extrabold text-udg-navy dark:text-blue-400 text-xs">
+                    #{item.id_solicitud}
+                  </span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${getStatusBadge(item.estatus)}`}>
+                    {item.estatus}
+                  </span>
+                </div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+                  {item.nombre_estudiante}{' '}
+                  <span className="font-mono text-udg-blue dark:text-blue-400">({item.codigo_estudiante})</span>
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Fecha de envío: {item.fecha_solicitud} •{' '}
+                  <strong className="text-emerald-700 dark:text-emerald-400">
+                    Total reportado: {item.total_horas} hrs
+                  </strong>{' '}
+                  ({Array.isArray(item.comprobantes) ? item.comprobantes.length : 0} comprobantes)
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openModalWithItem(item)}
+                className="self-start sm:self-center bg-udg-navy hover:bg-udg-blue text-white font-bold px-4 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-sm transition-all"
+              >
+                <i data-lucide="folder-open" className="w-4 h-4 text-udg-gold shrink-0"></i>
+                <span>Revisar Expediente</span>
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Paginación */}
+      {!isLoading && filteredItems.length > 0 && (
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700 text-[11px] text-slate-500">
+          <span>
+            Mostrando {indexOfFirst + 1} - {Math.min(indexOfLast, filteredItems.length)} de {filteredItems.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-100 disabled:opacity-30"
+            >
+              <i data-lucide="chevron-left" className="w-3.5 h-3.5 shrink-0"></i>
+            </button>
+            <span className="font-bold text-slate-700 dark:text-slate-300">
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-100 disabled:opacity-30"
+            >
+              <i data-lucide="chevron-right" className="w-3.5 h-3.5 shrink-0"></i>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE REVISIÓN DETALLADA DEL EXPEDIENTE */}
+      {selectedItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden text-xs max-h-[90vh] flex flex-col">
+            
+            {/* Cabecera del Modal */}
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-slate-700 text-udg-blue dark:text-blue-300 font-mono font-bold text-[11px]">
+                  #{selectedItem.id_solicitud}
+                </span>
+                <h4 className="font-extrabold text-slate-900 dark:text-white text-sm font-display">
+                  Expediente de Horas Integrales
+                </h4>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeModal}
+                className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-slate-700"
+              >
+                <i data-lucide="x" className="w-4 h-4 shrink-0"></i>
+              </button>
+            </div>
+
+            {/* Cuerpo del Modal */}
+            <div className="p-6 overflow-y-auto custom-scrollbar space-y-5">
+              
+              {/* Resumen del Estudiante */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white font-display">
+                    {selectedItem.nombre_estudiante}
+                  </h3>
+                  <p className="font-mono text-xs text-slate-500">
+                    Código UdG: {selectedItem.codigo_estudiante} • Enviado: {selectedItem.fecha_solicitud}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-xl bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-slate-600 font-mono font-black text-udg-gold text-sm">
+                    {selectedItem.total_horas} hrs
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase border ${getStatusBadge(selectedItem.estatus)}`}>
+                    {selectedItem.estatus}
+                  </span>
+                </div>
+              </div>
+
+              {/* Tabla / Lista Detallada de Comprobantes Adjuntos */}
+              <div className="space-y-2.5">
+                <h5 className="font-bold text-slate-700 dark:text-slate-300 uppercase text-[10px] tracking-wider">
+                  Comprobantes Adjuntos en el Expediente ({Array.isArray(selectedItem.comprobantes) ? selectedItem.comprobantes.length : 0})
+                </h5>
+
+                <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-700">
+                  {Array.isArray(selectedItem.comprobantes) &&
+                    selectedItem.comprobantes.map((file, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3.5 bg-white dark:bg-slate-800/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 transition-colors"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <p className="font-bold text-slate-900 dark:text-white text-xs">
+                            {file.evento}
+                          </p>
+                          <p className="text-[11px] text-slate-400 truncate">{file.name}</p>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="font-mono font-extrabold text-udg-navy dark:text-blue-400 bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-lg">
+                            {file.horas} hrs
+                          </span>
+                          {file.url && (
+                            <a
+                              href={file.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-3.5 py-1.5 rounded-xl inline-flex items-center gap-1.5 shadow-sm"
+                            >
+                              <i data-lucide="external-link" className="w-3.5 h-3.5 shrink-0"></i>
+                              <span>Ver Archivo</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* ===============================================================
+                  LÓGICA CONDICIONAL DE ACCIONES SEGÚN EL ESTADO DEL EXPEDIENTE
+                 =============================================================== */}
+
+              {/* 1. SI ESTÁ "Pendiente" */}
+              {selectedItem.estatus === 'Pendiente' && (
+                <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-700">
+                  {!showRejectBox ? (
+                    <div className="flex flex-wrap items-center justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowRejectBox(true)}
+                        className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold px-4 py-2.5 rounded-xl inline-flex items-center gap-2 transition-all"
+                      >
+                        <i data-lucide="corner-up-left" className="w-4 h-4 shrink-0"></i>
+                        <span>Devolver Solicitud</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => executeStatusUpdate('En revisión en control Escolar')}
+                        className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md transition-all"
+                      >
+                        <i data-lucide="arrow-right-circle" className="w-4 h-4 text-udg-gold shrink-0"></i>
+                        <span>Procesar Solicitud</span>
+                      </button>
+                    </div>
+                  ) : (
+                    /* Caja de Motivo de Devolución Obligatoria */
+                    <div className="p-4 rounded-2xl bg-red-50/70 dark:bg-red-950/30 border border-red-200 dark:border-red-800 space-y-3 animate-in fade-in">
+                      <label className="block font-bold text-red-900 dark:text-red-200">
+                        Motivo de devolución (se enviará por correo al alumno) *
+                      </label>
+                      <textarea
+                        rows="3"
+                        placeholder="Ej: La constancia del taller de redes no cuenta con sello ni firma legible..."
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 rounded-xl p-3 text-xs focus:ring-2 focus:ring-red-500 outline-none"
+                      ></textarea>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowRejectBox(false);
+                            setRejectReason('');
+                          }}
+                          className="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 text-slate-600 border border-slate-200 font-semibold"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => executeStatusUpdate('Devuelta', rejectReason)}
+                          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold inline-flex items-center gap-1.5 shadow-sm"
+                        >
+                          <i data-lucide="send" className="w-3.5 h-3.5 shrink-0"></i>
+                          <span>Confirmar Devolución</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 2. SI ESTÁ "En revisión en control Escolar" */}
+              {selectedItem.estatus === 'En revisión en control Escolar' && (
+                <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-700">
+                  <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 flex items-center gap-3 text-udg-navy dark:text-blue-200">
+                    <i data-lucide="building-2" className="w-5 h-5 text-udg-blue shrink-0"></i>
+                    <p className="font-bold">
+                      Esta solicitud está actualmente en trámite con Control Escolar.
+                    </p>
+                  </div>
+
+                  {/* Regla UX: Confirmación de Doble Paso para evitar clics accidentales */}
+                  <div className="flex justify-end items-center gap-2">
+                    {confirmApproveStep && (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmApproveStep(false)}
+                        className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold"
+                      >
+                        Cancelar
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!confirmApproveStep) {
+                          setConfirmApproveStep(true);
+                        } else {
+                          executeStatusUpdate('En kardex');
+                        }
+                      }}
+                      className={`font-bold px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md transition-all ${
+                        confirmApproveStep
+                          ? 'bg-amber-600 hover:bg-amber-700 text-white ring-4 ring-amber-500/30'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      }`}
+                    >
+                      <i data-lucide={confirmApproveStep ? 'alert-circle' : 'check-circle-2'} className="w-4 h-4 shrink-0"></i>
+                      <span>
+                        {confirmApproveStep
+                          ? '¿Estás seguro? Clic de nuevo para confirmar'
+                          : 'Aprobar y pasar a En Kardex'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
-      );
-    }
+      )}
+
+    </div>
+  );
+}
 
     function MallaCurricularModule() {
       return (
@@ -3725,46 +5477,455 @@ function AdminConstanciasModule({ user, showToast, addNotification }) {
       );
     }
 
-    function AvisosModule({ notices, user, showToast }) {
-      const [newTitle, setNewTitle] = useState('');
-      const [newDesc, setNewDesc] = useState('');
+    // ============================================================================
+// MÓDULO DE AVISOS OFICIALES (Unificado: Vista Alumno/Docente y Coordinador)
+// ============================================================================
+function AvisosModule({ notices, user, showToast, addNotification }) {
+  // Hidratación segura de íconos Lucide en cada renderizado
+  useEffect(() => {
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  });
 
-      const handleAddNotice = (e) => {
-        e.preventDefault();
-        if (!newTitle.trim()) return;
-        showToast("Nuevo aviso oficial publicado correctamente");
-        setNewTitle('');
-        setNewDesc('');
-      };
+  // Determinar si el usuario en sesión tiene rol administrativo de Coordinación
+  const activeRole = String(user?.role || user?.rol || 'Estudiante');
+  const isCoordinator = activeRole === 'Coordinacion';
+  const authorCode = String(user?.code || user?.codigo || '');
 
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="bell" className="w-5 h-5 text-udg-gold"></i>
-            Tablón de Avisos Oficiales
-          </h3>
+  // Estados de Datos y Carga
+  const [avisosList, setAvisosList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPublishing, setIsPublishing] = useState(false);
 
-          {user.role === 'Coordinacion' && (
-            <form onSubmit={handleAddNotice} className="p-4 bg-amber-50 dark:bg-slate-900/80 rounded-xl border border-amber-200 dark:border-slate-700 space-y-2 mb-4">
-              <h4 className="font-bold text-amber-900 dark:text-amber-300">Publicar Nuevo Aviso Institucional:</h4>
-              <input type="text" placeholder="Título del aviso" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="w-full p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700" />
-              <textarea placeholder="Descripción del aviso" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="w-full p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"></textarea>
-              <button type="submit" className="bg-udg-gold text-white font-bold px-4 py-1.5 rounded-lg">Publicar Aviso</button>
-            </form>
-          )}
+  // Estados del Formulario de Creación (Exclusivo Coordinación)
+  const [titulo, setTitulo] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [esImportante, setEsImportante] = useState(false);
 
-          <div className="space-y-3">
-            {notices.map(n => (
-              <div key={n.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 space-y-1">
-                <span className="text-[10px] font-bold text-udg-navy dark:text-blue-400">{n.cat} • {n.date}</span>
-                <h4 className="font-bold text-slate-900 dark:text-white font-display">{n.title}</h4>
-                <p className="text-slate-500">{n.desc}</p>
-              </div>
-            ))}
+  // Filtros rápidos (Todos / Importantes) y Paginación
+  const [filterType, setFilterType] = useState('Todos');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  // Cargar Avisos desde el Backend (con CacheService de 5 min en servidor)
+  const fetchAvisos = (forceRefresh = false) => {
+    setIsLoading(true);
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((data) => {
+          setAvisosList(Array.isArray(data) ? data : []);
+          setIsLoading(false);
+        })
+        .withFailureHandler(() => {
+          if (typeof showToast === 'function') {
+            showToast("Error al sincronizar el tablón de avisos oficiales", "error");
+          }
+          setAvisosList([]);
+          setIsLoading(false);
+        })
+        .getAvisos(forceRefresh);
+    } else {
+      // Fallback para entorno de prueba local usando MOCK_NOTICES
+      setTimeout(() => {
+        const mappedMocks = (Array.isArray(notices) ? notices : []).map((n) => ({
+          id_aviso: `AVI-00${n.id}`,
+          titulo: n.title,
+          descripcion: n.desc,
+          categoria: n.urgent ? 'Importante' : 'General',
+           importantes: Boolean(n.urgent),
+          fecha_publicacion: n.date,
+          codigo_autor: '1000293'
+        }));
+        setAvisosList(mappedMocks);
+        setIsLoading(false);
+      }, 800);
+    }
+  };
+
+  useEffect(() => {
+    fetchAvisos(false);
+  }, []);
+
+  // Publicar un nuevo Aviso Oficial (Solo Coordinación)
+  const handlePublishAviso = (e) => {
+    e.preventDefault();
+    if (!isCoordinator) return;
+
+    if (!titulo.trim() || !descripcion.trim()) {
+      if (typeof showToast === 'function') {
+        showToast("Por favor completa el asunto y la descripción del aviso", "error");
+      }
+      return;
+    }
+
+    setIsPublishing(true);
+
+    const payload = {
+      titulo: titulo.trim(),
+      descripcion: descripcion.trim(),
+      importante: Boolean(esImportante),
+      codigo_autor: authorCode
+    };
+
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          setIsPublishing(false);
+          if (res && res.success) {
+            const currentArray = Array.isArray(avisosList) ? avisosList : [];
+            setAvisosList([res.aviso, ...currentArray]);
+            setTitulo('');
+            setDescripcion('');
+            setEsImportante(false);
+            setCurrentPage(1);
+            if (typeof showToast === 'function') {
+              showToast(`Aviso oficial #${res.aviso.id_aviso} publicado correctamente`);
+            }
+            if (typeof addNotification === 'function') {
+              addNotification(
+                "Nuevo Aviso Publicado",
+                `Se publicó "${res.aviso.titulo}" en el tablón institucional.`,
+                "info"
+              );
+            }
+          } else {
+            if (typeof showToast === 'function') {
+              showToast(res ? res.message : "No se pudo publicar el aviso", "error");
+            }
+          }
+        })
+        .withFailureHandler(() => {
+          setIsPublishing(false);
+          if (typeof showToast === 'function') {
+            showToast("Error de conexión con el servidor al publicar el aviso", "error");
+          }
+        })
+        .createAviso(payload);
+    } else {
+      setTimeout(() => {
+        setIsPublishing(false);
+        const mockNew = {
+          id_aviso: `AVI-${Math.floor(100 + Math.random() * 900)}`,
+          titulo: payload.titulo,
+          descripcion: payload.descripcion,
+          categoria: payload.importante ? 'Importante' : 'General',
+          importante: payload.importante,
+          fecha_publicacion: 'Hoy',
+          codigo_autor: authorCode
+        };
+        setAvisosList([mockNew, ...(Array.isArray(avisosList) ? avisosList : [])]);
+        setTitulo('');
+        setDescripcion('');
+        setEsImportante(false);
+        setCurrentPage(1);
+        if (typeof showToast === 'function') showToast("Simulación: Aviso publicado");
+      }, 900);
+    }
+  };
+
+  // Normalizar lista y aplicar filtro (Todos vs Importantes)
+  const safeAvisos = Array.isArray(avisosList) ? avisosList : [];
+  const filteredAvisos = safeAvisos.filter((item) => {
+    const isUrgent =
+      item.importante === true ||
+      String(item.categoria || '').toLowerCase() === 'importante' ||
+      String(item.categoria || '').toLowerCase() === 'urgente';
+    if (filterType === 'Importantes') return isUrgent;
+    return true;
+  });
+
+  // Cálculo de Paginación
+  const totalPages = Math.max(1, Math.ceil(filteredAvisos.length / itemsPerPage));
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentAvisos = filteredAvisos.slice(indexOfFirst, indexOfLast);
+
+  // Skeleton Screen para carga inicial
+  const SkeletonNoticeCard = () => (
+    <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3 animate-pulse">
+      <div className="flex items-center justify-between">
+        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-32"></div>
+        <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded-full w-24"></div>
+      </div>
+      <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-2/3"></div>
+      <div className="space-y-2 pt-1">
+        <div className="h-3.5 bg-slate-100 dark:bg-slate-800 rounded w-full"></div>
+        <div className="h-3.5 bg-slate-100 dark:bg-slate-800 rounded w-4/5"></div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 relative text-xs">
+      {/* Overlay de bloqueo al publicar un nuevo aviso */}
+      {isPublishing && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
+            <span className="flex items-center justify-center animate-spin">
+              <i data-lucide="loader-2" className="w-8 h-8 text-udg-gold shrink-0"></i>
+            </span>
+            <h4 className="font-bold text-sm text-slate-900 dark:text-white font-display">
+              Publicando Comunicado Oficial...
+            </h4>
+            <p className="text-xs text-slate-500">
+              Registrando aviso en la base de datos y actualizando el tablón para la comunidad estudiantil.
+            </p>
           </div>
         </div>
-      );
-    }
+      )}
+
+      {/* =======================================================================
+          SECCIÓN SUPERIOR (EXCLUSIVA COORDINACIÓN): CREADOR DE AVISOS OFICIALES
+         ======================================================================= */}
+      {isCoordinator && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-slate-700 text-udg-gold flex items-center justify-center font-bold border border-amber-200/60 dark:border-slate-600 shrink-0">
+              <i data-lucide="megaphone" className="w-5 h-5 shrink-0"></i>
+            </div>
+            <div>
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white font-display">
+                Redactar Nuevo Comunicado Oficial
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Los avisos publicados aquí serán visibles inmediatamente para todos los alumnos y docentes de INCO.
+              </p>
+            </div>
+          </div>
+
+          <form
+            onSubmit={handlePublishAviso}
+            className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700 space-y-4"
+          >
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                Asunto del Aviso *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ej: Convocatoria deAplicación EGEL Plus CENEVAL 2026B o Entrega de Protocolos Modulares"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                disabled={isPublishing}
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-xs focus:ring-2 focus:ring-udg-blue outline-none disabled:opacity-50"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                Descripción Detallada del Comunicado *
+              </label>
+              <textarea
+                rows="4"
+                required
+                placeholder="Escribe los detalles del comunicado, fechas límite, requisitos o instrucciones para los estudiantes..."
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                disabled={isPublishing}
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-xs focus:ring-2 focus:ring-udg-blue outline-none leading-relaxed disabled:opacity-50"
+              ></textarea>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+              {/* Checkbox / Toggle: Marcar como aviso importante */}
+              <label
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border cursor-pointer transition-all select-none ${
+                  esImportante
+                    ? 'bg-red-50/80 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-800 dark:text-red-200'
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-udg-gold'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={esImportante}
+                  onChange={(e) => setEsImportante(e.target.checked)}
+                  disabled={isPublishing}
+                  className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                />
+                <div className="flex items-center gap-1.5 font-bold">
+                  <i
+                    data-lucide="alert-triangle"
+                    className={`w-4 h-4 shrink-0 ${esImportante ? 'text-red-600 dark:text-red-400' : 'text-udg-gold'}`}
+                  ></i>
+                  <span>Marcar como aviso importante / urgente</span>
+                </div>
+              </label>
+
+              <button
+                type="submit"
+                disabled={isPublishing}
+                className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-6 py-3 rounded-xl inline-flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-50 font-display"
+              >
+                <i data-lucide="send" className="w-4 h-4 text-udg-gold shrink-0"></i>
+                <span>Publicar Aviso Oficial</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* =======================================================================
+          TABLÓN E HISTORIAL DE AVISOS OFICIALES (Compartido Alumno y Coordinador)
+         ======================================================================= */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold shrink-0">
+              <i data-lucide="bell" className="w-5 h-5 text-udg-gold shrink-0"></i>
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold text-slate-900 dark:text-white font-display">
+                Tablón de Avisos Oficiales INCO
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Comunicados, fechas clave y convocatorias emitidas por la Coordinación de Carrera.
+              </p>
+            </div>
+          </div>
+
+          {/* Controles de Filtro y Botón Actualizar */}
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl font-bold">
+              {['Todos', 'Importantes'].map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => {
+                    setFilterType(tab);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    filterType === tab
+                      ? 'bg-udg-navy text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-white/60'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => fetchAvisos(true)}
+              disabled={isLoading}
+              className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1.5 disabled:opacity-50"
+              title="Sincronizar avisos recientes"
+            >
+              <span className={`flex items-center justify-center ${isLoading ? 'animate-spin' : ''}`}>
+                <i data-lucide="refresh-cw" className="w-3.5 h-3.5 shrink-0"></i>
+              </span>
+              <span className="hidden sm:inline">Actualizar</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Lista de Tarjetas de Aviso o Skeletons */}
+        <div className="space-y-4 min-h-[260px]">
+          {isLoading ? (
+            <>
+              <SkeletonNoticeCard />
+              <SkeletonNoticeCard />
+              <SkeletonNoticeCard />
+            </>
+          ) : currentAvisos.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 space-y-2">
+              <i data-lucide="bell-off" className="w-8 h-8 mx-auto opacity-50 shrink-0"></i>
+              <p>No hay avisos oficiales registrados en esta vista.</p>
+            </div>
+          ) : (
+            currentAvisos.map((aviso, idx) => {
+              const isImportant =
+                aviso.importante === true ||
+                String(aviso.categoria || '').toLowerCase() === 'importante' ||
+                String(aviso.categoria || '').toLowerCase() === 'urgente';
+
+              return (
+                <div
+                  key={aviso.id_aviso || idx}
+                  className={`p-5 rounded-2xl border transition-all shadow-sm space-y-2.5 ${
+                    isImportant
+                      ? 'bg-red-50/40 dark:bg-red-950/20 border-red-200 dark:border-red-900/70 border-l-4 border-l-red-600'
+                      : 'bg-slate-50/70 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 border-l-4 border-l-udg-blue'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                      <i data-lucide="calendar" className="w-3.5 h-3.5 text-udg-gold shrink-0"></i>
+                      <span>Publicado: {aviso.fecha_publicacion}</span>
+                      {aviso.id_aviso && (
+                        <>
+                          <span>•</span>
+                          <span className="font-mono text-[10px] text-slate-400">#{aviso.id_aviso}</span>
+                        </>
+                      )}
+                    </div>
+
+                    {isImportant ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border border-red-300 dark:border-red-800">
+                        <i data-lucide="alert-circle" className="w-3 h-3 shrink-0"></i>
+                        <span>Aviso Importante</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-50 text-udg-navy dark:bg-slate-800 dark:text-blue-300 border border-blue-200 dark:border-slate-700">
+                        <span>Comunicado General</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <h4 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white font-display leading-snug">
+                    {aviso.titulo}
+                  </h4>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                    {aviso.descripcion}
+                  </p>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Controles de Paginación Obligatorios */}
+        {!isLoading && filteredAvisos.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-700 text-[11px] text-slate-500">
+            <span>
+              Mostrando {indexOfFirst + 1} - {Math.min(indexOfLast, filteredAvisos.length)} de {filteredAvisos.length} avisos oficiales
+            </span>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold flex items-center gap-1 disabled:opacity-30 transition-colors"
+              >
+                <i data-lucide="chevron-left" className="w-3.5 h-3.5 shrink-0"></i>
+                <span>Anterior</span>
+              </button>
+
+              <span className="font-bold text-slate-700 dark:text-slate-300 px-2">
+                Página {currentPage} de {totalPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold flex items-center gap-1 disabled:opacity-30 transition-colors"
+              >
+                <span>Siguiente</span>
+                <i data-lucide="chevron-right" className="w-3.5 h-3.5 shrink-0"></i>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
     function DudasBuzonModule({ faqList }) {
       return (

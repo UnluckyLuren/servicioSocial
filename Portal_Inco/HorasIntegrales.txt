@@ -1,0 +1,481 @@
+/**
+ * =========================================================================
+ * MÓDULO BACKEND: ACREDITACIÓN DE HORAS INTEGRALES (INCO CUCEI)
+ * Cumple con Prevención IDOR, Subida Múltiple Privada en Drive y LockService.
+ * =========================================================================
+ */
+
+/**
+ * Inicializa o recupera la hoja 'Horas_Integrales' automáticamente.
+ * Estructura de columnas:
+ * [0] id_solicitud, [1] codigo_estudiante, [2] nombre_estudiante, [3] correo_estudiante,
+ * [4] total_horas, [5] comprobantes_json, [6] estatus, [7] motivo_devolucion,
+ * [8] fecha_solicitud, [9] fecha_actualizacion
+ */
+function getOrInitHorasSheet(ss) {
+  const sheetName = (typeof TABLES !== 'undefined' && TABLES.HORAS_INTEGRALES) ? TABLES.HORAS_INTEGRALES : 'Horas_Integrales';
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    const headers = [
+      'id_solicitud', 'codigo_estudiante', 'nombre_estudiante', 'correo_estudiante',
+      'total_horas', 'comprobantes_json', 'estatus', 'motivo_devolucion',
+      'fecha_solicitud', 'fecha_actualizacion'
+    ];
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setValues([headers]);
+    headerRange.setFontWeight('bold').setBackground('#f3f4f6');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+/**
+ * Obtiene o crea la subcarpeta privada "Horas_Integrales" en Google Drive.
+ */
+function getOrInitHorasFolder() {
+  const mainFolderId = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID');
+  const parentFolder = mainFolderId ? DriveApp.getFolderById(mainFolderId) : DriveApp.getRootFolder();
+  const subFolders = parentFolder.getFoldersByName('Horas_Integrales');
+  if (subFolders.hasNext()) {
+    return subFolders.next();
+  }
+  const newFolder = parentFolder.createFolder('Horas_Integrales');
+  newFolder.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+  return newFolder;
+}
+
+/**
+ * Formatea celdas de fecha a String para evitar que google.script.run falle con objetos Date.
+ */
+function formatSafeHorasDate(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, "America/Mexico_City", "d/MM/yyyy");
+  }
+  return String(val);
+}
+
+/**
+ * 1. OBTENER EL ESTADO ACTUAL DE HORAS INTEGRALES DEL ALUMNO (Vista Alumno)
+ * Prevención IDOR: Solo devuelve el expediente perteneciente al studentCode autenticado.
+ */
+function getStudentHorasIntegrales(studentCode) {
+  try {
+    const safeCode = String(studentCode || '').trim();
+    if (!safeCode) return { found: false };
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = getOrInitHorasSheet(ss);
+    const data = sheet.getDataRange().getValues();
+
+    // Buscamos de abajo hacia arriba para obtener el expediente más reciente del alumno
+    for (let i = data.length - 1; i >= 1; i--) {
+      const row = data[i];
+      if (String(row[1]).trim() === safeCode) {
+        let parsedFiles = [];
+        try {
+          parsedFiles = row[5] ? JSON.parse(String(row[5])) : [];
+        } catch (e) {
+          parsedFiles = [];
+        }
+
+        return {
+          found: true,
+          solicitud: {
+            id_solicitud: String(row[0] || ''),
+            codigo_estudiante: String(row[1] || ''),
+            nombre_estudiante: String(row[2] || ''),
+            total_horas: Number(row[4] || 0),
+            comprobantes: parsedFiles,
+            estatus: String(row[6] || 'Pendiente'),
+            motivo_devolucion: String(row[7] || ''),
+            fecha_solicitud: formatSafeHorasDate(row[8]),
+            fecha_actualizacion: formatSafeHorasDate(row[9])
+          }
+        };
+      }
+    }
+
+    return { found: false };
+  } catch (error) {
+    logSystemEvent('ERROR', studentCode || 'DESCONOCIDO', 'Error Consulta Horas Integrales', error.toString());
+    return { found: false };
+  }
+}
+
+/**
+ * 2. ENVIAR EXPEDIENTE MÚLTIPLE DE HORAS INTEGRALES (Vista Alumno)
+ * Valida suma >= 64 hrs, sube cada comprobante con permisos privados a Drive y registra en Sheets.
+ */
+function submitHorasIntegrales(payload) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeCode = sanitizeInput(String(payload.codigo || '').trim());
+    const safeName = sanitizeInput(String(payload.nombre || '').trim());
+    const safeEmail = sanitizeInput(String(payload.correo || '').trim());
+    const rawArchivos = Array.isArray(payload.archivos) ? payload.archivos : [];
+
+    if (!safeCode || rawArchivos.length === 0) {
+      return { success: false, message: "Debes adjuntar al menos un comprobante válido." };
+    }
+
+    // Recalcular en backend la suma de horas para impedir manipulación del lado del cliente
+    let sumaVerificada = 0;
+    for (let k = 0; k < rawArchivos.length; k++) {
+      const hrs = Number(rawArchivos[k].horas || 0);
+      const ev = String(rawArchivos[k].evento || '').trim();
+      if (!ev || isNaN(hrs) || hrs <= 0) {
+        return { success: false, message: "Todos los comprobantes deben incluir nombre del evento y horas válidas." };
+      }
+      sumaVerificada += hrs;
+    }
+
+    if (sumaVerificada < 64) {
+      return { success: false, message: "El expediente debe sumar al menos 64 horas integrales para ser enviado." };
+    }
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "El servidor está procesando otra solicitud. Intenta nuevamente en unos segundos." };
+    }
+
+    const suffix = Math.random().toString(36).substring(2, 8);
+    const folioId = `HRS-${suffix}`;
+    const fechaHoy = Utilities.formatDate(new Date(), "America/Mexico_City", "d/MM/yyyy");
+
+    // Subir cada archivo a la carpeta privada "Horas_Integrales" en Google Drive
+    const targetFolder = getOrInitHorasFolder();
+    const savedFilesMetadata = [];
+
+    for (let f = 0; f < rawArchivos.length; f++) {
+      const item = rawArchivos[f];
+      const safeEvento = sanitizeInput(String(item.evento || '').trim());
+      const safeFileName = sanitizeInput(String(item.name || `comprobante_${f + 1}.pdf`));
+      const decodedBytes = Utilities.base64Decode(item.base64);
+      const blob = Utilities.newBlob(
+        decodedBytes,
+        item.mimeType || 'application/pdf',
+        `${folioId}_${safeCode}_${f + 1}_${safeFileName}`
+      );
+
+      const driveFile = targetFolder.createFile(blob);
+      // Mandato de Privacidad PII: Archivos restringidos exclusivamente a la Coordinación
+      driveFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+
+      savedFilesMetadata.push({
+        name: safeFileName,
+        evento: safeEvento,
+        horas: Number(item.horas),
+        url: driveFile.getUrl()
+      });
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = getOrInitHorasSheet(ss);
+    const data = sheet.getDataRange().getValues();
+
+    // Si el alumno tenía una solicitud previa en estado 'Devuelta', la actualizamos en su misma fila
+    let existingRowIndex = -1;
+    for (let i = data.length - 1; i >= 1; i--) {
+      if (String(data[i][1]).trim() === safeCode) {
+        existingRowIndex = i + 1;
+        break;
+      }
+    }
+
+    const rowPayload = [
+      folioId,
+      safeCode,
+      safeName,
+      safeEmail,
+      sumaVerificada,
+      JSON.stringify(savedFilesMetadata),
+      'Pendiente',
+      '',
+      fechaHoy,
+      fechaHoy
+    ];
+
+    if (existingRowIndex !== -1) {
+      sheet.getRange(existingRowIndex, 1, 1, rowPayload.length).setValues([rowPayload]);
+    } else {
+      sheet.appendRow(rowPayload);
+    }
+
+    SpreadsheetApp.flush();
+
+    logSystemEvent(
+      'INFO',
+      safeCode,
+      'Expediente Horas Enviado',
+      `Folio ${folioId} registrado con ${rawArchivos.length} comprobantes (${sumaVerificada} hrs).`
+    );
+
+    if (safeEmail) {
+      try {
+        enviarCorreoHorasIntegrales(safeEmail, safeName, 'recepcion', {
+          folio: folioId,
+          totalHoras: sumaVerificada,
+          cantidadArchivos: savedFilesMetadata.length,
+          fecha: fechaHoy
+        });
+      } catch (mailErr) {
+        console.warn("No se pudo enviar correo de recepción de horas: " + mailErr);
+      }
+    }
+
+    return {
+      success: true,
+      solicitud: {
+        id_solicitud: folioId,
+        codigo_estudiante: safeCode,
+        nombre_estudiante: safeName,
+        total_horas: sumaVerificada,
+        comprobantes: savedFilesMetadata,
+        estatus: 'Pendiente',
+        motivo_devolucion: '',
+        fecha_solicitud: fechaHoy,
+        fecha_actualizacion: fechaHoy
+      }
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', payload?.codigo || 'SISTEMA', 'Error Subir Horas Integrales', error.toString());
+    return { success: false, message: "Error interno al procesar los comprobantes: " + error.message };
+  } finally {
+    if (lockAcquired) lock.releaseLock();
+  }
+}
+
+/**
+ * 3. LISTAR TODOS LOS EXPEDIENTES DE HORAS INTEGRALES (Vista Coordinador)
+ */
+function getAllHorasIntegrales() {
+  try {
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = getOrInitHorasSheet(ss);
+    const data = sheet.getDataRange().getValues();
+    const result = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      let parsedFiles = [];
+      try {
+        parsedFiles = row[5] ? JSON.parse(String(row[5])) : [];
+      } catch (e) {
+        parsedFiles = [];
+      }
+
+      result.push({
+        id_solicitud: String(row[0] || ''),
+        codigo_estudiante: String(row[1] || ''),
+        nombre_estudiante: String(row[2] || ''),
+        correo_estudiante: String(row[3] || ''),
+        total_horas: Number(row[4] || 0),
+        comprobantes: parsedFiles,
+        estatus: String(row[6] || 'Pendiente'),
+        motivo_devolucion: String(row[7] || ''),
+        fecha_solicitud: formatSafeHorasDate(row[8]),
+        fecha_actualizacion: formatSafeHorasDate(row[9])
+      });
+    }
+
+    return result.reverse();
+  } catch (error) {
+    logSystemEvent('ERROR', 'ADMIN_COORDINACION', 'Error Lectura Global Horas', error.toString());
+    return [];
+  }
+}
+
+/**
+ * 4. ACTUALIZAR ESTADO DEL EXPEDIENTE (Devolver / Turnar a Control Escolar / Aprobar en Kardex)
+ */
+function updateHorasIntegralesStatus(idSolicitud, nuevoEstatus, motivoDevolucion, adminCode) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeId = sanitizeInput(String(idSolicitud || '').trim());
+    const safeStatus = sanitizeInput(String(nuevoEstatus || '').trim());
+    const safeMotivo = sanitizeInput(String(motivoDevolucion || '').trim());
+    const safeAdmin = sanitizeInput(String(adminCode || 'COORD_INCO'));
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "Sistema ocupado. Intenta nuevamente." };
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = getOrInitHorasSheet(ss);
+    const data = sheet.getDataRange().getValues();
+
+    let rowIndex = -1;
+    let targetRow = null;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === safeId) {
+        rowIndex = i + 1;
+        targetRow = data[i];
+        break;
+      }
+    }
+
+    if (rowIndex === -1 || !targetRow) {
+      return { success: false, message: "Expediente no encontrado en la base de datos." };
+    }
+
+    const fechaUpdate = Utilities.formatDate(new Date(), "America/Mexico_City", "d/MM/yyyy");
+    const studentCode = String(targetRow[1] || '').trim();
+    const studentName = String(targetRow[2] || 'Estudiante INCO');
+    const studentEmail = String(targetRow[3] || '');
+    const totalHoras = Number(targetRow[4] || 64);
+
+    // Actualizar columnas Estatus (Col 7 / G), Motivo (Col 8 / H), Fecha Solicitud original (Col 9 / I) y Fecha Update (Col 10 / J)
+    sheet.getRange(rowIndex, 7, 1, 4).setValues([[
+      safeStatus,
+      safeStatus === 'Devuelta' ? safeMotivo : '',
+      targetRow[8],
+      fechaUpdate
+    ]]);
+
+    // Si pasa a 'En kardex' o 'Aprobadas', sincronizamos las horas acreditadas en la hoja 'Usuarios'
+    if (safeStatus === 'En kardex' || safeStatus === 'Aprobadas') {
+      const userSheet = ss.getSheetByName(TABLES.USERS);
+      const usersData = userSheet.getDataRange().getValues();
+      for (let u = 1; u < usersData.length; u++) {
+        if (String(usersData[u][0]).trim() === studentCode) {
+          userSheet.getRange(u + 1, 10).setValue(totalHoras); // Columna J: horas_integrales
+          userSheet.getRange(u + 1, 11).setValue(64);         // Columna K: horas_requeridas (64)
+          break;
+        }
+      }
+    }
+
+    SpreadsheetApp.flush();
+
+    logSystemEvent(
+      'INFO',
+      safeAdmin,
+      `Horas Integrales -> ${safeStatus}`,
+      `Expediente ${safeId} del alumno ${studentCode} cambiado a ${safeStatus}.`
+    );
+
+    // Enviar notificaciones por correo según corresponda
+    if (studentEmail) {
+      try {
+        if (safeStatus === 'Devuelta') {
+          enviarCorreoHorasIntegrales(studentEmail, studentName, 'devuelta', {
+            folio: safeId,
+            motivo: safeMotivo
+          });
+        } else if (safeStatus === 'En kardex' || safeStatus === 'Aprobadas') {
+          enviarCorreoHorasIntegrales(studentEmail, studentName, 'aprobadas', {
+            folio: safeId,
+            totalHoras: totalHoras
+          });
+        }
+      } catch (mailErr) {
+        console.warn("Error enviando correo de estado de horas integrales: " + mailErr);
+      }
+    }
+
+    return {
+      success: true,
+      fechaActualizacion: fechaUpdate
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', adminCode || 'COORD', 'Error Actualizar Horas Integrales', error.toString());
+    return { success: false, message: "Error interno al actualizar el expediente." };
+  } finally {
+    if (lockAcquired) lock.releaseLock();
+  }
+}
+
+/**
+ * =========================================================================
+ * PLANTILLAS DE CORREO ELECTRÓNICO PARA HORAS INTEGRALES
+ * =========================================================================
+ */
+function enviarCorreoHorasIntegrales(email, nombre, tipo, datos) {
+  const headerHtml = `
+    <div style="background-color: #0f2744; padding: 22px; text-align: center; border-radius: 10px 10px 0 0;">
+      <h2 style="color: #ffffff; margin: 0; font-family: Arial, sans-serif; font-size: 18px;">
+        Coordinación de Ingeniería en Computación • CUCEI
+      </h2>
+    </div>
+  `;
+
+  let subject = '';
+  let htmlBody = '';
+
+  if (tipo === 'recepcion') {
+    subject = `[Expediente #${datos.folio}] Recepción de Horas Integrales (${datos.totalHoras} hrs) - INCO`;
+    htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+        ${headerHtml}
+        <div style="padding: 28px; background-color: #f8fafc; color: #334155;">
+          <h3 style="color: #0f2744; margin-top: 0;">Recepción de Expediente de Horas Integrales</h3>
+          <p>Estimado/a <strong>${nombre}</strong>,</p>
+          <p>Hemos recibido exitosamente tu expediente digital de Horas Integrales para revisión por parte de la Coordinación.</p>
+          <div style="background-color: #ffffff; padding: 18px; border-radius: 8px; border: 1px solid #cbd5e1; margin: 20px 0; font-size: 13px;">
+            <p style="margin: 0 0 8px 0;"><strong>Folio de Expediente:</strong> <span style="color: #2563eb;">#${datos.folio}</span></p>
+            <p style="margin: 0 0 8px 0;"><strong>Total de Horas Reportadas:</strong> ${datos.totalHoras} horas</p>
+            <p style="margin: 0 0 8px 0;"><strong>Comprobantes Adjuntos:</strong> ${datos.cantidadArchivos} archivo(s)</p>
+            <p style="margin: 0;"><strong>Fecha de Registro:</strong> ${datos.fecha}</p>
+          </div>
+          <p style="font-size: 12px; color: #64748b;">
+            Puedes consultar la línea de tiempo de tu trámite en cualquier momento dentro del portal institucional.
+          </p>
+        </div>
+      </div>
+    `;
+  } else if (tipo === 'devuelta') {
+    subject = `[ACCIÓN REQUERIDA] Tu solicitud de Horas Integrales #${datos.folio} fue devuelta`;
+    htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+        ${headerHtml}
+        <div style="padding: 28px; background-color: #f8fafc; color: #334155;">
+          <h3 style="color: #dc2626; margin-top: 0;">Observaciones en tu Expediente de Horas Integrales</h3>
+          <p>Hola <strong>${nombre}</strong>,</p>
+          <p>Tu expediente con folio <strong>#${datos.folio}</strong> fue revisado por la Coordinación y ha sido devuelto para que atiendas el siguiente motivo:</p>
+          <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 16px; margin: 20px 0; font-size: 13px; color: #991b1b;">
+            <strong>Motivo de la devolución:</strong><br/>
+            ${datos.motivo}
+          </div>
+          <p style="font-size: 13px;">
+            Ingresa nuevamente a la sección <strong>Horas Integrales</strong> del portal para volver a subir tu expediente corregido.
+          </p>
+        </div>
+      </div>
+    `;
+  } else if (tipo === 'aprobadas') {
+    subject = `[ACREDITADAS EN KARDEX] Tus Horas Integrales (#${datos.folio}) han sido aprobadas`;
+    htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+        ${headerHtml}
+        <div style="padding: 28px; background-color: #f8fafc; color: #334155;">
+          <h3 style="color: #059669; margin-top: 0;">¡Felicidades! Horas Integrales Acreditadas</h3>
+          <p>Estimado/a <strong>${nombre}</strong>,</p>
+          <p>Te informamos que tu expediente con folio <strong>#${datos.folio}</strong> por un total de <strong>${datos.totalHoras} horas integrales</strong> ha concluido satisfactoriamente su trámite ante Control Escolar.</p>
+          <div style="background-color: #ecfdf5; border-left: 4px solid #059669; padding: 16px; margin: 20px 0; font-size: 13px; color: #065f46;">
+            <strong>Estado Final: Aprobadas y En Kardex</strong><br/>
+            Tus horas han sido registradas oficialmente y pronto se verán reflejadas en tu Kardex de SIIAU.
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  MailApp.sendEmail({
+    to: email,
+    subject: subject,
+    htmlBody: htmlBody
+  });
+}

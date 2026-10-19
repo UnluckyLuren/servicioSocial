@@ -1,0 +1,190 @@
+/**
+ * =========================================================================
+ * MÓDULO BACKEND: TABLÓN DE AVISOS OFICIALES (INCO CUCEI)
+ * Cumple con CacheService (5 min), LockService, Validación RBAC y Auditoría.
+ * =========================================================================
+ */
+
+const AVISOS_CACHE_KEY = 'PORTAL_AVISOS_CACHE_V1';
+const AVISOS_CACHE_TTL = 300; // 5 minutos (300 segundos)
+
+/**
+ * Formatea celdas de fecha de Google Sheets a String seguro para evitar
+ * fallos silenciosos de serialización en google.script.run.
+ */
+function formatSafeAvisoDate(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, "America/Mexico_City", "dd/MM/yyyy HH:mm");
+  }
+  return String(val);
+}
+
+/**
+ * 1. OBTENER AVISOS OFICIALES (Lectura con CacheService de 5 minutos)
+ * @param {boolean} forceRefresh Si es true, omite el caché y recarga desde Sheets.
+ */
+function getAvisos(forceRefresh) {
+  try {
+    const cache = CacheService.getScriptCache();
+    if (!forceRefresh) {
+      const cached = cache.get(AVISOS_CACHE_KEY);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = ss.getSheetByName(TABLES.AVISOS);
+
+    if (!sheet) {
+      return [];
+    }
+
+    // Regla de Optimización: 1 sola lectura en memoria con getValues()
+    const data = sheet.getDataRange().getValues();
+    const result = [];
+
+    // Esquema de la hoja 'Avisos':
+    // [0] id_aviso, [1] titulo, [2] descripcion, [3] categoria, [4] fecha_publicacion, [5] codigo_autor
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row[0] && !row[1]) continue;
+
+      const catString = String(row[3] || 'General').trim();
+      const isImportant =
+        catString.toLowerCase() === 'importante' ||
+        catString.toLowerCase() === 'urgente';
+
+      result.push({
+        id_aviso: String(row[0] || ''),
+        titulo: String(row[1] || ''),
+        descripcion: String(row[2] || ''),
+        categoria: catString,
+        importante: isImportant,
+        fecha_publicacion: formatSafeAvisoDate(row[4]),
+        codigo_autor: String(row[5] || '')
+      });
+    }
+
+    // Ordenar del más reciente al más antiguo
+    const finalArray = result.reverse();
+
+    // Guardar en caché por 5 minutos (máximo 100KB en ScriptCache)
+    try {
+      const serialized = JSON.stringify(finalArray);
+      if (serialized.length < 95000) {
+        cache.put(AVISOS_CACHE_KEY, serialized, AVISOS_CACHE_TTL);
+      }
+    } catch (cacheErr) {
+      console.warn("No se pudo almacenar en caché la lista de avisos: " + cacheErr);
+    }
+
+    return finalArray;
+
+  } catch (error) {
+    logSystemEvent('ERROR', 'SISTEMA', 'Error Lectura Avisos', error.toString());
+    return [];
+  }
+}
+
+/**
+ * 2. PUBLICAR UN NUEVO AVISO OFICIAL (Exclusivo Rol 'Coordinacion')
+ * Sanitiza entradas, verifica permisos en servidor, guarda con LockService e invalida caché.
+ */
+function createAviso(payload) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeTitulo = sanitizeInput(String(payload.titulo || '').trim());
+    const safeDescripcion = sanitizeInput(String(payload.descripcion || '').trim());
+    const safeAutor = sanitizeInput(String(payload.codigo_autor || '').trim());
+    const esImportante = Boolean(payload.importante);
+    const safeCategoria = esImportante ? 'Importante' : 'General';
+
+    if (!safeTitulo || !safeDescripcion || !safeAutor) {
+      return { success: false, message: "El título, la descripción y el código de autor son obligatorios." };
+    }
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "El servidor está ocupado procesando otra operación. Intenta nuevamente." };
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+
+    // MANDATO DE SEGURIDAD (Validación RBAC en Servidor):
+    // Verificar en la hoja Usuarios que quien publica tenga rol 'Coordinacion'
+    const usersSheet = ss.getSheetByName(TABLES.USERS);
+    const usersData = usersSheet.getDataRange().getValues();
+    let isAuthorized = false;
+
+    for (let u = 1; u < usersData.length; u++) {
+      if (String(usersData[u][0]).trim() === safeAutor) {
+        const userRole = String(usersData[u][2] || '').trim();
+        if (userRole === 'Coordinacion') {
+          isAuthorized = true;
+        }
+        break;
+      }
+    }
+
+    if (!isAuthorized) {
+      logSystemEvent('SEC', safeAutor, 'Intento no autorizado de publicar Aviso', `Título: ${safeTitulo}`);
+      return { success: false, message: "Acceso denegado: Solo el personal de Coordinación puede publicar avisos oficiales." };
+    }
+
+    const avisosSheet = ss.getSheetByName(TABLES.AVISOS);
+    const suffix = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const idAviso = `AVI-${suffix}`;
+    const fechaPublicacion = Utilities.formatDate(new Date(), "America/Mexico_City", "dd/MM/yyyy HH:mm");
+
+    // Columnas exactas: id_aviso, titulo, descripcion, categoria, fecha_publicacion, codigo_autor
+    const newRow = [
+      idAviso,
+      safeTitulo,
+      safeDescripcion,
+      safeCategoria,
+      fechaPublicacion,
+      safeAutor
+    ];
+
+    avisosSheet.appendRow(newRow);
+    SpreadsheetApp.flush();
+
+    // Invalidar inmediatamente el caché para que todos los usuarios vean el nuevo aviso al instante
+    CacheService.getScriptCache().remove(AVISOS_CACHE_KEY);
+
+    // Registro forzoso en Logs
+    logSystemEvent(
+      'INFO',
+      safeAutor,
+      'Aviso Oficial Publicado',
+      `Se publicó el aviso ${idAviso} [${safeCategoria}]: ${safeTitulo}`
+    );
+
+    return {
+      success: true,
+      aviso: {
+        id_aviso: idAviso,
+        titulo: safeTitulo,
+        descripcion: safeDescripcion,
+        categoria: safeCategoria,
+        importante: esImportante,
+        fecha_publicacion: fechaPublicacion,
+        codigo_autor: safeAutor
+      }
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', payload?.codigo_autor || 'COORD', 'Error Publicar Aviso', error.toString());
+    return { success: false, message: "Error interno al publicar el aviso: " + error.message };
+  } finally {
+    if (lockAcquired) {
+      lock.releaseLock();
+    }
+  }
+}
