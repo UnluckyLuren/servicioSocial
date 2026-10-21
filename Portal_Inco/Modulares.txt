@@ -1,0 +1,162 @@
+/**
+ * =========================================================================
+ * MÓDULO BACKEND: PROYECTOS MODULARES DINÁMICOS (INCO CUCEI)
+ * Cumple con Semilla Inicial, CacheService, LockService, RBAC y Auditoría.
+ * =========================================================================
+ */
+
+const MODULARES_PROP_KEY = 'MODULARES_DATA';
+const MODULARES_CACHE_KEY = 'PORTAL_MODULARES_CACHE_V1';
+const MODULARES_CACHE_TTL = 600; // 10 minutos (600 segundos)
+
+/**
+ * Retorna el JSON semilla oficial para Proyectos Modulares INCO.
+ */
+function getSeedModularesData() {
+  return {
+    "urlOficial": "https://www.cucei.udg.mx",
+    "descripcionGeneral": "Los Proyectos Modulares están orientados a fomentar la creatividad de los alumnos con la aportación a soluciones de problemas reales y aumentar el interés por los estudios de ingeniería. Atendiendo áreas como Desarrollo Tecnológico, Ambiente, Energía y Salud, el proyecto es obligatorio y los grupos tendrán un máximo de 3 integrantes.",
+    "fases": [
+      {
+        "titulo": "Módulo I (6to Semestre) - Estado del Arte y Registro",
+        "descripcion": "Acercarse con un asesor para que los guíe en la realización del estudio del 'Estado del arte', evaluar la factibilidad y realizar el registro del proyecto en la coordinación correspondiente."
+      },
+      {
+        "titulo": "Módulo II (7mo Semestre) - Desarrollo y Prototipo",
+        "descripcion": "Aplicar tecnologías que permitan la innovación de productos, procesos o servicios. Se debe demostrar la innovación a través de un prototipo y un reporte que explique su diseño."
+      },
+      {
+        "titulo": "Módulo III (8vo Semestre) - Conclusión y Defensa",
+        "descripcion": "Entrega del formato de conclusión del proyecto. Culmina con una Evaluación Oral (Defensa del proyecto) de máximo 30 minutos ante dictaminadores designados."
+      }
+    ]
+  };
+}
+
+/**
+ * 1. OBTENER CONFIGURACIÓN DE PROYECTOS MODULARES (Lectura con CacheService)
+ * Si el backend está vacío, inicializa y guarda la semilla automáticamente.
+ */
+function getModularesData() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const cachedJson = cache.get(MODULARES_CACHE_KEY);
+    if (cachedJson) {
+      return JSON.parse(cachedJson);
+    }
+
+    const scriptProps = PropertiesService.getScriptProperties();
+    const storedJson = scriptProps.getProperty(MODULARES_PROP_KEY);
+    let parsedData = null;
+
+    if (storedJson) {
+      try {
+        parsedData = JSON.parse(storedJson);
+      } catch (e) {
+        parsedData = null;
+      }
+    }
+
+    // Inicializar semilla si no existen datos previos
+    if (!parsedData || !Array.isArray(parsedData.fases)) {
+      parsedData = getSeedModularesData();
+      scriptProps.setProperty(MODULARES_PROP_KEY, JSON.stringify(parsedData));
+    }
+
+    cache.put(MODULARES_CACHE_KEY, JSON.stringify(parsedData), MODULARES_CACHE_TTL);
+    return parsedData;
+
+  } catch (error) {
+    logSystemEvent('ERROR', 'SISTEMA', 'Error Lectura Modulares', error.toString());
+    return getSeedModularesData();
+  }
+}
+
+/**
+ * 2. ACTUALIZAR PROYECTOS MODULARES (Exclusivo Rol 'Coordinacion')
+ * Valida rol en servidor, sanitiza inputs, aplica LockService, limpia caché y registra en Logs.
+ */
+function updateModularesData(newData, rawUserCode) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeUserCode = sanitizeInput(String(rawUserCode || '').trim());
+    if (!safeUserCode) {
+      return { success: false, message: "Sesión inválida: No se identificó el código de usuario." };
+    }
+
+    if (!newData || typeof newData !== 'object' || !Array.isArray(newData.fases)) {
+      return { success: false, message: "El formato de datos de Proyectos Modulares no es válido." };
+    }
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "El servidor está ocupado. Intenta de nuevo en unos segundos." };
+    }
+
+    // MANDATO DE SEGURIDAD (Validación RBAC en Servidor):
+    // Lectura en lote (getValues) en la hoja Usuarios para verificar rol 'Coordinacion'
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const usersSheet = ss.getSheetByName(TABLES.USERS);
+    const usersData = usersSheet.getDataRange().getValues();
+
+    let isCoordinator = false;
+    for (let u = 1; u < usersData.length; u++) {
+      if (String(usersData[u][0]).trim() === safeUserCode) {
+        const userRole = String(usersData[u][2] || '').trim();
+        if (userRole === 'Coordinacion') {
+          isCoordinator = true;
+        }
+        break;
+      }
+    }
+
+    if (!isCoordinator) {
+      logSystemEvent('SEC', safeUserCode, 'Intento no autorizado de editar Modulares', 'Bloqueado por validación RBAC.');
+      return { success: false, message: "Acceso denegado: Solo la Coordinación puede modificar este módulo." };
+    }
+
+    // Sanitización estricta de todos los textos antes de guardar
+    const sanitizedData = {
+      urlOficial: sanitizeInput(String(newData.urlOficial || '').trim()),
+      descripcionGeneral: sanitizeInput(String(newData.descripcionGeneral || '').trim()),
+      fases: newData.fases.map(function(fase) {
+        return {
+          titulo: sanitizeInput(String(fase.titulo || '').trim()),
+          descripcion: sanitizeInput(String(fase.descripcion || '').trim())
+        };
+      })
+    };
+
+    const serialized = JSON.stringify(sanitizedData);
+
+    // Guardar en ScriptProperties y actualizar CacheService
+    PropertiesService.getScriptProperties().setProperty(MODULARES_PROP_KEY, serialized);
+    const cache = CacheService.getScriptCache();
+    cache.remove(MODULARES_CACHE_KEY);
+    cache.put(MODULARES_CACHE_KEY, serialized, MODULARES_CACHE_TTL);
+
+    // MANDATO DE AUDITORÍA ESTRICTA
+    logSystemEvent(
+      'INFO',
+      safeUserCode,
+      'Actualización de Proyectos Modulares',
+      `Se actualizaron los lineamientos y ${sanitizedData.fases.length} fases del módulo de Proyectos Modulares.`
+    );
+
+    return {
+      success: true,
+      data: sanitizedData
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', rawUserCode || 'COORD', 'Error Actualizar Modulares', error.toString());
+    return { success: false, message: "Error interno al guardar la configuración: " + error.message };
+  } finally {
+    if (lockAcquired) {
+      lock.releaseLock();
+    }
+  }
+}

@@ -10,5 +10,6 @@ const TABLES = {
   JUSTIFICANTES: 'Justificantes',
   AVISOS: 'Avisos',
   LOGS: 'Logs', 
-  CONSTANCIAS: 'Constancias'
+  CONSTANCIAS: 'Constancias',
+  HORAS_INTEGRALES: 'Horas_Integrales'
 };

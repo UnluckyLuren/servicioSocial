@@ -1,0 +1,474 @@
+/**
+ * =========================================================================
+ * MÓDULO BACKEND: PRÁCTICAS PROFESIONALES (INCO CUCEI)
+ * Cumple con Prevención IDOR, Subida Privada a Drive, LockService y Correos.
+ * =========================================================================
+ */
+
+/**
+ * Inicializa o recupera la hoja 'Practicas_Profesionales' en Google Sheets.
+ * Estructura de columnas:
+ * [0] id_solicitud, [1] codigo_estudiante, [2] nombre_estudiante, [3] correo_estudiante,
+ * [4] empresa, [5] horas_acreditadas, [6] archivos_json, [7] estatus,
+ * [8] motivo_devolucion, [9] fecha_solicitud, [10] fecha_actualizacion
+ */
+function getOrInitPracticasSheet(ss) {
+  const sheetName = (typeof TABLES !== 'undefined' && TABLES.PRACTICAS) ? TABLES.PRACTICAS : 'Practicas_Profesionales';
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    const headers = [
+      'id_solicitud', 'codigo_estudiante', 'nombre_estudiante', 'correo_estudiante',
+      'empresa', 'horas_acreditadas', 'archivos_json', 'estatus',
+      'motivo_devolucion', 'fecha_solicitud', 'fecha_actualizacion'
+    ];
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setValues([headers]);
+    headerRange.setFontWeight('bold').setBackground('#f3f4f6');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+/**
+ * Obtiene o crea la subcarpeta privada "Practicas_Profesionales" en Google Drive.
+ */
+function getOrInitPracticasFolder() {
+  const mainFolderId = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID');
+  const parentFolder = mainFolderId ? DriveApp.getFolderById(mainFolderId) : DriveApp.getRootFolder();
+  const subFolders = parentFolder.getFoldersByName('Practicas_Profesionales');
+  if (subFolders.hasNext()) {
+    return subFolders.next();
+  }
+  const newFolder = parentFolder.createFolder('Practicas_Profesionales');
+  newFolder.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+  return newFolder;
+}
+
+/**
+ * Formatea celdas de fecha de Google Sheets a String seguro.
+ */
+function formatSafePracticasDate(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, "America/Mexico_City", "d/MM/yyyy");
+  }
+  return String(val);
+}
+
+/**
+ * 1. OBTENER LA SOLICITUD DE PRÁCTICAS DEL ESTUDIANTE (Vista Alumno)
+ * Prevención IDOR: Solo retorna el registro que coincide exactamente con studentCode.
+ */
+function getStudentPracticas(studentCode) {
+  try {
+    const safeCode = String(studentCode || '').trim();
+    if (!safeCode) return { found: false };
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = getOrInitPracticasSheet(ss);
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = data.length - 1; i >= 1; i--) {
+      const row = data[i];
+      if (String(row[1]).trim() === safeCode) {
+        let parsedArchivos = [];
+        try {
+          parsedArchivos = row[6] ? JSON.parse(String(row[6])) : [];
+        } catch (e) {
+          parsedArchivos = [];
+        }
+
+        return {
+          found: true,
+          solicitud: {
+            id_solicitud: String(row[0] || ''),
+            codigo_estudiante: String(row[1] || ''),
+            nombre_estudiante: String(row[2] || ''),
+            empresa: String(row[4] || ''),
+            horas_acreditadas: Number(row[5] || 300),
+            archivos: parsedArchivos,
+            estatus: String(row[7] || 'Pendiente'),
+            motivo_devolucion: String(row[8] || ''),
+            fecha_solicitud: formatSafePracticasDate(row[9]),
+            fecha_actualizacion: formatSafePracticasDate(row[10])
+          }
+        };
+      }
+    }
+
+    return { found: false };
+  } catch (error) {
+    logSystemEvent('ERROR', studentCode || 'DESCONOCIDO', 'Error Lectura Practicas Alumno', error.toString());
+    return { found: false };
+  }
+}
+
+/**
+ * 2. ENVIAR O REENVIAR EXPEDIENTE DE PRÁCTICAS PROFESIONALES (Vista Alumno)
+ * Conserva archivos previos válidos (si viene de estado 'Devuelta') y sube los nuevos a Drive.
+ */
+function submitPracticasProfesionales(payload) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeCode = sanitizeInput(String(payload.codigo || '').trim());
+    const safeName = sanitizeInput(String(payload.nombre || '').trim());
+    const safeEmail = sanitizeInput(String(payload.correo || '').trim());
+    const safeEmpresa = sanitizeInput(String(payload.empresa || '').trim());
+    const safeHoras = Number(payload.horas_acreditadas || 300);
+
+    const existingFiles = Array.isArray(payload.existingFiles) ? payload.existingFiles : [];
+    const newFiles = Array.isArray(payload.newFiles) ? payload.newFiles : [];
+
+    if (!safeCode || !safeEmpresa || (existingFiles.length === 0 && newFiles.length === 0)) {
+      return { success: false, message: "Datos incompletos: incluye la empresa y al menos un archivo probatorio." };
+    }
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "El servidor está ocupado. Intenta nuevamente en unos segundos." };
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = getOrInitPracticasSheet(ss);
+    const data = sheet.getDataRange().getValues();
+
+    // Verificar si el estudiante ya tenía una fila previa (por ejemplo en estado 'Devuelta')
+    let existingRowIndex = -1;
+    let folioId = '';
+    for (let i = data.length - 1; i >= 1; i--) {
+      if (String(data[i][1]).trim() === safeCode) {
+        existingRowIndex = i + 1;
+        folioId = String(data[i][0] || '');
+        break;
+      }
+    }
+
+    if (!folioId) {
+      const suffix = Math.random().toString(36).substring(2, 8);
+      folioId = `PRC-${suffix}`;
+    }
+
+    const fechaHoy = Utilities.formatDate(new Date(), "America/Mexico_City", "d/MM/yyyy");
+    const targetFolder = getOrInitPracticasFolder();
+
+    // 1. Conservar archivos existentes que el alumno no eliminó
+    const finalFilesArray = existingFiles.map(function(ef) {
+      return {
+        name: sanitizeInput(String(ef.name || 'Documento.pdf')),
+        tipoDoc: sanitizeInput(String(ef.tipoDoc || 'Documento Probatorio')),
+        url: String(ef.url || '')
+      };
+    });
+
+    // 2. Subir archivos nuevos en Base64 a la carpeta privada "Practicas_Profesionales"
+    for (let k = 0; k < newFiles.length; k++) {
+      const nf = newFiles[k];
+      const safeFileName = sanitizeInput(String(nf.name || `documento_${k + 1}.pdf`));
+      const safeTipoDoc = sanitizeInput(String(nf.tipoDoc || 'Constancia de Prácticas'));
+      const decodedBytes = Utilities.base64Decode(nf.base64);
+      const blob = Utilities.newBlob(
+        decodedBytes,
+        nf.mimeType || 'application/pdf',
+        `${folioId}_${safeCode}_${k + 1}_${safeFileName}`
+      );
+
+      const driveFile = targetFolder.createFile(blob);
+      // Mandato PII: Archivos restringidos exclusivamente a la Coordinación
+      driveFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+
+      finalFilesArray.push({
+        name: safeFileName,
+        tipoDoc: safeTipoDoc,
+        url: driveFile.getUrl()
+      });
+    }
+
+    const rowValues = [
+      folioId,
+      safeCode,
+      safeName,
+      safeEmail,
+      safeEmpresa,
+      safeHoras,
+      JSON.stringify(finalFilesArray),
+      'Pendiente',
+      '',
+      fechaHoy,
+      fechaHoy
+    ];
+
+    if (existingRowIndex !== -1) {
+      sheet.getRange(existingRowIndex, 1, 1, rowValues.length).setValues([rowValues]);
+    } else {
+      sheet.appendRow(rowValues);
+    }
+
+    SpreadsheetApp.flush();
+
+    logSystemEvent(
+      'INFO',
+      safeCode,
+      'Expediente Prácticas Enviado',
+      `Folio ${folioId} registrado para empresa "${safeEmpresa}" con ${finalFilesArray.length} documento(s).`
+    );
+
+    if (safeEmail) {
+      try {
+        enviarCorreoPracticas(safeEmail, safeName, 'recepcion', {
+          folio: folioId,
+          empresa: safeEmpresa,
+          horas: safeHoras,
+          cantidadArchivos: finalFilesArray.length,
+          fecha: fechaHoy
+        });
+      } catch (mailErr) {
+        console.warn("No se pudo enviar correo de acuse de prácticas: " + mailErr);
+      }
+    }
+
+    return {
+      success: true,
+      solicitud: {
+        id_solicitud: folioId,
+        codigo_estudiante: safeCode,
+        nombre_estudiante: safeName,
+        empresa: safeEmpresa,
+        horas_acreditadas: safeHoras,
+        archivos: finalFilesArray,
+        estatus: 'Pendiente',
+        motivo_devolucion: '',
+        fecha_solicitud: fechaHoy,
+        fecha_actualizacion: fechaHoy
+      }
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', payload?.codigo || 'SISTEMA', 'Error Subir Prácticas', error.toString());
+    return { success: false, message: "Error interno al guardar tu expediente de prácticas: " + error.message };
+  } finally {
+    if (lockAcquired) lock.releaseLock();
+  }
+}
+
+/**
+ * 3. LISTAR TODAS LAS SOLICITUDES DE PRÁCTICAS (Vista Coordinador)
+ */
+function getAllPracticas() {
+  try {
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = getOrInitPracticasSheet(ss);
+    const data = sheet.getDataRange().getValues();
+    const result = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row[0] && !row[1]) continue;
+
+      let parsedArchivos = [];
+      try {
+        parsedArchivos = row[6] ? JSON.parse(String(row[6])) : [];
+      } catch (e) {
+        parsedArchivos = [];
+      }
+
+      result.push({
+        id_solicitud: String(row[0] || ''),
+        codigo_estudiante: String(row[1] || ''),
+        nombre_estudiante: String(row[2] || ''),
+        correo_estudiante: String(row[3] || ''),
+        empresa: String(row[4] || ''),
+        horas_acreditadas: Number(row[5] || 300),
+        archivos: parsedArchivos,
+        estatus: String(row[7] || 'Pendiente'),
+        motivo_devolucion: String(row[8] || ''),
+        fecha_solicitud: formatSafePracticasDate(row[9]),
+        fecha_actualizacion: formatSafePracticasDate(row[10])
+      });
+    }
+
+    return result.reverse();
+  } catch (error) {
+    logSystemEvent('ERROR', 'ADMIN_COORDINACION', 'Error Lectura Global Prácticas', error.toString());
+    return [];
+  }
+}
+
+/**
+ * 4. ACTUALIZAR ESTADO DE PRÁCTICAS PROFESIONALES (Vista Coordinador)
+ * Estados: 'En revisión (Control Escolar)', 'Devuelta', 'Aparece en kardex'
+ */
+function updatePracticasStatus(idSolicitud, nuevoEstatus, motivoDevolucion, adminCode) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeId = sanitizeInput(String(idSolicitud || '').trim());
+    const safeStatus = sanitizeInput(String(nuevoEstatus || '').trim());
+    const safeMotivo = sanitizeInput(String(motivoDevolucion || '').trim());
+    const safeAdmin = sanitizeInput(String(adminCode || 'COORD_INCO'));
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "El sistema está ocupado. Intenta nuevamente." };
+    }
+
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const sheet = getOrInitPracticasSheet(ss);
+    const data = sheet.getDataRange().getValues();
+
+    let rowIndex = -1;
+    let targetRow = null;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === safeId) {
+        rowIndex = i + 1;
+        targetRow = data[i];
+        break;
+      }
+    }
+
+    if (rowIndex === -1 || !targetRow) {
+      return { success: false, message: "Solicitud de prácticas no encontrada." };
+    }
+
+    const fechaUpdate = Utilities.formatDate(new Date(), "America/Mexico_City", "d/MM/yyyy");
+    const studentCode = String(targetRow[1] || '').trim();
+    const studentName = String(targetRow[2] || 'Estudiante INCO');
+    const studentEmail = String(targetRow[3] || '');
+    const empresaName = String(targetRow[4] || '');
+
+    // Actualizar en lote columnas 8 a 11 (estatus, motivo_devolucion, fecha_solicitud, fecha_actualizacion)
+    sheet.getRange(rowIndex, 8, 1, 4).setValues([[
+      safeStatus,
+      safeStatus === 'Devuelta' ? safeMotivo : '',
+      targetRow[9],
+      fechaUpdate
+    ]]);
+    SpreadsheetApp.flush();
+
+    logSystemEvent(
+      'INFO',
+      safeAdmin,
+      `Prácticas Profesionales -> ${safeStatus}`,
+      `Solicitud ${safeId} del alumno ${studentCode} actualizada a "${safeStatus}".`
+    );
+
+    if (studentEmail) {
+      try {
+        if (safeStatus === 'Devuelta') {
+          enviarCorreoPracticas(studentEmail, studentName, 'devuelta', {
+            folio: safeId,
+            empresa: empresaName,
+            motivo: safeMotivo
+          });
+        } else if (safeStatus === 'Aparece en kardex') {
+          enviarCorreoPracticas(studentEmail, studentName, 'kardex', {
+            folio: safeId,
+            empresa: empresaName
+          });
+        }
+      } catch (mailErr) {
+        console.warn("No se pudo enviar correo de actualización de prácticas: " + mailErr);
+      }
+    }
+
+    return {
+      success: true,
+      fechaActualizacion: fechaUpdate
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', adminCode || 'COORD', 'Error Actualizar Prácticas', error.toString());
+    return { success: false, message: "Error interno al actualizar estado de prácticas." };
+  } finally {
+    if (lockAcquired) lock.releaseLock();
+  }
+}
+
+/**
+ * =========================================================================
+ * PLANTILLAS DE CORREO ELECTRÓNICO HTML PARA PRÁCTICAS PROFESIONALES
+ * =========================================================================
+ */
+function enviarCorreoPracticas(email, nombre, tipo, datos) {
+  const headerHtml = `
+    <div style="background-color: #0f2744; padding: 22px; text-align: center; border-radius: 10px 10px 0 0;">
+      <h2 style="color: #ffffff; margin: 0; font-family: Arial, sans-serif; font-size: 18px;">
+        Coordinación de Ingeniería en Computación • CUCEI
+      </h2>
+    </div>
+  `;
+
+  let subject = '';
+  let htmlBody = '';
+
+  if (tipo === 'recepcion') {
+    subject = `[Acuse #${datos.folio}] Recepción de Expediente de Prácticas Profesionales - INCO`;
+    htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+        ${headerHtml}
+        <div style="padding: 28px; background-color: #f8fafc; color: #334155;">
+          <h3 style="color: #0f2744; margin-top: 0;">Recepción de Evidencias de Prácticas Profesionales</h3>
+          <p>Estimado/a <strong>${nombre}</strong>,</p>
+          <p>Tu expediente digital de Prácticas Profesionales ha sido recibido en el portal de la Coordinación INCO.</p>
+          <div style="background-color: #ffffff; padding: 18px; border-radius: 8px; border: 1px solid #cbd5e1; margin: 20px 0; font-size: 13px;">
+            <p style="margin: 0 0 8px 0;"><strong>Folio de Seguimiento:</strong> <span style="color: #2563eb;">#${datos.folio}</span></p>
+            <p style="margin: 0 0 8px 0;"><strong>Empresa Receptora:</strong> ${datos.empresa}</p>
+            <p style="margin: 0 0 8px 0;"><strong>Horas Reportadas:</strong> ${datos.horas} hrs (${datos.cantidadArchivos} documento(s))</p>
+            <p style="margin: 0;"><strong>Fecha de Envío:</strong> ${datos.fecha}</p>
+          </div>
+          <p style="font-size: 12px; color: #64748b;">
+            Recibirás una notificación por correo electrónico cuando tu expediente sea turnado o acreditado en Kardex.
+          </p>
+        </div>
+      </div>
+    `;
+  } else if (tipo === 'devuelta') {
+    subject = `[CORRECCIÓN REQUERIDA] Tu solicitud de Prácticas Profesionales #${datos.folio} fue devuelta`;
+    htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+        ${headerHtml}
+        <div style="padding: 28px; background-color: #f8fafc; color: #334155;">
+          <h3 style="color: #dc2626; margin-top: 0;">Observaciones en tu Expediente de Prácticas</h3>
+          <p>Hola <strong>${nombre}</strong>,</p>
+          <p>La Coordinación revisó tu solicitud de Prácticas Profesionales (<strong>#${datos.folio}</strong> - ${datos.empresa}) y requiere que atiendas la siguiente observación:</p>
+          <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 16px; margin: 20px 0; font-size: 13px; color: #991b1b;">
+            <strong>Nota de la Coordinación:</strong><br/>
+            ${datos.motivo}
+          </div>
+          <p style="font-size: 13px;">
+            Ingresa a la sección <strong>Prácticas Profesionales</strong> en el portal; tus documentos previos siguen cargados para que únicamente reemplaces el archivo solicitado.
+          </p>
+        </div>
+      </div>
+    `;
+  } else if (tipo === 'kardex') {
+    subject = `[OFICIAL EN KARDEX] Tus Prácticas Profesionales (#${datos.folio}) han sido acreditadas`;
+    htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+        ${headerHtml}
+        <div style="padding: 28px; background-color: #f8fafc; color: #334155;">
+          <h3 style="color: #059669; margin-top: 0;">¡Tus Prácticas Profesionales ya aparecen en Kardex!</h3>
+          <p>Estimado/a <strong>${nombre}</strong>,</p>
+          <p>Nos complace informarte que tu trámite de liberación de Prácticas Profesionales realizadas en <strong>${datos.empresa}</strong> (Folio <strong>#${datos.folio}</strong>) ha concluido exitosamente.</p>
+          <div style="background-color: #ecfdf5; border-left: 4px solid #059669; padding: 16px; margin: 20px 0; font-size: 13px; color: #065f46;">
+            <strong>Estado Final: Aparece en Kardex</strong><br/>
+            Tus prácticas profesionales ya son oficiales en tu historial académico y el indicador de tu perfil en el portal ha sido marcado como completado.
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  MailApp.sendEmail({
+    to: email,
+    subject: subject,
+    htmlBody: htmlBody
+  });
+}

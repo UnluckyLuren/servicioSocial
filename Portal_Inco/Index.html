@@ -375,6 +375,9 @@ const getNavSections = () => {
           { id: 'dudas', label: 'Preguntas Frecuentes', icon: 'help-circle', badge: null },
           { id: 'admin_horas', label: 'Revisión Horas Integrales', icon: 'award', badge: 'Revisión' },
           { id: 'titulacion', label: 'Opciones de Titulación (Editar)', icon: 'graduation-cap', badge: 'CMS' },
+          { id: 'modulares', label: 'Proyectos Modulares (Editar)', icon: 'layers', badge: 'CMS' },
+          { id: 'admin_practicas', label: 'Validar Prácticas Prof.', icon: 'briefcase', badge: 'Revisión' },
+          { id: 'art33_35', label: 'Normatividad Art. 33-35 (Editar)', icon: 'scale', badge: 'CMS' },
           { id: 'admin_constancias', label: 'Emisión de Constancias', icon: 'file-text', badge: 'Gestión' },
         ]
       }
@@ -423,6 +426,7 @@ const getNavSections = () => {
         { id: 'titulacion', label: 'Opciones de Titulación', icon: 'graduation-cap', badge: 'EGEL' },
         { id: 'modulares', label: 'Proyectos Modulares', icon: 'layers', badge: 'Protocolo' },
         { id: 'horas', label: 'Horas Integrales', icon: 'award', badge: `${user.integralHours || 0}/64h` },
+        { id: 'practicas', label: 'Prácticas Profesionales', icon: 'briefcase', badge: user.practicasStatus === 'Aparece en kardex' ? 'En Kardex' : 'Trámite' },
         { id: 'malla', label: 'Malla Curricular INCO', icon: 'grid', badge: null },
       ]
     }
@@ -453,653 +457,708 @@ const getNavSections = () => {
           {/* 2. DASHBOARD REAL (Solo Usuarios Logueados) */}
           {isLoggedIn && user && (
             <>
+              {/* =====================================================================
+                  HEADER PRINCIPAL (Full-Width + Flexbox de 3 Secciones)
+                 ===================================================================== */}
               <header className="bg-udg-navy text-white sticky top-0 z-40 border-b border-slate-800 shadow-lg backdrop-blur-md bg-opacity-95">
-            <div className="bg-slate-950/80 px-4 py-1 text-[11px] font-medium text-slate-300 border-b border-slate-800">
-              <div className="max-w-7xl mx-auto flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-udg-gold tracking-wide">Universidad de Guadalajara</span>
-                  <span className="hidden sm:inline text-slate-600">•</span>
-                  <span className="hidden sm:inline text-slate-300">Centro Universitario de Ciencias Exactas e Ingenierías</span>
+                
+                {/* Cintillo Superior Institucional (Full-Width: sin max-w-7xl mx-auto) */}
+                <div className="bg-slate-950/80 py-1 text-[11px] font-medium text-slate-300 border-b border-slate-800">
+                  <div className="w-full px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-udg-gold tracking-wide">Universidad de Guadalajara</span>
+                      <span className="hidden sm:inline text-slate-600">•</span>
+                      <span className="hidden sm:inline text-slate-300">Centro Universitario de Ciencias Exactas e Ingenierías</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">Ciclo Lectivo: 2026B</span>
+                      <span className="text-slate-600">|</span>
+                      <a href="https://siiau.udg.mx" target="_blank" className="hover:text-udg-gold transition-colors">Portal SIIAU</a>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">Ciclo Lectivo: 2026B</span>
-                  <span className="text-slate-600">|</span>
-                  <a href="https://siiau.udg.mx" target="_blank" className="hover:text-udg-gold transition-colors">Portal SIIAU</a>
-                </div>
-              </div>
-            </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-              
-              {/* Brand and Mobile Menu Button */}
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setMobileNavOpen(!mobileNavOpen)}
-                  className="lg:hidden p-2 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700"
-                >
-                  <i data-lucide="menu" className="w-5 h-5"></i>
-                </button>
+                {/* Contenedor Principal del Header (Full-Width con 3 Secciones: Izquierda, Centro, Derecha) */}
+                <div className="w-full px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+                  
+                  {/* 1. SECCIÓN IZQUIERDA: Botón Móvil, Logos y Título */}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button 
+                      onClick={() => setMobileNavOpen(!mobileNavOpen)}
+                      className="lg:hidden p-2 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700"
+                    >
+                      <i data-lucide="menu" className="w-5 h-5"></i>
+                    </button>
 
-               <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveTab('inicio')}>
-                  <div className="w-10 h-10 rounded-2xl bg-white p-1 flex items-center justify-center shadow-lg border border-slate-200 shrink-0 transform group-hover:scale-105 transition-transform">
-                    <div className="text-center leading-none">
-                      <span className="block font-black text-xs text-udg-navy tracking-tight">UDG</span>
-                      <span className="block font-extrabold text-[9px] text-udg-gold">CUCEI</span>
+                    <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveTab('inicio')}>
+                      <div className="w-10 h-10 rounded-2xl bg-white p-1 flex items-center justify-center shadow-lg border border-slate-200 shrink-0 transform group-hover:scale-105 transition-transform">
+                        <div className="text-center leading-none">
+                          <span className="block font-black text-xs text-udg-navy tracking-tight">UDG</span>
+                          <span className="block font-extrabold text-[9px] text-udg-gold">CUCEI</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-white group-hover:text-udg-gold transition-colors leading-tight font-display">
+                          Ingeniería en Computación
+                        </h1>
+                        <p className="text-[11px] text-slate-300 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                          Módulo M202 • Portal Institucional
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-white group-hover:text-udg-gold transition-colors leading-tight font-display">
-                      Ingeniería en Computación
-                    </h1>
-                    <p className="text-[11px] text-slate-300 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                      Módulo M202 • Portal Institucional
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Header Right Actions */}
-              <div className="flex items-center gap-2 sm:gap-3">
-                
-                {/* NOTIFICATIONS BELL ICON WITH LIVE BADGE */}
-                <div className="relative">
-                  <button 
-                    onClick={() => setNotifOpen(!notifOpen)}
-                    className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all relative flex items-center justify-center"
-                    title="Bandeja de Notificaciones"
-                  >
-                    <i data-lucide="bell" className="w-4 h-4 text-udg-gold"></i>
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-600 text-white font-bold text-[10px] w-4 h-4 rounded-full flex items-center justify-center shadow animate-bounce">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* NOTIFICATIONS DRAWER POPUP */}
-                  {notifOpen && (
-                    <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 py-3 z-50 text-slate-800 dark:text-slate-100 text-xs animate-in fade-in slide-in-from-top-2">
-                      <div className="px-4 pb-2 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <i data-lucide="bell-ring" className="w-4 h-4 text-udg-gold"></i>
-                          <h4 className="font-bold text-sm font-display">Notificaciones en Vivo</h4>
-                        </div>
-                        {unreadCount > 0 && (
-                          <button onClick={markAllNotifsRead} className="text-[10px] text-udg-blue dark:text-blue-400 hover:underline font-semibold">
-                            Marcar leídas
+                  {/* 2. SECCIÓN CENTRAL: [NUEVA UBICACIÓN DEL BUSCADOR GLOBAL] */}
+                  {isLoggedIn && user && (
+                    <div className="hidden md:flex flex-1 justify-center px-4">
+                      <div className="relative max-w-xl w-full">
+                        <i data-lucide="search" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                        <input
+                          type="text"
+                          placeholder="Buscar trámite o sección... (Ej: Justificante, Tickets, EGEL, Horas)"
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            // REDIRECCIÓN AUTOMÁTICA: Si escribe y no está en el inicio, lo mandamos al catálogo
+                            if (e.target.value.trim() !== '' && activeTab !== 'inicio') {
+                              setActiveTab('inicio');
+                            }
+                          }}
+                          className="w-full bg-slate-800/80 text-white placeholder-slate-400 pl-10 pr-10 py-2 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-udg-gold focus:border-transparent text-xs shadow-inner transition-all"
+                        />
+                        {searchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                            title="Limpiar búsqueda"
+                          >
+                            <i data-lucide="x" className="w-4 h-4"></i>
                           </button>
                         )}
                       </div>
-
-                      <div className="max-h-72 overflow-y-auto custom-scrollbar divide-y divide-slate-100 dark:divide-slate-700/60">
-                        {notifications.length === 0 ? (
-                          <p className="p-4 text-center text-slate-400">No tienes notificaciones pendientes.</p>
-                        ) : (
-                          notifications.map(n => (
-                            <div key={n.id} className={`p-3.5 transition-colors ${n.unread ? 'bg-blue-50/70 dark:bg-slate-700/50' : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'}`}>
-                              <div className="flex justify-between items-start gap-2">
-                                <h5 className="font-bold text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-                                  {n.unread && <span className="w-2 h-2 rounded-full bg-udg-gold shrink-0"></span>}
-                                  {n.title}
-                                </h5>
-                                <span className="text-[10px] text-slate-400 shrink-0">{n.date}</span>
-                              </div>
-                              <p className="text-slate-600 dark:text-slate-300 text-[11px] mt-1 leading-relaxed">{n.text}</p>
-                            </div>
-                          ))
-                        )}
-                      </div>
-
-                      <div className="px-4 pt-2 border-t border-slate-100 dark:border-slate-700 text-center">
-                        <span className="text-[10px] text-slate-400">Notificaciones automáticas del sistema INCO</span>
-                      </div>
                     </div>
                   )}
-                </div>
 
-                {/* Theme Switcher */}
-                <button 
-                  onClick={() => setDarkMode(!darkMode)}
-                  className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all text-xs flex items-center gap-1.5"
-                  title="Cambiar Contraste"
-                >
-                  <i data-lucide={darkMode ? 'sun' : 'moon'} className="w-4 h-4 text-udg-gold"></i>
-                  <span className="hidden md:inline text-[11px] font-medium">{darkMode ? 'Claro' : 'Oscuro'}</span>
-                </button>
-
-                {/* Session Role Selector / User Menu */}
-                {isLoggedIn ? (
-                  <div className="relative">
-                    <button 
-                      onClick={() => setUserDropdown(!userDropdown)}
-                      className="flex items-center gap-2.5 bg-slate-800 hover:bg-slate-700/90 p-1.5 pr-3 rounded-2xl border border-slate-700 transition-all text-left"
-                    >
-                      <div className="w-9 h-9 rounded-xl overflow-hidden bg-udg-blue text-white flex items-center justify-center font-bold text-xs border border-blue-400/40 shrink-0">
-                        {user.photo ? (
-                          <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
-                        ) : (
-                          user.name.charAt(0)
+                  {/* 3. SECCIÓN DERECHA: Notificaciones, Tema y Menú de Usuario */}
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                    
+                    {/* NOTIFICATIONS BELL ICON WITH LIVE BADGE */}
+                    <div className="relative">
+                      <button 
+                        onClick={() => setNotifOpen(!notifOpen)}
+                        className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all relative flex items-center justify-center"
+                        title="Bandeja de Notificaciones"
+                      >
+                        <i data-lucide="bell" className="w-4 h-4 text-udg-gold"></i>
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-red-600 text-white font-bold text-[10px] w-4 h-4 rounded-full flex items-center justify-center shadow animate-bounce">
+                            {unreadCount}
+                          </span>
                         )}
-                      </div>
-                      <div className="hidden sm:block">
-                        <p className="text-xs font-bold text-white leading-tight">{user.name.split(' ')[0]} {user.name.split(' ')[2] || ''}</p>
-                        <span className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${
-                          user.role === 'Coordinacion' 
-                            ? 'bg-amber-500 text-slate-950' 
-                            : user.role === 'Docente' 
-                              ? 'bg-emerald-500 text-white' 
-                              : 'bg-blue-500 text-white'
-                        }`}>
-                          {user.role}
-                        </span>
-                      </div>
-                      <i data-lucide="chevron-down" className="w-4 h-4 text-slate-400"></i>
+                      </button>
+
+                      {/* NOTIFICATIONS DRAWER POPUP */}
+                      {notifOpen && (
+                        <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 py-3 z-50 text-slate-800 dark:text-slate-100 text-xs animate-in fade-in slide-in-from-top-2">
+                          <div className="px-4 pb-2 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <i data-lucide="bell-ring" className="w-4 h-4 text-udg-gold"></i>
+                              <h4 className="font-bold text-sm font-display">Notificaciones en Vivo</h4>
+                            </div>
+                            {unreadCount > 0 && (
+                              <button onClick={markAllNotifsRead} className="text-[10px] text-udg-blue dark:text-blue-400 hover:underline font-semibold">
+                                Marcar leídas
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="max-h-72 overflow-y-auto custom-scrollbar divide-y divide-slate-100 dark:divide-slate-700/60">
+                            {notifications.length === 0 ? (
+                              <p className="p-4 text-center text-slate-400">No tienes notificaciones pendientes.</p>
+                            ) : (
+                              notifications.map(n => (
+                                <div key={n.id} className={`p-3.5 transition-colors ${n.unread ? 'bg-blue-50/70 dark:bg-slate-700/50' : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'}`}>
+                                  <div className="flex justify-between items-start gap-2">
+                                    <h5 className="font-bold text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
+                                      {n.unread && <span className="w-2 h-2 rounded-full bg-udg-gold shrink-0"></span>}
+                                      {n.title}
+                                    </h5>
+                                    <span className="text-[10px] text-slate-400 shrink-0">{n.date}</span>
+                                  </div>
+                                  <p className="text-slate-600 dark:text-slate-300 text-[11px] mt-1 leading-relaxed">{n.text}</p>
+                                </div>
+                              ))
+                            )}
+                          </div>
+
+                          <div className="px-4 pt-2 border-t border-slate-100 dark:border-slate-700 text-center">
+                            <span className="text-[10px] text-slate-400">Notificaciones automáticas del sistema INCO</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Theme Switcher */}
+                    <button 
+                      onClick={() => setDarkMode(!darkMode)}
+                      className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all text-xs flex items-center gap-1.5"
+                      title="Cambiar Contraste"
+                    >
+                      <i data-lucide={darkMode ? 'sun' : 'moon'} className="w-4 h-4 text-udg-gold"></i>
+                      <span className="hidden md:inline text-[11px] font-medium">{darkMode ? 'Claro' : 'Oscuro'}</span>
                     </button>
 
-                    {/* User Profile Dropdown & Quick Role Switcher */}
-                    {userDropdown && (
-                      <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 py-2 z-50 text-slate-800 dark:text-slate-100 text-xs">
-                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-700 shrink-0 border border-slate-300 dark:border-slate-600 shadow-inner">
+                    {/* Session Role Selector / User Menu */}
+                    {isLoggedIn ? (
+                      <div className="relative">
+                        <button 
+                          onClick={() => setUserDropdown(!userDropdown)}
+                          className="flex items-center gap-2.5 bg-slate-800 hover:bg-slate-700/90 p-1.5 pr-3 rounded-2xl border border-slate-700 transition-all text-left"
+                        >
+                          <div className="w-9 h-9 rounded-xl overflow-hidden bg-udg-blue text-white flex items-center justify-center font-bold text-xs border border-blue-400/40 shrink-0">
                             {user.photo ? (
                               <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center font-bold text-slate-600 dark:text-slate-200 text-base">{user.name.charAt(0)}</div>
+                              user.name.charAt(0)
                             )}
                           </div>
-                          <div className="overflow-hidden">
-                            <p className="font-bold text-slate-900 dark:text-white truncate font-display">{user.name}</p>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
-                            <p className="text-[10px] text-udg-gold font-mono font-semibold">Rol: {user.role}</p>
+                          <div className="hidden sm:block">
+                            <p className="text-xs font-bold text-white leading-tight">{user.name.split(' ')[0]} {user.name.split(' ')[2] || ''}</p>
+                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${
+                              user.role === 'Coordinacion' 
+                                ? 'bg-amber-500 text-slate-950' 
+                                : user.role === 'Docente' 
+                                  ? 'bg-emerald-500 text-white' 
+                                  : 'bg-blue-500 text-white'
+                            }`}>
+                              {user.role}
+                            </span>
                           </div>
-                        </div>
-
-                        {/* Switch Role Quick Tester */}
-                        <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-700 space-y-1">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cambiar Rol Demo Rápidamente:</p>
-                          <div className="grid grid-cols-3 gap-1">
-                            <button 
-                              onClick={() => {
-                                setUser(MOCK_USER_STUDENT);
-                                setActiveTab('tickets');
-                                setUserDropdown(false);
-                                showToast("Cambiado a vista de Estudiante");
-                              }}
-                              className={`py-1 rounded text-[10px] font-bold ${user.role === 'Estudiante' ? 'bg-udg-navy text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}
-                            >
-                              Estudiante
-                            </button>
-                            <button 
-                              onClick={() => {
-                                setUser(MOCK_USER_TEACHER);
-                                setActiveTab('tickets');
-                                setUserDropdown(false);
-                                showToast("Cambiado a vista de Profesor / Docente");
-                              }}
-                              className={`py-1 rounded text-[10px] font-bold ${user.role === 'Docente' ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}
-                            >
-                              Docente
-                            </button>
-                            <button 
-                              onClick={() => {
-                                setUser(MOCK_USER_ADMIN);
-                                setActiveTab('admin_panel');
-                                setUserDropdown(false);
-                                showToast("Cambiado a vista de Admin Coordinación");
-                              }}
-                              className={`py-1 rounded text-[10px] font-bold ${user.role === 'Coordinacion' ? 'bg-udg-gold text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}
-                            >
-                              Admin
-                            </button>
-                          </div>
-                        </div>
-
-                        <button 
-                          onClick={() => { setActiveModal('edit_profile'); setUserDropdown(false); }}
-                          className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/60 flex items-center gap-2.5 text-udg-navy dark:text-blue-300 font-semibold"
-                        >
-                          <i data-lucide="camera" className="w-4 h-4 text-udg-gold"></i>
-                          <span>Cambiar Foto y Editar Datos</span>
+                          <i data-lucide="chevron-down" className="w-4 h-4 text-slate-400"></i>
                         </button>
 
-                        <div className="border-t border-slate-100 dark:border-slate-700 my-1"></div>
+                        {/* User Profile Dropdown & Quick Role Switcher */}
+                        {userDropdown && (
+                          <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 py-2 z-50 text-slate-800 dark:text-slate-100 text-xs">
+                            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-700 shrink-0 border border-slate-300 dark:border-slate-600 shadow-inner">
+                                {user.photo ? (
+                                  <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center font-bold text-slate-600 dark:text-slate-200 text-base">{user.name.charAt(0)}</div>
+                                )}
+                              </div>
+                              <div className="overflow-hidden">
+                                <p className="font-bold text-slate-900 dark:text-white truncate font-display">{user.name}</p>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                                <p className="text-[10px] text-udg-gold font-mono font-semibold">Rol: {user.role}</p>
+                              </div>
+                            </div>
+
+                            {/* Switch Role Quick Tester */}
+                            <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-700 space-y-1">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cambiar Rol Demo Rápidamente:</p>
+                              <div className="grid grid-cols-3 gap-1">
+                                <button 
+                                  onClick={() => {
+                                    setUser(MOCK_USER_STUDENT);
+                                    setActiveTab('tickets');
+                                    setUserDropdown(false);
+                                    showToast("Cambiado a vista de Estudiante");
+                                  }}
+                                  className={`py-1 rounded text-[10px] font-bold ${user.role === 'Estudiante' ? 'bg-udg-navy text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}
+                                >
+                                  Estudiante
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setUser(MOCK_USER_TEACHER);
+                                    setActiveTab('tickets');
+                                    setUserDropdown(false);
+                                    showToast("Cambiado a vista de Profesor / Docente");
+                                  }}
+                                  className={`py-1 rounded text-[10px] font-bold ${user.role === 'Docente' ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}
+                                >
+                                  Docente
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setUser(MOCK_USER_ADMIN);
+                                    setActiveTab('admin_panel');
+                                    setUserDropdown(false);
+                                    showToast("Cambiado a vista de Admin Coordinación");
+                                  }}
+                                  className={`py-1 rounded text-[10px] font-bold ${user.role === 'Coordinacion' ? 'bg-udg-gold text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}
+                                >
+                                  Admin
+                                </button>
+                              </div>
+                            </div>
+
+                            <button 
+                              onClick={() => { setActiveModal('edit_profile'); setUserDropdown(false); }}
+                              className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/60 flex items-center gap-2.5 text-udg-navy dark:text-blue-300 font-semibold"
+                            >
+                              <i data-lucide="camera" className="w-4 h-4 text-udg-gold"></i>
+                              <span>Cambiar Foto y Editar Datos</span>
+                            </button>
+
+                            <div className="border-t border-slate-100 dark:border-slate-700 my-1"></div>
+                            <button 
+                              onClick={() => { 
+                                setIsLoggedIn(false); 
+                                setUserDropdown(false);
+                                showToast("Sesión cerrada correctamente", "error"); 
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2.5 font-semibold"
+                            >
+                              <i data-lucide="log-out" className="w-4 h-4"></i>
+                              <span>Cerrar Sesión</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
                         <button 
-                          onClick={() => { 
-                            setIsLoggedIn(false); 
-                            setUserDropdown(false);
-                            showToast("Sesión cerrada correctamente", "error"); 
-                          }}
-                          className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2.5 font-semibold"
+                          onClick={() => setActiveModal('register')}
+                          className="bg-udg-gold hover:bg-udg-goldHover text-white font-bold px-3.5 py-2 rounded-xl transition-all text-xs flex items-center gap-1.5 shadow-sm"
                         >
-                          <i data-lucide="log-out" className="w-4 h-4"></i>
-                          <span>Cerrar Sesión</span>
+                          <i data-lucide="user-plus" className="w-4 h-4"></i>
+                          <span>Registrarse</span>
+                        </button>
+                        <button 
+                          onClick={() => setActiveModal('login')}
+                          className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-3.5 py-2 rounded-xl border border-slate-700 transition-all text-xs flex items-center gap-1.5"
+                        >
+                          <i data-lucide="log-in" className="w-4 h-4 text-udg-gold"></i>
+                          <span>Ingresar</span>
                         </button>
                       </div>
                     )}
+
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => setActiveModal('register')}
-                      className="bg-udg-gold hover:bg-udg-goldHover text-white font-bold px-3.5 py-2 rounded-xl transition-all text-xs flex items-center gap-1.5 shadow-sm"
-                    >
-                      <i data-lucide="user-plus" className="w-4 h-4"></i>
-                      <span>Registrarse</span>
-                    </button>
-                    <button 
-                      onClick={() => setActiveModal('login')}
-                      className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-3.5 py-2 rounded-xl border border-slate-700 transition-all text-xs flex items-center gap-1.5"
-                    >
-                      <i data-lucide="log-in" className="w-4 h-4 text-udg-gold"></i>
-                      <span>Ingresar</span>
-                    </button>
+                </div>
+              </header>
+
+              {/* =====================================================================
+                  MAIN WRAPPER (Full-Width: eliminado max-w-7xl mx-auto, añadido w-full px-4 sm:px-6 lg:px-8)
+                 ===================================================================== */}
+              <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6">
+                
+                {/* LEFT VERTICAL NAVIGATION SIDEBAR */}
+                <aside className={`lg:w-72 shrink-0 space-y-6 ${mobileNavOpen ? 'block' : 'hidden lg:block'}`}>
+                  
+                  {/* Dynamic User Profile Card */}
+                  {isLoggedIn ? (
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                      <div className={`absolute top-0 left-0 right-0 h-16 ${
+                        user.role === 'Coordinacion' 
+                          ? 'bg-gradient-to-r from-amber-600 to-udg-gold' 
+                          : user.role === 'Docente' 
+                            ? 'bg-gradient-to-r from-emerald-700 to-teal-800' 
+                            : 'bg-gradient-to-r from-udg-navy to-udg-blue'
+                      }`}></div>
+                      
+                      <div className="relative pt-4 flex flex-col items-center text-center">
+                        <div className="relative mb-3">
+                          <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-slate-800 shadow-md flex items-center justify-center font-bold text-2xl text-udg-navy">
+                            {user.photo ? (
+                              <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
+                            ) : (
+                              user.name.charAt(0)
+                            )}
+                          </div>
+                          <button 
+                            onClick={() => setActiveModal('edit_profile')}
+                            className="absolute bottom-0 right-0 bg-udg-gold hover:bg-udg-goldHover text-white p-1.5 rounded-full shadow border-2 border-white dark:border-slate-800 transition-transform hover:scale-110"
+                            title="Editar Foto o Datos"
+                          >
+                            <i data-lucide="camera" className="w-3.5 h-3.5"></i>
+                          </button>
+                        </div>
+
+                        <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight font-display">{user.name}</h3>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">{user.career}</p>
+                        
+                        <div className="w-full bg-slate-50 dark:bg-slate-900/60 rounded-xl p-2.5 mt-3 border border-slate-100 dark:border-slate-700 text-[11px] space-y-1.5 text-left">
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400">Código:</span>
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{user.code}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400">Rol Activo:</span>
+                            <span className="font-bold text-udg-navy dark:text-blue-400">{user.role}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400">Teléfono:</span>
+                            <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{user.phone || 'Sin registrar'}</span>
+                          </div>
+                        </div>
+
+                        <button 
+                          onClick={() => setActiveModal('edit_profile')}
+                          className="w-full mt-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <i data-lucide="user-cog" className="w-3.5 h-3.5 text-udg-gold"></i>
+                          <span>Editar Perfil</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gradient-to-br from-udg-navy to-slate-900 rounded-2xl p-5 text-white shadow-md space-y-3 border border-slate-800">
+                      <div className="w-10 h-10 rounded-xl bg-udg-gold text-white flex items-center justify-center font-bold">
+                        <i data-lucide="shield-alert" className="w-5 h-5"></i>
+                      </div>
+                      <h3 className="font-bold text-sm font-display">Ingreso de Usuarios</h3>
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        Inicia sesión con tu código de Alumno, Docente o Administrador de Coordinación.
+                      </p>
+                      <div className="pt-1 flex flex-col gap-2">
+                        <button 
+                          onClick={() => setActiveModal('login')}
+                          className="w-full bg-udg-gold hover:bg-udg-goldHover text-white py-2 rounded-xl text-xs font-bold transition-all shadow"
+                        >
+                          Iniciar Sesión SIIAU
+                        </button>
+                        <button 
+                          onClick={() => setActiveModal('register')}
+                          className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-xl text-xs font-semibold border border-slate-700"
+                        >
+                          Crear Nueva Cuenta
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* VERTICAL MENU OPTIONS */}
+                  <nav className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
+                    {getNavSections().map((sec, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <p className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+                          {sec.group}
+                        </p>
+                        {sec.items.map((item) => {
+                          const isActive = activeTab === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                setActiveTab(item.id);
+                                setMobileNavOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-xs font-semibold ${
+                                isActive 
+                                  ? 'bg-udg-navy text-white shadow-md dark:bg-udg-blue' 
+                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <i data-lucide={item.icon} className={`w-4 h-4 ${isActive ? 'text-udg-gold' : 'text-slate-400 dark:text-slate-400'}`}></i>
+                                <span>{item.label}</span>
+                              </div>
+                              {item.badge && (
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                  isActive 
+                                    ? 'bg-white/20 text-white' 
+                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                }`}>
+                                  {item.badge}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </nav>
+
+                  {/* Physical Office Badge */}
+                  <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 text-xs space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                      <i data-lucide="clock" className="w-4 h-4 text-udg-gold"></i>
+                      <span>Atención Presencial M202</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Lunes a Viernes: 09:00 hrs – 18:00 hrs<br/>
+                      Coordinación de Computación CUCEI
+                    </p>
                   </div>
-                )}
+
+                </aside>
+
+                {/* MAIN WORKSPACE AREA */}
+                <main className="flex-1 space-y-6 overflow-hidden">
+                  
+                  {/* Dynamic Header Banner */}
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <div className="inline-flex items-center gap-2 text-xs text-udg-blue dark:text-blue-400 font-bold mb-1">
+                          <span className="w-2 h-2 rounded-full bg-udg-gold animate-pulse"></span>
+                          Portal de Atención e Interacción Institucional
+                        </div>
+                        <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-display">
+                          {isLoggedIn ? `¡Bienvenido, ${user.name.split(' ')[0]}!` : 'Portal de Ingeniería en Computación'}
+                        </h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
+                          {user?.role === 'Coordinacion' || user?.rol === 'Coordinacion'
+                            ? 'Panel Administrativo: Responde tickets de estudiantes, gestiona avisos y dictámenes.' 
+                            : user?.role === 'Docente' || user?.rol === 'Docente'
+                              ? 'Panel Docente: Generación de constancias de adscripción y gestión de alumnos.'
+                              : 'Envía tus tickets directamente a Coordinación o consulta preguntas frecuentes en primer lugar.'}
+                        </p>
+                      </div>
+
+                      {!isLoggedIn && (
+                        <button 
+                          onClick={() => setActiveModal('login')}
+                          className="self-start md:self-auto bg-udg-gold hover:bg-udg-goldHover text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all shadow-md"
+                        >
+                          <i data-lucide="log-in" className="w-4 h-4"></i>
+                          <span>Ingresar con Mi Código</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* KPI Metrics Dashboard Bar for Student */}
+                    {isLoggedIn && user.role === 'Estudiante' && (
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-5 pt-4 border-t border-slate-100 dark:border-slate-700/80 text-xs">
+                        <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold">Promedio General</span>
+                          <span className="text-lg font-black text-udg-navy dark:text-blue-400">{user.gpa} <span className="text-xs font-normal text-slate-400">/ 100</span></span>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold">Créditos Avance</span>
+                          <span className="text-lg font-black text-slate-800 dark:text-slate-100">{user.credits} <span className="text-xs font-normal text-slate-400">({Math.round((user.credits/user.totalCredits)*100)}%)</span></span>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold">Horas Integrales</span>
+                          <span className="text-lg font-black text-udg-gold">{user.integralHours} <span className="text-xs font-normal text-slate-400">/ {user.requiredHours || 64}h</span></span>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold">Prácticas Prof.</span>
+                          {user.practicasStatus === 'Aparece en kardex' ? (
+                            <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
+                              <i data-lucide="check-circle-2" className="w-4 h-4 shrink-0"></i> En Kardex
+                            </span>
+                          ) : (
+                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1 mt-1">
+                              <i data-lucide="clock" className="w-4 h-4 text-udg-gold shrink-0"></i> {user.practicasStatus || 'Pendiente'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 col-span-2 sm:col-span-1">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold">Estatus SIIAU</span>
+                          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
+                            <i data-lucide="check-circle-2" className="w-4 h-4 shrink-0"></i> {user.status}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* [ELIMINADO DE <main>]: La barra de búsqueda que antes estaba aquí fue trasladada al centro del <header> */}
+
+                  {/* MÓDULOS ACTIVOS DEL WORKSPACE */}
+                  {activeTab === 'tickets' && (
+                    <TicketsModule 
+                      user={user} 
+                      showToast={showToast} 
+                      addNotification={addNotification}
+                      globalTickets={globalTickets}
+                      setGlobalTickets={setGlobalTickets}
+                    />
+                  )}
+
+                  {activeTab === 'dudas' && <DudasBuzonModule faqList={FAQ_LIST} showToast={showToast} />}
+
+                  {activeTab === 'inicio' && (
+                    <HomeDashboard setActiveTab={setActiveTab} searchQuery={searchQuery} user={user} />
+                  )}
+
+                  {activeTab === 'justificantes' && (
+                    <JustificantesModule 
+                      user={user}
+                      showToast={showToast} 
+                      addNotification={addNotification} 
+                      isLoggedIn={isLoggedIn} 
+                      setActiveModal={setActiveModal} 
+                    />
+                  )}
+
+                  {activeTab === 'titulacion' && <TitulacionModule user={user} showToast={showToast} addNotification={addNotification} />}
+                  {activeTab === 'constancias' && (
+                    <ConstanciasModule 
+                      user={user} 
+                      showToast={showToast} 
+                      addNotification={addNotification}
+                      isLoggedIn={isLoggedIn} 
+                      setActiveModal={setActiveModal} 
+                    />
+                  )}
+                  {activeTab === 'constancias_docente' && <ConstanciasDocenteModule user={user} showToast={showToast} />}
+                  {activeTab === 'modulares' && <ProyectosModularesModule showToast={showToast} addNotification={addNotification} user={user} />}
+                  {activeTab === 'ajuste' && <AjusteMateriasModule showToast={showToast} addNotification={addNotification} />}
+                  {activeTab === 'art33_35' && <ArticulosReglamentoModule user={user} showToast={showToast} addNotification={addNotification} />}
+                  {activeTab === 'horas' && (
+                    <HorasIntegralesModule 
+                      user={user} 
+                      showToast={showToast} 
+                      addNotification={addNotification}
+                    />
+                  )}
+                  {activeTab === 'malla' && <MallaCurricularModule />}
+                  {activeTab === 'avisos' && <AvisosModule notices={MOCK_NOTICES} user={user} showToast={showToast} addNotification={addNotification} />}
+
+                  {/* Admin Panel Views */}
+                  {activeTab === 'admin_panel' && (
+                    <AdminPanelTickets 
+                      globalTickets={globalTickets} 
+                      setGlobalTickets={setGlobalTickets}
+                      showToast={showToast}
+                      addNotification={addNotification}
+                    />
+                  )}
+
+                  {activeTab === 'admin_justificantes' && (
+                    <AdminJustificantesModule 
+                      user={user}
+                      showToast={showToast} 
+                      addNotification={addNotification} 
+                    />
+                  )}
+
+                  {activeTab === 'admin_constancias' && (
+                    <AdminConstanciasModule 
+                      user={user}
+                      showToast={showToast} 
+                      addNotification={addNotification} 
+                    />
+                  )}
+
+                  {activeTab === 'admin_horas' && (
+                    <AdminHorasIntegralesModule 
+                      user={user} 
+                      showToast={showToast} 
+                      addNotification={addNotification}
+                    />
+                  )}
+
+                  {activeTab === 'practicas' && (
+                    <PracticasModule 
+                      user={user} 
+                      setUser={setUser}
+                      showToast={showToast} 
+                      addNotification={addNotification} 
+                    />
+                  )}
+
+                  {activeTab === 'admin_practicas' && (
+                    <AdminPracticasModule 
+                      user={user} 
+                      showToast={showToast} 
+                      addNotification={addNotification} 
+                    />
+                  )}
+
+                </main>
 
               </div>
-            </div>
-          </header>
 
-          {}
-          <div className="flex-1 max-w-7xl w-full mx-auto flex flex-col lg:flex-row gap-6 p-4 sm:p-6">
-            
-            {/* LEFT VERTICAL NAVIGATION SIDEBAR */}
-            <aside className={`lg:w-72 shrink-0 space-y-6 ${mobileNavOpen ? 'block' : 'hidden lg:block'}`}>
-              
-              {/* Dynamic User Profile Card */}
-              {isLoggedIn ? (
-                <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
-                  <div className={`absolute top-0 left-0 right-0 h-16 ${
-                    user.role === 'Coordinacion' 
-                      ? 'bg-gradient-to-r from-amber-600 to-udg-gold' 
-                      : user.role === 'Docente' 
-                        ? 'bg-gradient-to-r from-emerald-700 to-teal-800' 
-                        : 'bg-gradient-to-r from-udg-navy to-udg-blue'
-                  }`}></div>
-                  
-                  <div className="relative pt-4 flex flex-col items-center text-center">
-                    <div className="relative mb-3">
-                      <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-slate-800 shadow-md flex items-center justify-center font-bold text-2xl text-udg-navy">
-                        {user.photo ? (
-                          <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
-                        ) : (
-                          user.name.charAt(0)
-                        )}
+              {/* CHATBOT FLOTANTE */}
+              <div className="fixed bottom-5 right-5 z-40">
+                {chatOpen ? (
+                  <div className="w-80 sm:w-96 h-[480px] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+                    <div className="bg-udg-navy text-white p-3.5 flex items-center justify-between border-b border-slate-700">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-udg-blue flex items-center justify-center font-bold text-white text-xs border border-blue-400/30">
+                          INCO
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-xs flex items-center gap-1.5 font-display">
+                            Asistente Virtual INCO
+                            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                          </h4>
+                          <p className="text-[10px] text-slate-300">Respuesta en segundos</p>
+                        </div>
                       </div>
-                      <button 
-                        onClick={() => setActiveModal('edit_profile')}
-                        className="absolute bottom-0 right-0 bg-udg-gold hover:bg-udg-goldHover text-white p-1.5 rounded-full shadow border-2 border-white dark:border-slate-800 transition-transform hover:scale-110"
-                        title="Editar Foto o Datos"
-                      >
-                        <i data-lucide="camera" className="w-3.5 h-3.5"></i>
+                      <button onClick={() => setChatOpen(false)} className="text-slate-300 hover:text-white p-1">
+                        <i data-lucide="x" className="w-4 h-4"></i>
                       </button>
                     </div>
 
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight font-display">{user.name}</h3>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">{user.career}</p>
-                    
-                    <div className="w-full bg-slate-50 dark:bg-slate-900/60 rounded-xl p-2.5 mt-3 border border-slate-100 dark:border-slate-700 text-[11px] space-y-1.5 text-left">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Código:</span>
-                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{user.code}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Rol Activo:</span>
-                        <span className="font-bold text-udg-navy dark:text-blue-400">{user.role}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Teléfono:</span>
-                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{user.phone || 'Sin registrar'}</span>
-                      </div>
-                    </div>
-
-                    <button 
-                      onClick={() => setActiveModal('edit_profile')}
-                      className="w-full mt-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <i data-lucide="user-cog" className="w-3.5 h-3.5 text-udg-gold"></i>
-                      <span>Editar Perfil</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-gradient-to-br from-udg-navy to-slate-900 rounded-2xl p-5 text-white shadow-md space-y-3 border border-slate-800">
-                  <div className="w-10 h-10 rounded-xl bg-udg-gold text-white flex items-center justify-center font-bold">
-                    <i data-lucide="shield-alert" className="w-5 h-5"></i>
-                  </div>
-                  <h3 className="font-bold text-sm font-display">Ingreso de Usuarios</h3>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    Inicia sesión con tu código de Alumno, Docente o Administrador de Coordinación.
-                  </p>
-                  <div className="pt-1 flex flex-col gap-2">
-                    <button 
-                      onClick={() => setActiveModal('login')}
-                      className="w-full bg-udg-gold hover:bg-udg-goldHover text-white py-2 rounded-xl text-xs font-bold transition-all shadow"
-                    >
-                      Iniciar Sesión SIIAU
-                    </button>
-                    <button 
-                      onClick={() => setActiveModal('register')}
-                      className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-xl text-xs font-semibold border border-slate-700"
-                    >
-                      Crear Nueva Cuenta
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* VERTICAL MENU OPTIONS (REORDERED WITH TICKETS & FAQ FIRST) */}
-              <nav className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5">
-                {getNavSections().map((sec, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <p className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
-                      {sec.group}
-                    </p>
-                    {sec.items.map((item) => {
-                      const isActive = activeTab === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            setActiveTab(item.id);
-                            setMobileNavOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all text-xs font-semibold ${
-                            isActive 
-                              ? 'bg-udg-navy text-white shadow-md dark:bg-udg-blue' 
-                              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <i data-lucide={item.icon} className={`w-4 h-4 ${isActive ? 'text-udg-gold' : 'text-slate-400 dark:text-slate-400'}`}></i>
-                            <span>{item.label}</span>
+                    <div className="flex-1 p-3.5 overflow-y-auto space-y-3 custom-scrollbar text-xs">
+                      {chatMessages.map((msg, index) => (
+                        <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[85%] rounded-2xl p-3 leading-relaxed ${
+                            msg.sender === 'user' 
+                              ? 'bg-udg-blue text-white font-normal rounded-tr-none shadow-sm' 
+                              : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-tl-none border border-slate-200 dark:border-slate-600'
+                          }`}>
+                            {msg.text}
                           </div>
-                          {item.badge && (
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                              isActive 
-                                ? 'bg-white/20 text-white' 
-                                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                            }`}>
-                              {item.badge}
-                            </span>
-                          )}
+                        </div>
+                      ))}
+                      {chatLoading && (
+                        <div className="flex justify-start">
+                          <div className="bg-slate-100 dark:bg-slate-700 p-3 rounded-xl rounded-tl-none flex items-center gap-2 text-slate-500 dark:text-slate-300 text-xs">
+                            <i data-lucide="loader-2" className="w-3.5 h-3.5 animate-spin text-udg-blue"></i>
+                            <span>Consultando reglamentos...</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 overflow-x-auto flex gap-1.5 custom-scrollbar">
+                      {["¿Cómo abro un ticket?", "Justificante médico", "Titulación EGEL", "Horas Integrales"].map((preset, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleSendChatMessage(preset)}
+                          className="whitespace-nowrap px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-udg-blue text-[10px] font-medium transition-all"
+                        >
+                          {preset}
                         </button>
-                      );
-                    })}
-                  </div>
-                ))}
-              </nav>
-
-              {/* Physical Office Badge */}
-              <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 text-xs space-y-2">
-                <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
-                  <i data-lucide="clock" className="w-4 h-4 text-udg-gold"></i>
-                  <span>Atención Presencial M202</span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Lunes a Viernes: 09:00 hrs – 18:00 hrs<br/>
-                  Coordinación de Computación CUCEI
-                </p>
-              </div>
-
-            </aside>
-
-            {/* MAIN WORKSPACE AREA */}
-            <main className="flex-1 space-y-6 overflow-hidden">
-              
-              {/* Dynamic Header Banner */}
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <div className="inline-flex items-center gap-2 text-xs text-udg-blue dark:text-blue-400 font-bold mb-1">
-                      <span className="w-2 h-2 rounded-full bg-udg-gold animate-pulse"></span>
-                      Portal de Atención e Interacción Institucional
+                      ))}
                     </div>
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-display">
-                      {isLoggedIn ? `¡Bienvenido, ${user.name.split(' ')[0]}!` : 'Portal de Ingeniería en Computación'}
-                    </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
-                    {user?.role === 'Coordinacion' || user?.rol === 'Coordinacion'
-                      ? 'Panel Administrativo: Responde tickets de estudiantes, gestiona avisos y dictámenes.' 
-                      : user?.role === 'Docente' || user?.rol === 'Docente'
-                        ? 'Panel Docente: Generación de constancias de adscripción y gestión de alumnos.'
-                        : 'Envía tus tickets directamente a Coordinación o consulta preguntas frecuentes en primer lugar.'}
-                  </p>
-                  </div>
 
-                  {!isLoggedIn && (
-                    <button 
-                      onClick={() => setActiveModal('login')}
-                      className="self-start md:self-auto bg-udg-gold hover:bg-udg-goldHover text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all shadow-md"
-                    >
-                      <i data-lucide="log-in" className="w-4 h-4"></i>
-                      <span>Ingresar con Mi Código</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* KPI Metrics Dashboard Bar for Student */}
-                {isLoggedIn && user.role === 'Estudiante' && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-4 border-t border-slate-100 dark:border-slate-700/80 text-xs">
-                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Promedio General</span>
-                      <span className="text-lg font-black text-udg-navy dark:text-blue-400">{user.gpa} <span className="text-xs font-normal text-slate-400">/ 100</span></span>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Créditos Avance</span>
-                      <span className="text-lg font-black text-slate-800 dark:text-slate-100">{user.credits} <span className="text-xs font-normal text-slate-400">({Math.round((user.credits/user.totalCredits)*100)}%)</span></span>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Horas Integrales</span>
-                      <span className="text-lg font-black text-udg-gold">{user.integralHours} <span className="text-xs font-normal text-slate-400">/ {user.requiredHours}h</span></span>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Estatus SIIAU</span>
-                      <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
-                        <i data-lucide="check-circle-2" className="w-4 h-4"></i> {user.status}
-                      </span>
+                    <div className="p-2.5 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Escribe tu duda..."
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()}
+                        className="flex-1 bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 px-3 py-2 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-udg-blue"
+                      />
+                      <button
+                        onClick={() => handleSendChatMessage()}
+                        disabled={chatLoading}
+                        className="bg-udg-navy hover:bg-udg-blue text-white font-medium p-2 rounded-xl transition-all disabled:opacity-50"
+                      >
+                        <i data-lucide="send" className="w-4 h-4"></i>
+                      </button>
                     </div>
                   </div>
-                )}
-              </div>
-
-              {/* Search Bar Component */}
-              <div className="relative">
-                <i data-lucide="search" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
-                <input
-                  type="text"
-                  placeholder="Buscar cualquier servicio... (Ej: Ticket, Preguntas Frecuentes, Justificante, Promedio, EGEL)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 pl-10 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-udg-blue text-xs shadow-sm"
-                />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                    <i data-lucide="x" className="w-4 h-4"></i>
-                  </button>
-                )}
-              </div>
-
-              {}
-              {activeTab === 'tickets' && (
-                <TicketsModule 
-                  user={user} 
-                  showToast={showToast} 
-                  addNotification={addNotification}
-                  globalTickets={globalTickets}
-                  setGlobalTickets={setGlobalTickets}
-                />
-              )}
-
-              {activeTab === 'dudas' && <DudasBuzonModule faqList={FAQ_LIST} showToast={showToast} />}
-
-              {activeTab === 'inicio' && (
-                <HomeDashboard setActiveTab={setActiveTab} searchQuery={searchQuery} user={user} />
-              )}
-
-              {activeTab === 'justificantes' && (
-                <JustificantesModule 
-                  user={user}
-                  showToast={showToast} 
-                  addNotification={addNotification} 
-                  isLoggedIn={isLoggedIn} 
-                  setActiveModal={setActiveModal} 
-                />
-              )}
-
-              {activeTab === 'titulacion' && <TitulacionModule user={user} showToast={showToast} addNotification={addNotification} />}
-              {activeTab === 'constancias' && (
-                <ConstanciasModule 
-                  user={user} 
-                  showToast={showToast} 
-                  addNotification={addNotification}
-                  isLoggedIn={isLoggedIn} 
-                  setActiveModal={setActiveModal} 
-                />
-              )}
-              {activeTab === 'constancias_docente' && <ConstanciasDocenteModule user={user} showToast={showToast} />}
-              {activeTab === 'modulares' && <ProyectosModularesModule showToast={showToast} user={user} />}
-              {activeTab === 'ajuste' && <AjusteMateriasModule showToast={showToast} addNotification={addNotification} />}
-              {activeTab === 'art33_35' && <ArticulosReglamentoModule user={user} showToast={showToast} addNotification={addNotification} />}
-              {activeTab === 'horas' && (
-                <HorasIntegralesModule 
-                  user={user} 
-                  showToast={showToast} 
-                  addNotification={addNotification}
-                />
-              )}
-              {activeTab === 'malla' && <MallaCurricularModule />}
-              {activeTab === 'avisos' && <AvisosModule notices={MOCK_NOTICES} user={user} showToast={showToast} />}
-
-              {/* Admin Panel Views */}
-              {activeTab === 'admin_panel' && (
-                <AdminPanelTickets 
-                  globalTickets={globalTickets} 
-                  setGlobalTickets={setGlobalTickets}
-                  showToast={showToast}
-                  addNotification={addNotification}
-                />
-              )}
-
-              {activeTab === 'admin_justificantes' && (
-                <AdminJustificantesModule 
-                  user={user}
-                  showToast={showToast} 
-                  addNotification={addNotification} 
-                />
-              )}
-
-              {activeTab === 'admin_constancias' && (
-                <AdminConstanciasModule 
-                  user={user}
-                  showToast={showToast} 
-                  addNotification={addNotification} 
-                />
-              )}
-
-              {activeTab === 'admin_horas' && (
-                <AdminHorasIntegralesModule 
-                  user={user} 
-                  showToast={showToast} 
-                  addNotification={addNotification}
-                />
-              )}
-
-            </main>
-
-          </div>
-
-          {}
-          <div className="fixed bottom-5 right-5 z-40">
-            {chatOpen ? (
-              <div className="w-80 sm:w-96 h-[480px] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-                <div className="bg-udg-navy text-white p-3.5 flex items-center justify-between border-b border-slate-700">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-udg-blue flex items-center justify-center font-bold text-white text-xs border border-blue-400/30">
-                      INCO
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-xs flex items-center gap-1.5 font-display">
-                        Asistente Virtual INCO
-                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                      </h4>
-                      <p className="text-[10px] text-slate-300">Respuesta en segundos</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setChatOpen(false)} className="text-slate-300 hover:text-white p-1">
-                    <i data-lucide="x" className="w-4 h-4"></i>
-                  </button>
-                </div>
-
-                <div className="flex-1 p-3.5 overflow-y-auto space-y-3 custom-scrollbar text-xs">
-                  {chatMessages.map((msg, index) => (
-                    <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[85%] rounded-2xl p-3 leading-relaxed ${
-                        msg.sender === 'user' 
-                          ? 'bg-udg-blue text-white font-normal rounded-tr-none shadow-sm' 
-                          : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-tl-none border border-slate-200 dark:border-slate-600'
-                      }`}>
-                        {msg.text}
-                      </div>
-                    </div>
-                  ))}
-                  {chatLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-slate-100 dark:bg-slate-700 p-3 rounded-xl rounded-tl-none flex items-center gap-2 text-slate-500 dark:text-slate-300 text-xs">
-                        <i data-lucide="loader-2" className="w-3.5 h-3.5 animate-spin text-udg-blue"></i>
-                        <span>Consultando reglamentos...</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 overflow-x-auto flex gap-1.5 custom-scrollbar">
-                  {["¿Cómo abro un ticket?", "Justificante médico", "Titulación EGEL", "Horas Integrales"].map((preset, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSendChatMessage(preset)}
-                      className="whitespace-nowrap px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-udg-blue text-[10px] font-medium transition-all"
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="p-2.5 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Escribe tu duda..."
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()}
-                    className="flex-1 bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 px-3 py-2 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-udg-blue"
-                  />
+                ) : (
                   <button
-                    onClick={() => handleSendChatMessage()}
-                    disabled={chatLoading}
-                    className="bg-udg-navy hover:bg-udg-blue text-white font-medium p-2 rounded-xl transition-all disabled:opacity-50"
+                    onClick={() => setChatOpen(true)}
+                    className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-4 py-3 rounded-full shadow-2xl border border-slate-700 flex items-center gap-2.5 transition-all text-xs"
                   >
-                    <i data-lucide="send" className="w-4 h-4"></i>
+                    <i data-lucide="message-square" className="w-4 h-4 text-udg-gold"></i>
+                    <span className="font-semibold font-display">Asistente Virtual INCO</span>
                   </button>
-                </div>
+                )}
               </div>
-            ) : (
-              <button
-                onClick={() => setChatOpen(true)}
-                className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-4 py-3 rounded-full shadow-2xl border border-slate-700 flex items-center gap-2.5 transition-all text-xs"
-              >
-                <i data-lucide="message-square" className="w-4 h-4 text-udg-gold"></i>
-                <span className="font-semibold font-display">Asistente Virtual INCO</span>
-              </button>
-            )}
-          </div>
 
-          {}
-          {/* Institutional Footer (Ahora protegido por la sesión) */}
+              {/* =====================================================================
+                  INSTITUTIONAL FOOTER (Full-Width: eliminado max-w-7xl mx-auto, añadido w-full px-4 sm:px-6 lg:px-8)
+                 ===================================================================== */}
               <footer className="bg-udg-navy text-slate-300 text-xs border-t border-slate-800 mt-auto py-8">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left">
+                <div className="w-full px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left">
                   <div>
                     <h4 className="text-white font-bold text-sm mb-2 flex items-center justify-center md:justify-start gap-2 font-display">
                       <span className="w-2 h-2 rounded-full bg-udg-gold"></span>
@@ -1124,7 +1183,7 @@ const getNavSections = () => {
                     </div>
                   </div>
                 </div>
-                <div className="max-w-7xl mx-auto px-4 mt-6 pt-4 border-t border-slate-800 text-center text-[10px] text-slate-400">
+                <div className="w-full px-4 sm:px-6 lg:px-8 mt-6 pt-4 border-t border-slate-800 text-center text-[10px] text-slate-400">
                   © {new Date().getFullYear()} Coordinación de Ingeniería en Computación • Centro Universitario de Ciencias Exactas e Ingenierías.
                 </div>
               </footer>
@@ -2110,6 +2169,7 @@ function HomeDashboard({ setActiveTab, searchQuery, user }) {
     { id: 'art33_35', title: 'Dictámenes Art. 33 y 35', desc: 'Formato y recepción de cartas petición a la Comisión de Educación.', icon: 'scale', badge: 'Reglamento' },
     { id: 'horas', title: 'Horas Integrales', desc: 'Registro y validación de las 60 horas requeridas en conferencias y eventos.', icon: 'award', badge: '60 hrs req.' },
     { id: 'malla', title: 'Malla Curricular INCO', desc: 'Visualiza la ruta crítica de materias, créditos y prerrequisitos del plan.', icon: 'grid', badge: 'Plan INCO' },
+    { id: 'practicas', title: 'Prácticas Profesionales', desc: 'Entrega de expediente de convenios, reportes parciales y constancia de liberación.', icon: 'briefcase', badge: 'Kardex' },
     { id: 'avisos', title: 'Tablón de Avisos Oficiales', desc: 'Convocatorias de becas, exámenes extraordinarios y fechas clave.', icon: 'bell', badge: 'Oficial' }
   ];
 
@@ -4230,28 +4290,481 @@ function AdminConstanciasModule({ user, showToast, addNotification }) {
   );
 }
 
-    function ProyectosModularesModule({ showToast, user }) {
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="layers" className="w-5 h-5 text-udg-blue"></i>
-            Proyectos Modulares (INCO)
-          </h3>
-          <p className="text-xs text-slate-500">Gestión de anteproyectos y cartas de tutoría para Proyectos Modulares I, II y III.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            {['Proyecto Modular I', 'Proyecto Modular II', 'Proyecto Modular III'].map((mod, i) => (
-              <div key={i} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-udg-light text-udg-navy dark:bg-slate-700 dark:text-blue-300">Modulo {i+1}</span>
-                <h4 className="font-bold text-slate-900 dark:text-white font-display">{mod}</h4>
-                <button onClick={() => showToast(`Iniciando prerregistro de protocolo para ${mod}`)} className="w-full bg-slate-800 text-white py-2 rounded-xl font-semibold">
-                  Registrar Anteproyecto
-                </button>
+    // ============================================================================
+// SEMILLA OFICIAL DE PROYECTOS MODULARES (Fallback local y estructura inicial)
+// ============================================================================
+const DEFAULT_MODULARES_DATA = {
+  urlOficial: "https://www.cucei.udg.mx",
+  descripcionGeneral: "Los Proyectos Modulares están orientados a fomentar la creatividad de los alumnos con la aportación a soluciones de problemas reales y aumentar el interés por los estudios de ingeniería. Atendiendo áreas como Desarrollo Tecnológico, Ambiente, Energía y Salud, el proyecto es obligatorio y los grupos tendrán un máximo de 3 integrantes.",
+  fases: [
+    {
+      titulo: "Módulo I (6to Semestre) - Estado del Arte y Registro",
+      descripcion: "Acercarse con un asesor para que los guíe en la realización del estudio del 'Estado del arte', evaluar la factibilidad y realizar el registro del proyecto en la coordinación correspondiente."
+    },
+    {
+      titulo: "Módulo II (7mo Semestre) - Desarrollo y Prototipo",
+      descripcion: "Aplicar tecnologías que permitan la innovación de productos, procesos o servicios. Se debe demostrar la innovación a través de un prototipo y un reporte que explique su diseño."
+    },
+    {
+      titulo: "Módulo III (8vo Semestre) - Conclusión y Defensa",
+      descripcion: "Entrega del formato de conclusión del proyecto. Culmina con una Evaluación Oral (Defensa del proyecto) de máximo 30 minutos ante dictaminadores designados."
+    }
+  ]
+};
+
+// ============================================================================
+// MÓDULO DE PROYECTOS MODULARES (Modo Lectura Alumno / Modo Edición Coordinador)
+// ============================================================================
+function ProyectosModularesModule({ showToast, addNotification, user }) {
+  const [data, setData] = useState(DEFAULT_MODULARES_DATA);
+  const [draftData, setDraftData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const activeRole = String(user?.role || user?.rol || 'Estudiante');
+  const isCoordinator = activeRole === 'Coordinacion';
+  const userCode = String(user?.code || user?.codigo || '');
+
+  // Garantizar hidratación de íconos Lucide tras cada actualización del DOM
+  useEffect(() => {
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  });
+
+  // Obtener configuración de Proyectos Modulares desde el Backend (con CacheService)
+  const fetchModularesInfo = () => {
+    setIsLoading(true);
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          if (res && Array.isArray(res.fases)) {
+            setData(res);
+          } else {
+            setData(DEFAULT_MODULARES_DATA);
+          }
+          setIsLoading(false);
+        })
+        .withFailureHandler(() => {
+          if (typeof showToast === 'function') {
+            showToast("Error al obtener datos del servidor, mostrando información base.", "error");
+          }
+          setData(DEFAULT_MODULARES_DATA);
+          setIsLoading(false);
+        })
+        .getModularesData();
+    } else {
+      setTimeout(() => {
+        setData(DEFAULT_MODULARES_DATA);
+        setIsLoading(false);
+      }, 800);
+    }
+  };
+
+  useEffect(() => {
+    fetchModularesInfo();
+  }, []);
+
+  // --- Handlers de Edición Dinámica (Exclusivos para Coordinación) ---
+  const handleStartEditing = () => {
+    setDraftData(JSON.parse(JSON.stringify(data)));
+    setIsEditing(true);
+  };
+
+  const handleCancelEditing = () => {
+    setDraftData(null);
+    setIsEditing(false);
+  };
+
+  const handleFaseChange = (faseIdx, field, value) => {
+    setDraftData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy.fases[faseIdx][field] = value;
+      return copy;
+    });
+  };
+
+  const handleDeleteFase = (faseIdx) => {
+    setDraftData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy.fases.splice(faseIdx, 1);
+      return copy;
+    });
+  };
+
+  const handleAddFase = () => {
+    setDraftData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      const nextNum = copy.fases.length + 1;
+      copy.fases.push({
+        titulo: `Nueva Fase / Etapa ${nextNum}`,
+        descripcion: "Describe aquí los objetivos, entregables y criterios de evaluación de esta etapa."
+      });
+      return copy;
+    });
+  };
+
+  // Guardar JSON en el Backend
+  const handleSaveChanges = () => {
+    if (!draftData) return;
+
+    if (!draftData.urlOficial?.trim() || !draftData.descripcionGeneral?.trim()) {
+      if (typeof showToast === 'function') {
+        showToast("El enlace oficial y la descripción general son obligatorios.", "error");
+      }
+      return;
+    }
+
+    if (!Array.isArray(draftData.fases) || draftData.fases.length === 0) {
+      if (typeof showToast === 'function') {
+        showToast("Debe existir al menos una fase o etapa registrada.", "error");
+      }
+      return;
+    }
+
+    for (let i = 0; i < draftData.fases.length; i++) {
+      const f = draftData.fases[i];
+      if (!f.titulo.trim() || !f.descripcion.trim()) {
+        if (typeof showToast === 'function') {
+          showToast(`Completa el título y la descripción de la Fase #${i + 1}.`, "error");
+        }
+        return;
+      }
+    }
+
+    setIsSaving(true);
+
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          setIsSaving(false);
+          if (res && res.success) {
+            setData(res.data || draftData);
+            setIsEditing(false);
+            setDraftData(null);
+            if (typeof showToast === 'function') {
+              showToast("Información de Proyectos Modulares actualizada exitosamente");
+            }
+            if (typeof addNotification === 'function') {
+              addNotification(
+                "Proyectos Modulares Actualizados",
+                "Los cambios en las etapas y lineamientos de Proyectos Modulares fueron guardados.",
+                "success"
+              );
+            }
+          } else {
+            if (typeof showToast === 'function') {
+              showToast(res ? res.message : "No se pudieron guardar los cambios", "error");
+            }
+          }
+        })
+        .withFailureHandler(() => {
+          setIsSaving(false);
+          if (typeof showToast === 'function') {
+            showToast("Error de conexión con el servidor al guardar Proyectos Modulares", "error");
+          }
+        })
+        .updateModularesData(draftData, userCode);
+    } else {
+      setTimeout(() => {
+        setIsSaving(false);
+        setData(draftData);
+        setIsEditing(false);
+        setDraftData(null);
+        if (typeof showToast === 'function') showToast("Simulación: Cambios guardados correctamente");
+      }, 900);
+    }
+  };
+
+  // Renderizado del Skeleton Screen mientras se obtienen los datos del servidor
+  if (isLoading) {
+    return (
+      <div className="space-y-5 animate-pulse">
+        {/* Skeleton Encabezado */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-slate-200 dark:bg-slate-700"></div>
+            <div className="space-y-2">
+              <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-56"></div>
+              <div className="h-3.5 bg-slate-100 dark:bg-slate-700/60 rounded w-72"></div>
+            </div>
+          </div>
+          <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded-xl w-48"></div>
+        </div>
+
+        {/* Skeleton Descripción General (Azul Claro) */}
+        <div className="h-24 bg-blue-50/60 dark:bg-slate-800 rounded-2xl border border-blue-200/60 dark:border-slate-700 p-5"></div>
+
+        {/* Skeleton Grid de 3 Columnas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="glass-card rounded-2xl p-5 border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-24"></div>
+              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-4/5"></div>
+              <div className="space-y-2 pt-1">
+                <div className="h-3 bg-slate-100 dark:bg-slate-700/60 rounded w-full"></div>
+                <div className="h-3 bg-slate-100 dark:bg-slate-700/60 rounded w-5/6"></div>
+                <div className="h-3 bg-slate-100 dark:bg-slate-700/60 rounded w-3/4"></div>
               </div>
-            ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const activeSource = isEditing && draftData ? draftData : data;
+  const safeFases = Array.isArray(activeSource?.fases) ? activeSource.fases : [];
+
+  return (
+    <div className="space-y-5 relative text-xs">
+      {/* Overlay de bloqueo durante guardado en el Backend */}
+      {isSaving && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
+            <span className="flex items-center justify-center animate-spin">
+              <i data-lucide="loader-2" className="w-8 h-8 text-udg-blue shrink-0"></i>
+            </span>
+            <h4 className="font-bold text-sm text-slate-900 dark:text-white font-display">
+              Guardando Proyectos Modulares...
+            </h4>
+            <p className="text-xs text-slate-500">
+              Actualizando lineamientos en el servidor, refrescando memoria caché y registrando auditoría.
+            </p>
           </div>
         </div>
-      );
-    }
+      )}
+
+      {/* =====================================================================
+          1. ENCABEZADO Y BOTÓN DE PORTAL OFICIAL / CONTROLES DE EDICIÓN
+         ===================================================================== */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-udg-light dark:bg-slate-700 text-udg-blue dark:text-blue-300 flex items-center justify-center font-bold border border-blue-200/60 dark:border-slate-600 shrink-0">
+            <i data-lucide="layers" className="w-5 h-5 shrink-0"></i>
+          </div>
+          <div>
+            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white font-display">
+              Proyectos Modulares (INCO)
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Lineamientos oficiales, etapas curriculares y requisitos de evaluación modular.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Botón exclusivo para Coordinación: Habilitar Modo Edición */}
+          {isCoordinator && !isEditing && (
+            <button
+              type="button"
+              onClick={handleStartEditing}
+              className="bg-amber-50 hover:bg-amber-100 text-amber-900 dark:bg-slate-700 dark:text-amber-300 border border-amber-300 dark:border-slate-600 font-bold px-4 py-2.5 rounded-xl inline-flex items-center gap-2 transition-all"
+            >
+              <i data-lucide="edit-3" className="w-4 h-4 text-udg-gold shrink-0"></i>
+              <span>Habilitar Modo Edición</span>
+            </button>
+          )}
+
+          {isEditing ? (
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={handleCancelEditing}
+                disabled={isSaving}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveChanges}
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md transition-all"
+              >
+                <i data-lucide="save" className="w-4 h-4 shrink-0"></i>
+                <span>Guardar Cambios</span>
+              </button>
+            </div>
+          ) : (
+            <a
+              href={activeSource.urlOficial}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md transition-all"
+            >
+              <i data-lucide="external-link" className="w-4 h-4 text-udg-gold shrink-0"></i>
+              <span>Portal Oficial de Modulares</span>
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Input para editar urlOficial cuando el Modo Edición está activo */}
+      {isEditing && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border-2 border-udg-blue/40 shadow-sm space-y-2 animate-in fade-in">
+          <label className="block font-extrabold text-udg-navy dark:text-blue-400 uppercase text-[10px] tracking-wider">
+            URL del Portal Oficial de Modulares (Botón Superior Derecho) *
+          </label>
+          <div className="flex items-center gap-2">
+            <i data-lucide="link" className="w-4 h-4 text-slate-400 shrink-0"></i>
+            <input
+              type="url"
+              value={draftData.urlOficial}
+              onChange={(e) => setDraftData({ ...draftData, urlOficial: e.target.value })}
+              placeholder="https://www.cucei.udg.mx"
+              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          2. RECUADRO DESTACADO DE DESCRIPCIÓN GENERAL (bg-blue-50 border-blue-200)
+         ===================================================================== */}
+      <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-5 border border-blue-200 dark:border-blue-800/70 shadow-sm">
+        <div className="flex items-start gap-3">
+          <i data-lucide="cpu" className="w-5 h-5 text-udg-blue dark:text-blue-400 shrink-0 mt-0.5"></i>
+          <div className="flex-1 space-y-1.5">
+            <h4 className="font-extrabold text-udg-navy dark:text-blue-300 text-xs font-display uppercase tracking-wide">
+              Objetivo y Lineamientos Generales
+            </h4>
+            {isEditing ? (
+              <textarea
+                rows="3"
+                value={draftData.descripcionGeneral}
+                onChange={(e) => setDraftData({ ...draftData, descripcionGeneral: e.target.value })}
+                placeholder="Describe el propósito general de los Proyectos Modulares..."
+                className="w-full bg-white dark:bg-slate-900 border border-blue-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-udg-blue outline-none leading-relaxed"
+              ></textarea>
+            ) : (
+              <p className="text-slate-700 dark:text-slate-200 text-xs leading-relaxed">
+                {activeSource.descripcionGeneral}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* =====================================================================
+          3. GRID DE TARJETAS DE FASES / ETAPAS (grid-cols-1 md:grid-cols-3)
+         ===================================================================== */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {safeFases.map((fase, faseIdx) => (
+          <div
+            key={faseIdx}
+            className="glass-card bg-white/90 dark:bg-slate-800/90 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between space-y-4 hover:border-udg-blue/50 transition-all"
+          >
+            <div className="space-y-3">
+              {/* Cabecera de la Tarjeta: Badge de Etapa + Botón Eliminar en Modo Edición */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-lg bg-udg-light text-udg-navy dark:bg-slate-700 dark:text-blue-300 border border-blue-200/60 dark:border-slate-600">
+                  <i data-lucide="layers" className="w-3 h-3 text-udg-gold shrink-0"></i>
+                  <span>Etapa {faseIdx + 1}</span>
+                </span>
+
+                {isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteFase(faseIdx)}
+                    className="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-300 border border-red-200 dark:border-red-800 font-bold text-[10px] inline-flex items-center gap-1 transition-colors"
+                    title="Eliminar esta Fase"
+                  >
+                    <i data-lucide="trash-2" className="w-3 h-3 shrink-0"></i>
+                    <span>Eliminar Fase</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Contenido de la Fase (Lectura vs Inputs de Edición) */}
+              {isEditing ? (
+                <div className="space-y-2.5 pt-1">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
+                      Título de la Fase *
+                    </label>
+                    <input
+                      type="text"
+                      value={fase.titulo}
+                      onChange={(e) => handleFaseChange(faseIdx, 'titulo', e.target.value)}
+                      placeholder="Ej: Módulo I (6to Semestre) - Estado del Arte..."
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-xl font-bold text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
+                      Descripción de la Fase *
+                    </label>
+                    <textarea
+                      rows="4"
+                      value={fase.descripcion}
+                      onChange={(e) => handleFaseChange(faseIdx, 'descripcion', e.target.value)}
+                      placeholder="Describe los requisitos y actividades de esta etapa..."
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-xl text-xs text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-udg-blue outline-none leading-relaxed"
+                    ></textarea>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 pt-1">
+                  <h4 className="font-extrabold text-slate-900 dark:text-white text-sm font-display leading-snug">
+                    {fase.titulo}
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {fase.descripcion}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {!isEditing && (
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Plan Curricular INCO</span>
+                <i data-lucide="check-circle-2" className="w-4 h-4 text-emerald-500 shrink-0"></i>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* =====================================================================
+          4. BARRA INFERIOR EN MODO EDICIÓN: AGREGAR NUEVA FASE Y GUARDAR
+         ===================================================================== */}
+      {isEditing && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 animate-in fade-in">
+          <button
+            type="button"
+            onClick={handleAddFase}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-slate-700 text-udg-navy dark:text-white border border-blue-200 dark:border-slate-600 font-bold inline-flex items-center justify-center gap-2 transition-all"
+          >
+            <i data-lucide="plus-circle" className="w-4 h-4 text-udg-blue dark:text-udg-gold shrink-0"></i>
+            <span>Agregar Nueva Fase / Etapa</span>
+          </button>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={handleCancelEditing}
+              disabled={isSaving}
+              className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold"
+            >
+              Descartar Cambios
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveChanges}
+              disabled={isSaving}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md"
+            >
+              <i data-lucide="save" className="w-4 h-4 shrink-0"></i>
+              <span>Guardar Cambios</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
     function AjusteMateriasModule({ showToast, addNotification }) {
       return (
@@ -4274,23 +4787,469 @@ function AdminConstanciasModule({ user, showToast, addNotification }) {
       );
     }
 
-    function ArticulosReglamentoModule({ user, showToast, addNotification }) {
-      return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 text-xs">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 font-display border-b border-slate-100 dark:border-slate-700 pb-3">
-            <i data-lucide="scale" className="w-5 h-5 text-udg-gold"></i>
-            Carta Petición a la Comisión de Educación (Art. 33 y 35)
-          </h3>
-          <textarea rows="4" placeholder="Redacta los motivos o causas justificables de tu petición dirigidas al Consejo Divisional..." className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3"></textarea>
-          <button onClick={() => {
-            showToast("Generando Carta Petición oficial en PDF");
-            addNotification("Carta Petición Art. 33", "Se generó el formato oficial para entrega presencial.", "info");
-          }} className="bg-udg-gold text-white font-bold px-5 py-2.5 rounded-xl">
-            Generar Carta Formato PDF
-          </button>
-        </div>
-      );
+// ============================================================================
+// SEMILLA OFICIAL DE NORMATIVIDAD ARTÍCULOS 33, 34 Y 35 (Fallback y estado base)
+// ============================================================================
+const DEFAULT_REGLAMENTO_DATA = {
+  urlOficial: "https://tramites.cucei.udg.mx",
+  descripcionGeneral: "Este espacio detalla la normativa vigente respecto a las oportunidades para regularizar tu situación académica si no lograste acreditar una materia. Lee detenidamente los artículos aplicables antes de iniciar tu trámite de oportunidad ante la Comisión de Educación.",
+  articulos: [
+    {
+      titulo: "Artículo 33 - Repetición de Cursos",
+      descripcion: "Los estudiantes que no obtengan calificación aprobatoria tras el periodo extraordinario están obligados a cursar de nuevo la materia en el ciclo académico inmediato siguiente en que se oferte. Si en esta segunda oportunidad tampoco logran acreditar la asignatura, procederá su baja automática del programa."
+    },
+    {
+      titulo: "Artículo 34 - Petición a la Comisión",
+      descripcion: "Los alumnos que enfrenten la baja estipulada en el artículo 33 pueden presentar una solicitud escrita a la Comisión de Educación para pedir una última oportunidad. Dicha Comisión evaluará el historial académico, los argumentos y la conducta del estudiante para decidir. Si se concede, el estudiante deberá aprobar la materia exclusivamente en periodo ordinario; reprobar o no presentarse resultará en una baja definitiva e inapelable."
+    },
+    {
+      titulo: "Artículo 35 - Restricción de Reingreso",
+      descripcion: "Cualquier estudiante que cause baja definitiva bajo la aplicación de los artículos anteriores perderá por completo el derecho a solicitar reingreso a la misma carrera o programa de posgrado del cual fue dado de baja."
     }
+  ]
+};
+
+// ============================================================================
+// MÓDULO NORMATIVO: ARTÍCULOS 33, 34 Y 35 (Modo Lectura Alumno / Edición Admin)
+// ============================================================================
+function ArticulosReglamentoModule({ user, showToast, addNotification }) {
+  const [data, setData] = useState(DEFAULT_REGLAMENTO_DATA);
+  const [draftData, setDraftData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const activeRole = String(user?.role || user?.rol || 'Estudiante');
+  const isCoordinator = activeRole === 'Coordinacion';
+  const userCode = String(user?.code || user?.codigo || '');
+
+  // Garantizar hidratación de íconos Lucide tras cada cambio de estado
+  useEffect(() => {
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  });
+
+  // Cargar datos normativos desde el Backend (con CacheService)
+  const fetchArticulosInfo = () => {
+    setIsLoading(true);
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          if (res && Array.isArray(res.articulos)) {
+            setData(res);
+          } else {
+            setData(DEFAULT_REGLAMENTO_DATA);
+          }
+          setIsLoading(false);
+        })
+        .withFailureHandler(() => {
+          if (typeof showToast === 'function') {
+            showToast("Error al obtener la normatividad del servidor, mostrando textos base.", "error");
+          }
+          setData(DEFAULT_REGLAMENTO_DATA);
+          setIsLoading(false);
+        })
+        .getArticulosData();
+    } else {
+      setTimeout(() => {
+        setData(DEFAULT_REGLAMENTO_DATA);
+        setIsLoading(false);
+      }, 800);
+    }
+  };
+
+  useEffect(() => {
+    fetchArticulosInfo();
+  }, []);
+
+  // --- Funciones de Edición Dinámica (Exclusivas para Coordinación) ---
+  const handleStartEditing = () => {
+    setDraftData(JSON.parse(JSON.stringify(data)));
+    setIsEditing(true);
+  };
+
+  const handleCancelEditing = () => {
+    setDraftData(null);
+    setIsEditing(false);
+  };
+
+  const handleArticuloChange = (artIdx, field, value) => {
+    setDraftData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy.articulos[artIdx][field] = value;
+      return copy;
+    });
+  };
+
+  const handleDeleteArticulo = (artIdx) => {
+    setDraftData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy.articulos.splice(artIdx, 1);
+      return copy;
+    });
+  };
+
+  const handleAddArticulo = () => {
+    setDraftData((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy.articulos.push({
+        titulo: "Nuevo Artículo o Disposición Normativa",
+        descripcion: "Redacta aquí el contenido oficial del artículo, lineamiento o criterio de la Comisión de Educación."
+      });
+      return copy;
+    });
+  };
+
+  // Guardar el JSON actualizado en Google Apps Script
+  const handleSaveChanges = () => {
+    if (!draftData) return;
+
+    if (!draftData.urlOficial?.trim() || !draftData.descripcionGeneral?.trim()) {
+      if (typeof showToast === 'function') {
+        showToast("La URL del formato y la descripción general son obligatorias.", "error");
+      }
+      return;
+    }
+
+    if (!Array.isArray(draftData.articulos) || draftData.articulos.length === 0) {
+      if (typeof showToast === 'function') {
+        showToast("Debe existir al menos un artículo o párrafo registrado.", "error");
+      }
+      return;
+    }
+
+    for (let i = 0; i < draftData.articulos.length; i++) {
+      const art = draftData.articulos[i];
+      if (!art.titulo.trim() || !art.descripcion.trim()) {
+        if (typeof showToast === 'function') {
+          showToast(`Completa el título y la descripción del elemento #${i + 1}.`, "error");
+        }
+        return;
+      }
+    }
+
+    setIsSaving(true);
+
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          setIsSaving(false);
+          if (res && res.success) {
+            setData(res.data || draftData);
+            setIsEditing(false);
+            setDraftData(null);
+            if (typeof showToast === 'function') {
+              showToast("Normatividad de Artículos 33, 34 y 35 actualizada correctamente");
+            }
+            if (typeof addNotification === 'function') {
+              addNotification(
+                "Reglamento Actualizado",
+                "Se guardaron los cambios en la sección de Normatividad (Art. 33, 34 y 35).",
+                "success"
+              );
+            }
+          } else {
+            if (typeof showToast === 'function') {
+              showToast(res ? res.message : "No se pudieron guardar los cambios", "error");
+            }
+          }
+        })
+        .withFailureHandler(() => {
+          setIsSaving(false);
+          if (typeof showToast === 'function') {
+            showToast("Error de conexión con el servidor al actualizar el reglamento", "error");
+          }
+        })
+        .updateArticulosData(draftData, userCode);
+    } else {
+      setTimeout(() => {
+        setIsSaving(false);
+        setData(draftData);
+        setIsEditing(false);
+        setDraftData(null);
+        if (typeof showToast === 'function') showToast("Simulación: Normatividad guardada con éxito");
+      }, 900);
+    }
+  };
+
+  // Renderizado del Skeleton Screen mientras se realiza la petición al backend
+  if (isLoading) {
+    return (
+      <div className="space-y-5 animate-pulse">
+        {/* Skeleton Cabecera */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-slate-200 dark:bg-slate-700"></div>
+            <div className="space-y-2">
+              <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-64"></div>
+              <div className="h-3.5 bg-slate-100 dark:bg-slate-700/60 rounded w-80"></div>
+            </div>
+          </div>
+          <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded-xl w-48"></div>
+        </div>
+
+        {/* Skeleton Recuadro Ámbar Descripción General */}
+        <div className="h-24 bg-amber-50/60 dark:bg-slate-800 rounded-2xl border border-amber-200/60 dark:border-slate-700 p-5"></div>
+
+        {/* Skeleton Tarjetas de Artículos */}
+        <div className="space-y-4">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="glass-card rounded-2xl p-6 border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-56"></div>
+              <div className="space-y-2 pt-1">
+                <div className="h-3.5 bg-slate-100 dark:bg-slate-700/60 rounded w-full"></div>
+                <div className="h-3.5 bg-slate-100 dark:bg-slate-700/60 rounded w-11/12"></div>
+                <div className="h-3.5 bg-slate-100 dark:bg-slate-700/60 rounded w-3/4"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const activeSource = isEditing && draftData ? draftData : data;
+  const safeArticulos = Array.isArray(activeSource?.articulos) ? activeSource.articulos : [];
+
+  return (
+    <div className="space-y-5 relative text-xs">
+      {/* Overlay de bloqueo mientras se guarda en el Backend */}
+      {isSaving && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
+            <span className="flex items-center justify-center animate-spin">
+              <i data-lucide="loader-2" className="w-8 h-8 text-udg-gold shrink-0"></i>
+            </span>
+            <h4 className="font-bold text-sm text-slate-900 dark:text-white font-display">
+              Actualizando Normatividad Institucional...
+            </h4>
+            <p className="text-xs text-slate-500">
+              Guardando cambios en el servidor, actualizando caché y registrando evento en auditoría.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          1. ENCABEZADO Y BOTÓN DE ENLACE EXTERNO / CONTROLES DE EDICIÓN
+         ===================================================================== */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-slate-700 text-udg-gold flex items-center justify-center font-bold border border-amber-200/70 dark:border-slate-600 shrink-0">
+            <i data-lucide="scale" className="w-5 h-5 shrink-0"></i>
+          </div>
+          <div>
+            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white font-display">
+              Normatividad: Artículos 33, 34 y 35
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Reglamento General de Evaluación y Promoción de Alumnos • Comisión de Educación CUCEI.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Botón exclusivo para Coordinación: Habilitar Modo Edición */}
+          {isCoordinator && !isEditing && (
+            <button
+              type="button"
+              onClick={handleStartEditing}
+              className="bg-amber-50 hover:bg-amber-100 text-amber-900 dark:bg-slate-700 dark:text-amber-300 border border-amber-300 dark:border-slate-600 font-bold px-4 py-2.5 rounded-xl inline-flex items-center gap-2 transition-all"
+            >
+              <i data-lucide="edit-3" className="w-4 h-4 text-udg-gold shrink-0"></i>
+              <span>Habilitar Modo Edición</span>
+            </button>
+          )}
+
+          {isEditing ? (
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={handleCancelEditing}
+                disabled={isSaving}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveChanges}
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md transition-all"
+              >
+                <i data-lucide="save" className="w-4 h-4 shrink-0"></i>
+                <span>Guardar Cambios</span>
+              </button>
+            </div>
+          ) : (
+            <a
+              href={activeSource.urlOficial}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md transition-all"
+            >
+              <i data-lucide="external-link" className="w-4 h-4 text-udg-gold shrink-0"></i>
+              <span>Formato Carta Petición</span>
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Input para actualizar urlOficial cuando el Modo Edición está activo */}
+      {isEditing && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border-2 border-udg-blue/40 shadow-sm space-y-2 animate-in fade-in">
+          <label className="block font-extrabold text-udg-navy dark:text-blue-400 uppercase text-[10px] tracking-wider">
+            URL del Trámite / Formato Carta Petición (Botón Superior Derecho) *
+          </label>
+          <div className="flex items-center gap-2">
+            <i data-lucide="link" className="w-4 h-4 text-slate-400 shrink-0"></i>
+            <input
+              type="url"
+              value={draftData.urlOficial}
+              onChange={(e) => setDraftData({ ...draftData, urlOficial: e.target.value })}
+              placeholder="https://tramites.cucei.udg.mx"
+              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-xl font-mono text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          2. RECUADRO INFORMATIVO DE DESCRIPCIÓN GENERAL (bg-amber-50 border-amber-200)
+         ===================================================================== */}
+      <div className="bg-amber-50 dark:bg-amber-950/30 rounded-2xl p-5 border border-amber-200 dark:border-amber-800/70 shadow-sm">
+        <div className="flex items-start gap-3">
+          <i data-lucide="alert-triangle" className="w-5 h-5 text-udg-gold shrink-0 mt-0.5"></i>
+          <div className="flex-1 space-y-1.5">
+            <h4 className="font-extrabold text-amber-900 dark:text-amber-300 text-xs font-display uppercase tracking-wide">
+              Aviso Importante sobre Situación Académica
+            </h4>
+            {isEditing ? (
+              <textarea
+                rows="3"
+                value={draftData.descripcionGeneral}
+                onChange={(e) => setDraftData({ ...draftData, descripcionGeneral: e.target.value })}
+                placeholder="Escribe la introducción o advertencia general para los estudiantes..."
+                className="w-full bg-white dark:bg-slate-900 border border-amber-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-udg-gold outline-none leading-relaxed"
+              ></textarea>
+            ) : (
+              <p className="text-amber-950/90 dark:text-amber-100/90 text-xs leading-relaxed">
+                {activeSource.descripcionGeneral}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* =====================================================================
+          3. TARJETAS DE ARTÍCULOS (Listado Vertical / Grid con estilo glass-card)
+         ===================================================================== */}
+      <div className="space-y-4">
+        {safeArticulos.map((art, artIdx) => (
+          <div
+            key={artIdx}
+            className="glass-card bg-white/95 dark:bg-slate-800/95 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3 hover:border-udg-blue/40 transition-all"
+          >
+            {isEditing ? (
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-2.5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-udg-blue dark:text-blue-400">
+                    Apartado Normativo #{artIdx + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteArticulo(artIdx)}
+                    className="self-start sm:self-auto px-3 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-300 border border-red-200 dark:border-red-800 font-bold text-[10px] inline-flex items-center gap-1.5 transition-colors"
+                  >
+                    <i data-lucide="trash-2" className="w-3.5 h-3.5 shrink-0"></i>
+                    <span>Eliminar Artículo</span>
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
+                    Título del Artículo *
+                  </label>
+                  <input
+                    type="text"
+                    value={art.titulo}
+                    onChange={(e) => handleArticuloChange(artIdx, 'titulo', e.target.value)}
+                    placeholder="Ej: Artículo 33 - Repetición de Cursos"
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-2.5 rounded-xl font-bold text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
+                    Descripción / Contenido del Artículo *
+                  </label>
+                  <textarea
+                    rows="3"
+                    value={art.descripcion}
+                    onChange={(e) => handleArticuloChange(artIdx, 'descripcion', e.target.value)}
+                    placeholder="Describe el contenido normativo del artículo..."
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 p-3 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-udg-blue outline-none leading-relaxed"
+                  ></textarea>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold shrink-0 border border-blue-200/60 dark:border-slate-600">
+                    <i data-lucide="book-open-check" className="w-4 h-4 shrink-0"></i>
+                  </div>
+                  <h4 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white font-display">
+                    {art.titulo}
+                  </h4>
+                </div>
+                <p className="text-xs sm:text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed pl-0 sm:pl-10.5">
+                  {art.descripcion}
+                </p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* =====================================================================
+          4. CONTROLES FINALES EN MODO EDICIÓN: AGREGAR ARTÍCULO Y GUARDAR
+         ===================================================================== */}
+      {isEditing && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 animate-in fade-in">
+          <button
+            type="button"
+            onClick={handleAddArticulo}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-slate-700 text-udg-navy dark:text-white border border-blue-200 dark:border-slate-600 font-bold inline-flex items-center justify-center gap-2 transition-all"
+          >
+            <i data-lucide="plus-circle" className="w-4 h-4 text-udg-blue dark:text-udg-gold shrink-0"></i>
+            <span>Agregar Nuevo Artículo o Párrafo</span>
+          </button>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={handleCancelEditing}
+              disabled={isSaving}
+              className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold"
+            >
+              Descartar Cambios
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveChanges}
+              disabled={isSaving}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md"
+            >
+              <i data-lucide="save" className="w-4 h-4 shrink-0"></i>
+              <span>Guardar Cambios</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
  // ============================================================================
 // VISTA DEL ALUMNO: HorasIntegralesModule (Acreditación de 64 Horas Integrales)
@@ -5451,6 +6410,1158 @@ function AdminHorasIntegralesModule({ user, showToast, addNotification }) {
                           ? '¿Estás seguro? Clic de nuevo para confirmar'
                           : 'Aprobar y pasar a En Kardex'}
                       </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+// ============================================================================
+// VISTA DEL ALUMNO: PracticasModule (Trámite y Seguimiento de Prácticas)
+// ============================================================================
+function PracticasModule({ user, setUser, showToast, addNotification }) {
+  if (!user) return null;
+
+  // Hidratar íconos Lucide tras cada actualización de estado
+  useEffect(() => {
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  });
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Solicitud actual del estudiante
+  const [solicitud, setSolicitud] = useState(null);
+
+  // Datos del formulario y archivos (soporta conservar archivos previos si fue 'Devuelta')
+  const [empresa, setEmpresa] = useState('');
+  const [horasAcreditadas, setHorasAcreditadas] = useState('300');
+  // Cada elemento en filesList puede ser:
+  // - Archivo previo ya en Drive: { id, name, tipoDoc, url, existing: true }
+  // - Archivo nuevo local (Base64): { id, name, mimeType, base64, tipoDoc, existing: false }
+  const [filesList, setFilesList] = useState([]);
+
+  const studentCode = String(user.code || user.codigo || '');
+  const studentName = String(user.name || user.nombre || '');
+  const studentEmail = String(user.email || user.correo || '');
+
+  const fetchMyPracticas = () => {
+    setIsLoading(true);
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          if (res && res.found && res.solicitud) {
+            const sol = res.solicitud;
+            setSolicitud(sol);
+
+            // Sincronizar KPI de Prácticas Profesionales en el Dashboard superior
+            if (typeof setUser === 'function') {
+              setUser((prev) => (prev ? { ...prev, practicasStatus: sol.estatus } : prev));
+            }
+
+            // Si la solicitud fue 'Devuelta', precargamos sus datos y archivos previos para edición
+            if (sol.estatus === 'Devuelta') {
+              setEmpresa(sol.empresa || '');
+              setHorasAcreditadas(String(sol.horas_acreditadas || '300'));
+              const recoveredFiles = (Array.isArray(sol.archivos) ? sol.archivos : []).map((f, idx) => ({
+                id: `prev-${idx}-${Date.now()}`,
+                name: f.name,
+                tipoDoc: f.tipoDoc || 'Documento de Prácticas',
+                url: f.url,
+                existing: true
+              }));
+              setFilesList(recoveredFiles);
+            }
+          } else {
+            setSolicitud(null);
+          }
+          setIsLoading(false);
+        })
+        .withFailureHandler(() => {
+          if (typeof showToast === 'function') {
+            showToast("Error al consultar el estado de tus Prácticas Profesionales", "error");
+          }
+          setIsLoading(false);
+        })
+        .getStudentPracticas(studentCode);
+    } else {
+      setTimeout(() => {
+        setSolicitud(null);
+        setIsLoading(false);
+      }, 800);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyPracticas();
+  }, [studentCode]);
+
+  // Procesar múltiples archivos nuevos seleccionados o soltados
+  const processNewFiles = (rawFileList) => {
+    const arr = Array.from(rawFileList || []);
+    if (arr.length === 0) return;
+
+    arr.forEach((file) => {
+      if (file.size > 8 * 1024 * 1024) {
+        if (typeof showToast === 'function') {
+          showToast(`El archivo "${file.name}" supera el límite de 8 MB`, "error");
+        }
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64Data = reader.result.split(',')[1];
+        setFilesList((prev) => [
+          ...prev,
+          {
+            id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            name: file.name,
+            mimeType: file.type || 'application/pdf',
+            base64: base64Data,
+            tipoDoc: 'Constancia de Terminación / Liberación',
+            existing: false
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileChange = (e) => {
+    processNewFiles(e.target.files);
+    e.target.value = '';
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer && e.dataTransfer.files) {
+      processNewFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleUpdateFileTipo = (id, newTipo) => {
+    setFilesList((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, tipoDoc: newTipo } : item))
+    );
+  };
+
+  const handleRemoveFile = (id) => {
+    setFilesList((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleSubmitPracticas = (e) => {
+    e.preventDefault();
+
+    if (!empresa.trim()) {
+      showToast("Ingresa el nombre de la empresa o dependencia receptora", "error");
+      return;
+    }
+
+    if (filesList.length === 0) {
+      showToast("Debes adjuntar al menos un documento probatorio en tu expediente", "error");
+      return;
+    }
+
+    const missingTipo = filesList.some((f) => !String(f.tipoDoc || '').trim());
+    if (missingTipo) {
+      showToast("Especifica el tipo de documento para cada archivo adjunto", "error");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    // Separamos archivos previos conservados (solo su referencia URL) y archivos nuevos (en Base64)
+    const existingFilesPayload = filesList
+      .filter((f) => f.existing)
+      .map((f) => ({
+        name: f.name,
+        tipoDoc: f.tipoDoc.trim(),
+        url: f.url
+      }));
+
+    const newFilesPayload = filesList
+      .filter((f) => !f.existing)
+      .map((f) => ({
+        name: f.name,
+        mimeType: f.mimeType,
+        base64: f.base64,
+        tipoDoc: f.tipoDoc.trim()
+      }));
+
+    const payload = {
+      codigo: studentCode,
+      nombre: studentName,
+      correo: studentEmail,
+      empresa: empresa.trim(),
+      horas_acreditadas: Number(horasAcreditadas) || 300,
+      existingFiles: existingFilesPayload,
+      newFiles: newFilesPayload
+    };
+
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          setIsSubmitting(false);
+          if (res && res.success) {
+            setSolicitud(res.solicitud);
+            if (typeof setUser === 'function') {
+              setUser((prev) => (prev ? { ...prev, practicasStatus: res.solicitud.estatus } : prev));
+            }
+            if (typeof showToast === 'function') {
+              showToast(`Expediente de Prácticas #${res.solicitud.id_solicitud} enviado correctamente`);
+            }
+            if (typeof addNotification === 'function') {
+              addNotification(
+                "Prácticas Profesionales Enviadas",
+                `Tu expediente #${res.solicitud.id_solicitud} fue recibido por la Coordinación.`,
+                "info"
+              );
+            }
+          } else {
+            if (typeof showToast === 'function') {
+              showToast(res ? res.message : "Error al enviar el expediente", "error");
+            }
+          }
+        })
+        .withFailureHandler(() => {
+          setIsSubmitting(false);
+          if (typeof showToast === 'function') {
+            showToast("Error de conexión con el servidor al subir los documentos", "error");
+          }
+        })
+        .submitPracticasProfesionales(payload);
+    } else {
+      setTimeout(() => {
+        setIsSubmitting(false);
+        const mockSol = {
+          id_solicitud: 'PRC-demo01',
+          codigo_estudiante: studentCode,
+          nombre_estudiante: studentName,
+          empresa: empresa.trim(),
+          horas_acreditadas: Number(horasAcreditadas) || 300,
+          estatus: 'Pendiente',
+          motivo_devolucion: '',
+          fecha_solicitud: new Date().toLocaleDateString('es-MX'),
+          archivos: filesList.map((f) => ({ name: f.name, tipoDoc: f.tipoDoc, url: f.url || '#' }))
+        };
+        setSolicitud(mockSol);
+        if (typeof setUser === 'function') {
+          setUser((prev) => (prev ? { ...prev, practicasStatus: 'Pendiente' } : prev));
+        }
+        if (typeof showToast === 'function') showToast("Simulación: Expediente de prácticas enviado");
+      }, 1200);
+    }
+  };
+
+  // Determinar estado ('Ninguna', 'Pendiente', 'En revisión (Control Escolar)', 'Aparece en kardex', 'Devuelta')
+  const currentStatus = solicitud ? String(solicitud.estatus || 'Pendiente') : 'Ninguna';
+  const showForm = currentStatus === 'Ninguna' || currentStatus === 'Devuelta';
+
+  const getStepNumber = (status) => {
+    const s = status.toLowerCase();
+    if (s.includes('kardex')) return 3;
+    if (s.includes('control escolar') || s.includes('revisión')) return 2;
+    return 1; // 'Pendiente'
+  };
+
+  return (
+    <div className="space-y-6 relative text-xs">
+      {/* Overlay de bloqueo durante subida de archivos a Drive */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
+            <span className="flex items-center justify-center animate-spin">
+              <i data-lucide="loader-2" className="w-8 h-8 text-udg-blue shrink-0"></i>
+            </span>
+            <h4 className="font-bold text-sm text-slate-900 dark:text-white font-display">
+              Resguardando Expediente de Prácticas...
+            </h4>
+            <p className="text-xs text-slate-500">
+              Subiendo documentos con permisos privados a la carpeta de Prácticas Profesionales en Drive.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
+        {/* Encabezado */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-udg-light dark:bg-slate-700 text-udg-navy dark:text-blue-300 flex items-center justify-center font-bold border border-blue-200/60 dark:border-slate-600 shrink-0">
+              <i data-lucide="briefcase" className="w-6 h-6 shrink-0"></i>
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold text-slate-900 dark:text-white font-display">
+                Liberación y Acreditación de Prácticas Profesionales
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Envía tu expediente digital (Oficio de asignación, reportes y constancia de terminación) para registro en Kardex.
+              </p>
+            </div>
+          </div>
+
+          <span className="self-start sm:self-center px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-mono font-bold text-xs">
+            Código: {studentCode}
+          </span>
+        </div>
+
+        {/* Skeleton Screen Inicial */}
+        {isLoading ? (
+          <div className="space-y-4 animate-pulse">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="h-14 bg-slate-100 dark:bg-slate-700/60 rounded-xl"></div>
+              <div className="h-14 bg-slate-100 dark:bg-slate-700/60 rounded-xl"></div>
+            </div>
+            <div className="h-36 bg-slate-100 dark:bg-slate-700/40 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700"></div>
+            <div className="h-12 bg-slate-100 dark:bg-slate-700/60 rounded-xl w-48 ml-auto"></div>
+          </div>
+        ) : showForm ? (
+          /* =====================================================================
+             ESCENARIO A: FORMULARIO DE ENVÍO O CORRECCIÓN DE SOLICITUD DEVUELTA
+             ===================================================================== */
+          <form onSubmit={handleSubmitPracticas} className="space-y-6">
+            
+            {/* Banner de Alerta si la Solicitud fue Devuelta */}
+            {currentStatus === 'Devuelta' && (
+              <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 flex items-start gap-3 animate-in fade-in">
+                <i data-lucide="alert-octagon" className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5"></i>
+                <div className="space-y-1">
+                  <h4 className="font-extrabold text-red-800 dark:text-red-300 text-xs uppercase tracking-wide">
+                    Solicitud Devuelta por la Coordinación (Folio #{solicitud?.id_solicitud})
+                  </h4>
+                  <p className="text-red-700 dark:text-red-200 font-semibold leading-relaxed">
+                    Motivo: {solicitud?.motivo_devolucion || 'Revisa que todos tus formatos contengan firmas y sellos correspondientes.'}
+                  </p>
+                  <p className="text-[11px] text-red-600/80 dark:text-red-300/80">
+                    Hemos recuperado tus archivos enviados anteriormente en la lista inferior. Puedes quitar solo el documento con observaciones y subir la versión corregida.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Datos de la Empresa y Horas */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Empresa o Institución Receptora *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Continental Automotive Guadalajara / Intel / CINVESTAV..."
+                  value={empresa}
+                  onChange={(e) => setEmpresa(e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Total de Horas Cubiertas *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={horasAcreditadas}
+                  onChange={(e) => setHorasAcreditadas(e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl font-mono font-bold text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Zona Drag & Drop para Subir Múltiples Archivos */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-2xl p-7 text-center transition-all ${
+                isDragging
+                  ? 'border-udg-blue bg-blue-50/60 dark:bg-slate-700/50'
+                  : 'border-slate-300 dark:border-slate-600 bg-slate-50/60 dark:bg-slate-900/40 hover:border-udg-blue'
+              }`}
+            >
+              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center mx-auto mb-3 text-udg-navy dark:text-blue-400">
+                <i data-lucide="file-up" className="w-6 h-6 shrink-0"></i>
+              </div>
+              <h4 className="font-bold text-slate-800 dark:text-white text-sm font-display">
+                Adjunta tus documentos de Prácticas Profesionales (PDF o Imagen)
+              </h4>
+              <p className="text-[11px] text-slate-500 mt-1 mb-4">
+                Sube tu Carta de Asignación/Convenio, Reporte Final y Constancia de Terminación firmada y sellada.
+              </p>
+
+              <label className="cursor-pointer bg-udg-navy hover:bg-udg-blue text-white font-bold px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-sm transition-all">
+                <i data-lucide="plus-circle" className="w-4 h-4 text-udg-gold shrink-0"></i>
+                <span>Seleccionar Archivos</span>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,image/*"
+                  onChange={handleFileChange}
+                  disabled={isSubmitting}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Lista de Archivos Adjuntos (Nuevos + Recuperados en caso de devolución) */}
+            {filesList.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h5 className="font-bold text-slate-800 dark:text-slate-200 uppercase text-[10px] tracking-wider">
+                    Documentos en tu Expediente ({filesList.length})
+                  </h5>
+                  <span className="text-[11px] text-slate-400">
+                    Clasifica cada documento antes de enviar
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {filesList.map((fileItem, idx) => (
+                    <div
+                      key={fileItem.id}
+                      className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-[11px] shrink-0 ${
+                          fileItem.existing
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                            : 'bg-blue-100 text-udg-navy dark:bg-slate-700 dark:text-blue-300'
+                        }`}>
+                          {idx + 1}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-slate-800 dark:text-slate-100 truncate" title={fileItem.name}>
+                              {fileItem.name}
+                            </p>
+                            {fileItem.existing ? (
+                              <span className="px-2 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-extrabold uppercase shrink-0">
+                                Archivo Previo
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase shrink-0">
+                                Nuevo
+                              </span>
+                            )}
+                          </div>
+                          {fileItem.existing && fileItem.url && (
+                            <a
+                              href={fileItem.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-udg-blue dark:text-blue-400 hover:underline inline-flex items-center gap-1 mt-0.5"
+                            >
+                              <i data-lucide="external-link" className="w-3 h-3 shrink-0"></i>
+                              <span>Ver archivo cargado anteriormente</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={fileItem.tipoDoc}
+                          onChange={(e) => handleUpdateFileTipo(fileItem.id, e.target.value)}
+                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-udg-blue"
+                        >
+                          <option value="Constancia de Terminación / Liberación">Constancia de Terminación / Liberación</option>
+                          <option value="Oficio de Asignación / Convenio">Oficio de Asignación / Convenio</option>
+                          <option value="Reporte Final de Actividades">Reporte Final de Actividades</option>
+                          <option value="Evaluación del Receptor">Evaluación del Receptor</option>
+                          <option value="Otro Documento Probatorio">Otro Documento Probatorio</option>
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(fileItem.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition-colors"
+                          title="Eliminar documento del expediente"
+                        >
+                          <i data-lucide="trash-2" className="w-4 h-4 shrink-0"></i>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-700">
+              <button
+                type="submit"
+                disabled={isSubmitting || filesList.length === 0}
+                className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-6 py-3 rounded-xl inline-flex items-center gap-2 shadow-md transition-all disabled:opacity-50"
+              >
+                <i data-lucide="send" className="w-4 h-4 text-udg-gold shrink-0"></i>
+                <span>
+                  {currentStatus === 'Devuelta' ? 'Reenviar Expediente Corregido' : 'Enviar Expediente de Prácticas'}
+                </span>
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* =====================================================================
+             ESCENARIO B: STEPPER / LÍNEA DE TIEMPO DE SEGUIMIENTO ACTIVO
+             ===================================================================== */
+          <div className="space-y-6 animate-in fade-in">
+            <div className="p-5 rounded-2xl bg-blue-50/50 dark:bg-slate-900/60 border border-blue-200/70 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="inline-block px-2.5 py-0.5 rounded-md bg-udg-navy text-white font-mono font-bold text-[10px]">
+                  FOLIO #{solicitud.id_solicitud}
+                </span>
+                <h4 className="text-base font-extrabold text-slate-900 dark:text-white font-display pt-1">
+                  {solicitud.empresa}
+                </h4>
+                <p className="text-slate-500 text-[11px]">
+                  Enviado el {solicitud.fecha_solicitud} • Horas acreditadas:{' '}
+                  <strong className="text-udg-navy dark:text-blue-400">{solicitud.horas_acreditadas} hrs</strong>
+                </p>
+              </div>
+
+              <span className={`self-start sm:self-center px-3.5 py-1.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                getStepNumber(currentStatus) === 3
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : 'bg-blue-100 text-blue-800 border-blue-300'
+              }`}>
+                {currentStatus}
+              </span>
+            </div>
+
+            {/* Stepper Visual de 3 Etapas */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                {
+                  step: 1,
+                  title: '1. En Revisión (Coordinación)',
+                  desc: 'La Coordinación INCO está verificando tus oficios y constancia de liberación.',
+                  icon: 'file-search'
+                },
+                {
+                  step: 2,
+                  title: '2. En Revisión (Control Escolar)',
+                  desc: 'Tu expediente fue aprobado por Coordinación y se turnó a Control Escolar.',
+                  icon: 'building-2'
+                },
+                {
+                  step: 3,
+                  title: '3. Aparece en Kardex',
+                  desc: '¡Trámite concluido! Tus Prácticas Profesionales ya aparecen oficialmente en tu Kardex.',
+                  icon: 'award'
+                }
+              ].map((phase) => {
+                const activeStep = getStepNumber(currentStatus);
+                const isCompleted = activeStep > phase.step || (activeStep === 3 && phase.step === 3);
+                const isCurrent = activeStep === phase.step && phase.step !== 3;
+
+                return (
+                  <div
+                    key={phase.step}
+                    className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
+                      isCompleted
+                        ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800'
+                        : isCurrent
+                          ? 'bg-blue-50/70 dark:bg-blue-950/30 border-udg-blue shadow-sm ring-2 ring-udg-blue/20'
+                          : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700 opacity-60'
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                          isCompleted
+                            ? 'bg-emerald-600 text-white'
+                            : isCurrent
+                              ? 'bg-udg-navy text-white'
+                              : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                        }`}>
+                          <i data-lucide={isCompleted ? 'check' : phase.icon} className="w-5 h-5 shrink-0"></i>
+                        </div>
+                        <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                          isCompleted
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : isCurrent
+                              ? 'bg-blue-100 text-udg-blue animate-pulse'
+                              : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {isCompleted ? 'Completado' : isCurrent ? 'En Curso' : 'Pendiente'}
+                        </span>
+                      </div>
+
+                      <h5 className="font-bold text-slate-900 dark:text-white text-sm font-display">
+                        {phase.title}
+                      </h5>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                        {phase.desc}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Documentos Entregados por el Alumno */}
+            {Array.isArray(solicitud.archivos) && solicitud.archivos.length > 0 && (
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 space-y-3">
+                <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">
+                  Archivos Registrados en tu Expediente ({solicitud.archivos.length})
+                </h5>
+                <div className="divide-y divide-slate-200/70 dark:divide-slate-700">
+                  {solicitud.archivos.map((doc, idx) => (
+                    <div key={idx} className="py-2.5 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-bold text-slate-800 dark:text-slate-100">{doc.tipoDoc}</p>
+                        <p className="text-[11px] text-slate-400">{doc.name}</p>
+                      </div>
+                      {doc.url && (
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-udg-navy dark:text-blue-300 inline-flex items-center gap-1.5 hover:border-udg-blue"
+                        >
+                          <i data-lucide="external-link" className="w-3.5 h-3.5 shrink-0"></i>
+                          <span>Ver Documento</span>
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// VISTA DEL COORDINADOR: AdminPracticasModule
+// ============================================================================
+function AdminPracticasModule({ user, showToast, addNotification }) {
+  const [items, setItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Bloqueo de pantalla durante acciones del servidor
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoadingText, setActionLoadingText] = useState('');
+
+  // Filtros: 'Pendiente', 'En revisión (Control Escolar)', 'Aparece en kardex', 'Devuelta', 'Todos'
+  const [filter, setFilter] = useState('Pendiente');
+  const [search, setSearch] = useState('');
+
+  // Paginación Obligatoria
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  // Modal de Revisión
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [rejectMotivo, setRejectMotivo] = useState('');
+
+  useEffect(() => {
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  });
+
+  const fetchAllPracticas = () => {
+    setIsLoading(true);
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((data) => {
+          setItems(Array.isArray(data) ? data : []);
+          setIsLoading(false);
+        })
+        .withFailureHandler(() => {
+          if (typeof showToast === 'function') {
+            showToast("Error al cargar el listado de Prácticas Profesionales", "error");
+          }
+          setItems([]);
+          setIsLoading(false);
+        })
+        .getAllPracticas();
+    } else {
+      setTimeout(() => {
+        setItems([
+          {
+            id_solicitud: 'PRC-72k9m1',
+            codigo_estudiante: '220470399',
+            nombre_estudiante: 'Kevin Vazquez Delgado',
+            correo_estudiante: 'kevin.vazquez7039@alumnos.udg.mx',
+            empresa: 'Continental Automotive Guadalajara',
+            horas_acreditadas: 300,
+            estatus: 'Pendiente',
+            motivo_devolucion: '',
+            fecha_solicitud: '20/10/2026',
+            archivos: [
+              { name: 'Oficio_Asignacion.pdf', tipoDoc: 'Oficio de Asignación / Convenio', url: '#' },
+              { name: 'Constancia_Liberacion.pdf', tipoDoc: 'Constancia de Terminación / Liberación', url: '#' }
+            ]
+          }
+        ]);
+        setIsLoading(false);
+      }, 800);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllPracticas();
+  }, []);
+
+  const openModal = (item) => {
+    setSelectedItem(item);
+    setShowRejectInput(false);
+    setRejectMotivo('');
+  };
+
+  const closeModal = () => {
+    setSelectedItem(null);
+    setShowRejectInput(false);
+    setRejectMotivo('');
+  };
+
+  const safeItems = Array.isArray(items) ? items : [];
+
+  const filteredItems = safeItems.filter((item) => {
+    const matchStatus = filter === 'Todos' || item.estatus === filter;
+    const q = search.toLowerCase();
+    const target = `${item.nombre_estudiante || ''} ${item.codigo_estudiante || ''} ${item.id_solicitud || ''} ${item.empresa || ''}`.toLowerCase();
+    return matchStatus && target.includes(q);
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentItems = filteredItems.slice(indexOfFirst, indexOfLast);
+
+  const handleStatusChange = (newStatus, motivo = '') => {
+    if (!selectedItem) return;
+
+    if (newStatus === 'Devuelta' && !motivo.trim()) {
+      showToast("Escribe el motivo de la devolución para notificar al alumno", "error");
+      return;
+    }
+
+    setActionLoading(true);
+    setActionLoadingText(
+      newStatus === 'Devuelta'
+        ? 'Devolviendo solicitud y enviando correo con observaciones al alumno...'
+        : newStatus === 'En revisión (Control Escolar)'
+          ? 'Aprobando expediente y turnando a Control Escolar...'
+          : 'Confirmando acreditación en Kardex y enviando correo de felicitación...'
+    );
+
+    const adminCode = user?.code || user?.codigo || 'COORD_INCO';
+
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          setActionLoading(false);
+          if (res && res.success) {
+            const targetId = selectedItem.id_solicitud;
+            const updated = {
+              ...selectedItem,
+              estatus: newStatus,
+              motivo_devolucion: motivo.trim()
+            };
+            setItems((prev) => prev.map((it) => (it.id_solicitud === targetId ? updated : it)));
+            setSelectedItem(updated);
+            setShowRejectInput(false);
+
+            showToast(`Solicitud #${targetId} actualizada a "${newStatus}"`);
+            if (typeof addNotification === 'function') {
+              addNotification(
+                "Prácticas Actualizadas",
+                `El expediente #${targetId} cambió a estado "${newStatus}".`,
+                "success"
+              );
+            }
+            if (newStatus === 'Devuelta' || newStatus === 'Aparece en kardex') {
+              closeModal();
+            }
+          } else {
+            showToast(res ? res.message : "No se pudo actualizar la solicitud", "error");
+          }
+        })
+        .withFailureHandler(() => {
+          setActionLoading(false);
+          showToast("Error de conexión con el servidor", "error");
+        })
+        .updatePracticasStatus(selectedItem.id_solicitud, newStatus, motivo.trim(), adminCode);
+    } else {
+      setTimeout(() => {
+        setActionLoading(false);
+        const targetId = selectedItem.id_solicitud;
+        const updated = { ...selectedItem, estatus: newStatus, motivo_devolucion: motivo.trim() };
+        setItems((prev) => prev.map((it) => (it.id_solicitud === targetId ? updated : it)));
+        setSelectedItem(updated);
+        setShowRejectInput(false);
+        showToast(`Simulación: Estado cambiado a ${newStatus}`);
+      }, 900);
+    }
+  };
+
+  const getBadgeStyle = (status) => {
+    if (status === 'Aparece en kardex') return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+    if (status === 'En revisión (Control Escolar)') return 'bg-blue-100 text-blue-800 border-blue-300';
+    if (status === 'Devuelta') return 'bg-red-100 text-red-800 border-red-300';
+    return 'bg-amber-100 text-amber-800 border-amber-300';
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-5 text-xs relative">
+      
+      {/* Overlay de bloqueo durante transiciones */}
+      {actionLoading && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-3">
+            <span className="flex items-center justify-center animate-spin">
+              <i data-lucide="loader-2" className="w-8 h-8 text-udg-blue shrink-0"></i>
+            </span>
+            <h4 className="font-bold text-sm text-slate-900 dark:text-white font-display">Procesando Solicitud...</h4>
+            <p className="text-xs text-slate-500">{actionLoadingText}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Encabezado */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
+        <div>
+          <h3 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2 font-display">
+            <i data-lucide="briefcase" className="w-5 h-5 text-udg-gold shrink-0"></i>
+            <span>Gestión de Prácticas Profesionales</span>
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Revisa convenios y constancias de liberación, turna a Control Escolar y confirma su aparición en Kardex.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={fetchAllPracticas}
+          disabled={isLoading}
+          className="self-start sm:self-auto px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1.5 disabled:opacity-50"
+        >
+          <span className={`flex items-center justify-center ${isLoading ? 'animate-spin' : ''}`}>
+            <i data-lucide="refresh-cw" className="w-3.5 h-3.5 shrink-0"></i>
+          </span>
+          <span>Actualizar</span>
+        </button>
+      </div>
+
+      {/* Buscador y Botones de Filtro por Estado */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <i data-lucide="search" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 shrink-0"></i>
+          <input
+            type="text"
+            placeholder="Buscar por nombre del alumno o código..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs focus:ring-2 focus:ring-udg-blue outline-none"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
+          {[
+            'Pendiente',
+            'En revisión (Control Escolar)',
+            'Aparece en kardex',
+            'Devuelta',
+            'Todos'
+          ].map((st) => (
+            <button
+              key={st}
+              type="button"
+              onClick={() => {
+                setFilter(st);
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                filter === st
+                  ? 'bg-udg-navy text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-white/60'
+              }`}
+            >
+              {st}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Listado de Tarjetas con Skeleton Screen */}
+      <div className="space-y-3 min-h-[280px]">
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                className="p-5 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 flex justify-between items-center animate-pulse"
+              >
+                <div className="space-y-2">
+                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-56"></div>
+                  <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-40"></div>
+                </div>
+                <div className="h-9 bg-slate-200 dark:bg-slate-700 rounded-xl w-36"></div>
+              </div>
+            ))}
+          </div>
+        ) : currentItems.length === 0 ? (
+          <div className="py-12 text-center text-slate-400 space-y-2">
+            <i data-lucide="inbox" className="w-8 h-8 mx-auto opacity-50 shrink-0"></i>
+            <p>No se encontraron solicitudes de prácticas con el estado "{filter}".</p>
+          </div>
+        ) : (
+          currentItems.map((item) => (
+            <div
+              key={item.id_solicitud}
+              className="p-5 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 transition-all"
+            >
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-extrabold text-udg-navy dark:text-blue-400 text-xs">
+                    #{item.id_solicitud}
+                  </span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${getBadgeStyle(item.estatus)}`}>
+                    {item.estatus}
+                  </span>
+                </div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+                  {item.nombre_estudiante}{' '}
+                  <span className="font-mono text-udg-blue dark:text-blue-400">({item.codigo_estudiante})</span>
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Empresa: <strong className="text-slate-700 dark:text-slate-200">{item.empresa}</strong> • Enviado: {item.fecha_solicitud}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openModal(item)}
+                className="self-start sm:self-center bg-udg-navy hover:bg-udg-blue text-white font-bold px-4 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-sm transition-all"
+              >
+                <i data-lucide="folder-search" className="w-4 h-4 text-udg-gold shrink-0"></i>
+                <span>Revisar Solicitud</span>
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Paginación Obligatoria */}
+      {!isLoading && filteredItems.length > 0 && (
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700 text-[11px] text-slate-500">
+          <span>
+            Mostrando {indexOfFirst + 1} - {Math.min(indexOfLast, filteredItems.length)} de {filteredItems.length} solicitudes
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 font-semibold disabled:opacity-30"
+            >
+              Anterior
+            </button>
+            <span className="font-bold text-slate-700 dark:text-slate-300">
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 font-semibold disabled:opacity-30"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE REVISIÓN DE PRÁCTICAS PROFESIONALES */}
+      {selectedItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden text-xs max-h-[90vh] flex flex-col">
+            
+            {/* Cabecera del Modal */}
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-slate-700 text-udg-blue dark:text-blue-300 font-mono font-bold text-[11px]">
+                  #{selectedItem.id_solicitud}
+                </span>
+                <h4 className="font-extrabold text-slate-900 dark:text-white text-sm font-display">
+                  Revisión de Expediente de Prácticas Profesionales
+                </h4>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeModal}
+                className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-slate-700"
+              >
+                <i data-lucide="x" className="w-4 h-4 shrink-0"></i>
+              </button>
+            </div>
+
+            {/* Cuerpo del Modal */}
+            <div className="p-6 overflow-y-auto custom-scrollbar space-y-5">
+              
+              {/* Información del Alumno y Empresa */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <h3 className="text-base font-black text-slate-900 dark:text-white font-display">
+                    {selectedItem.nombre_estudiante}
+                  </h3>
+                  <p className="font-mono text-xs text-slate-500">
+                    Código UdG: {selectedItem.codigo_estudiante} • Fecha: {selectedItem.fecha_solicitud}
+                  </p>
+                  <p className="text-xs font-bold text-udg-navy dark:text-blue-400 pt-0.5">
+                    Empresa Receptora: {selectedItem.empresa} ({selectedItem.horas_acreditadas} hrs)
+                  </p>
+                </div>
+
+                <span className={`self-start sm:self-center px-3 py-1 rounded-full text-[10px] font-extrabold uppercase border ${getBadgeStyle(selectedItem.estatus)}`}>
+                  {selectedItem.estatus}
+                </span>
+              </div>
+
+              {/* Lista de Documentos Adjuntos */}
+              <div className="space-y-2.5">
+                <h5 className="font-bold text-slate-700 dark:text-slate-300 uppercase text-[10px] tracking-wider">
+                  Documentos Probatorios Adjuntos ({Array.isArray(selectedItem.archivos) ? selectedItem.archivos.length : 0})
+                </h5>
+
+                <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-700">
+                  {Array.isArray(selectedItem.archivos) &&
+                    selectedItem.archivos.map((doc, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3.5 bg-white dark:bg-slate-800/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 transition-colors"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <p className="font-bold text-slate-900 dark:text-white text-xs">
+                            {doc.tipoDoc}
+                          </p>
+                          <p className="text-[11px] text-slate-400 truncate">{doc.name}</p>
+                        </div>
+
+                        {doc.url && (
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-udg-navy hover:bg-udg-blue text-white font-bold px-3.5 py-2 rounded-xl inline-flex items-center gap-1.5 shadow-sm shrink-0"
+                          >
+                            <i data-lucide="external-link" className="w-3.5 h-3.5 shrink-0"></i>
+                            <span>Ver / Descargar Archivo</span>
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* ===============================================================
+                  ACCIONES DEL MODAL SEGÚN ESTADO DE LA SOLICITUD
+                 =============================================================== */}
+
+              {/* 1. Si está "Pendiente" o "Devuelta" */}
+              {(selectedItem.estatus === 'Pendiente' || selectedItem.estatus === 'Devuelta') && (
+                <div className="space-y-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+                  {!showRejectInput ? (
+                    <div className="flex flex-wrap items-center justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowRejectInput(true)}
+                        className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-sm transition-all"
+                      >
+                        <i data-lucide="corner-up-left" className="w-4 h-4 shrink-0"></i>
+                        <span>Devolver Solicitud</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleStatusChange('En revisión (Control Escolar)')}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md transition-all"
+                      >
+                        <i data-lucide="check-circle" className="w-4 h-4 shrink-0"></i>
+                        <span>Aprobar (Pasar a Control Escolar)</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-red-50/70 dark:bg-red-950/30 border border-red-200 dark:border-red-800 space-y-3 animate-in fade-in">
+                      <label className="block font-bold text-red-900 dark:text-red-200">
+                        Motivo de la devolución (obligatorio, se enviará por correo al alumno) *
+                      </label>
+                      <textarea
+                        rows="3"
+                        placeholder="Indica qué documento falta o qué corrección debe realizar el estudiante..."
+                        value={rejectMotivo}
+                        onChange={(e) => setRejectMotivo(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 rounded-xl p-3 text-xs focus:ring-2 focus:ring-red-500 outline-none"
+                      ></textarea>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowRejectInput(false);
+                            setRejectMotivo('');
+                          }}
+                          className="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 text-slate-600 border border-slate-200 font-semibold"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleStatusChange('Devuelta', rejectMotivo)}
+                          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold inline-flex items-center gap-1.5 shadow-sm"
+                        >
+                          <i data-lucide="send" className="w-3.5 h-3.5 shrink-0"></i>
+                          <span>Confirmar Devolución</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 2. Si está "En revisión (Control Escolar)" */}
+              {selectedItem.estatus === 'En revisión (Control Escolar)' && (
+                <div className="space-y-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+                  <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 text-udg-navy dark:text-blue-200">
+                      <i data-lucide="building-2" className="w-5 h-5 text-udg-blue shrink-0"></i>
+                      <p className="font-bold">
+                        Expediente actualmente en proceso con Control Escolar.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange('Aparece en kardex')}
+                      className="bg-udg-royal hover:bg-udg-blue text-white font-bold px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-md transition-all shrink-0"
+                    >
+                      <i data-lucide="award" className="w-4 h-4 shrink-0"></i>
+                      <span>Marcar como Aparece en Kardex</span>
                     </button>
                   </div>
                 </div>

@@ -1,0 +1,167 @@
+/**
+ * =========================================================================
+ * MÓDULO BACKEND: NORMATIVIDAD ARTÍCULOS 33, 34 Y 35 (INCO CUCEI)
+ * Cumple con Semilla Oficial, CacheService, LockService, RBAC y Auditoría.
+ * =========================================================================
+ */
+
+const REGLAMENTO_PROP_KEY = 'REGLAMENTO_DATA';
+const REGLAMENTO_CACHE_KEY = 'PORTAL_REGLAMENTO_CACHE_V1';
+const REGLAMENTO_CACHE_TTL = 600; // 10 minutos (600 segundos)
+
+/**
+ * Retorna el objeto JSON semilla oficial para los Artículos 33, 34 y 35.
+ */
+function getSeedArticulosData() {
+  return {
+    "urlOficial": "https://tramites.cucei.udg.mx",
+    "descripcionGeneral": "Este espacio detalla la normativa vigente respecto a las oportunidades para regularizar tu situación académica si no lograste acreditar una materia. Lee detenidamente los artículos aplicables antes de iniciar tu trámite de oportunidad ante la Comisión de Educación.",
+    "articulos": [
+      {
+        "titulo": "Artículo 33 - Repetición de Cursos",
+        "descripcion": "Los estudiantes que no obtengan calificación aprobatoria tras el periodo extraordinario están obligados a cursar de nuevo la materia en el ciclo académico inmediato siguiente en que se oferte. Si en esta segunda oportunidad tampoco logran acreditar la asignatura, procederá su baja automática del programa."
+      },
+      {
+        "titulo": "Artículo 34 - Petición a la Comisión",
+        "descripcion": "Los alumnos que enfrenten la baja estipulada en el artículo 33 pueden presentar una solicitud escrita a la Comisión de Educación para pedir una última oportunidad. Dicha Comisión evaluará el historial académico, los argumentos y la conducta del estudiante para decidir. Si se concede, el estudiante deberá aprobar la materia exclusivamente en periodo ordinario; reprobar o no presentarse resultará en una baja definitiva e inapelable."
+      },
+      {
+        "titulo": "Artículo 35 - Restricción de Reingreso",
+        "descripcion": "Cualquier estudiante que cause baja definitiva bajo la aplicación de los artículos anteriores perderá por completo el derecho a solicitar reingreso a la misma carrera o programa de posgrado del cual fue dado de baja."
+      }
+    ]
+  };
+}
+
+/**
+ * 1. OBTENER DATOS NORMATIVOS DE ARTÍCULOS 33, 34 Y 35 (Con CacheService)
+ * Si el servidor no tiene datos previos, inicializa y guarda la semilla automáticamente.
+ */
+function getArticulosData() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const cachedJson = cache.get(REGLAMENTO_CACHE_KEY);
+    if (cachedJson) {
+      return JSON.parse(cachedJson);
+    }
+
+    const scriptProps = PropertiesService.getScriptProperties();
+    const storedJson = scriptProps.getProperty(REGLAMENTO_PROP_KEY);
+    let parsedData = null;
+
+    if (storedJson) {
+      try {
+        parsedData = JSON.parse(storedJson);
+      } catch (e) {
+        parsedData = null;
+      }
+    }
+
+    // Si aún no hay información previa, inicializamos la semilla oficial
+    if (!parsedData || !Array.isArray(parsedData.articulos)) {
+      parsedData = getSeedArticulosData();
+      scriptProps.setProperty(REGLAMENTO_PROP_KEY, JSON.stringify(parsedData));
+    }
+
+    cache.put(REGLAMENTO_CACHE_KEY, JSON.stringify(parsedData), REGLAMENTO_CACHE_TTL);
+    return parsedData;
+
+  } catch (error) {
+    logSystemEvent('ERROR', 'SISTEMA', 'Error Lectura Reglamento Art 33-35', error.toString());
+    return getSeedArticulosData();
+  }
+}
+
+/**
+ * 2. ACTUALIZAR NORMATIVIDAD ARTÍCULOS 33, 34 Y 35 (Exclusivo Rol 'Coordinacion')
+ * Valida estrictamente el rol en el backend, sanitiza entradas, invalida caché y audita en Logs.
+ */
+function updateArticulosData(newData, rawUserCode) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+
+  try {
+    const safeUserCode = sanitizeInput(String(rawUserCode || '').trim());
+    if (!safeUserCode) {
+      return { success: false, message: "Sesión inválida: No se proporcionó código de usuario." };
+    }
+
+    if (!newData || typeof newData !== 'object' || !Array.isArray(newData.articulos)) {
+      return { success: false, message: "Estructura de datos de normatividad inválida." };
+    }
+
+    lockAcquired = lock.tryLock(5000);
+    if (!lockAcquired) {
+      return { success: false, message: "El servidor está ocupado. Intenta nuevamente en unos segundos." };
+    }
+
+    // MANDATO DE SEGURIDAD (Validación RBAC Estricta en Servidor):
+    // Leemos en lote con getValues() la tabla Usuarios para confirmar rol 'Coordinacion'
+    const ssId = PropertiesService.getScriptProperties().getProperty('DB_SHEET_ID');
+    const ss = SpreadsheetApp.openById(ssId);
+    const usersSheet = ss.getSheetByName(TABLES.USERS);
+    const usersData = usersSheet.getDataRange().getValues();
+
+    let isCoordinator = false;
+    for (let u = 1; u < usersData.length; u++) {
+      if (String(usersData[u][0]).trim() === safeUserCode) {
+        const userRole = String(usersData[u][2] || '').trim();
+        if (userRole === 'Coordinacion') {
+          isCoordinator = true;
+        }
+        break;
+      }
+    }
+
+    if (!isCoordinator) {
+      logSystemEvent(
+        'SEC',
+        safeUserCode,
+        'Intento no autorizado de modificar Reglamento Art. 33-35',
+        'Operación bloqueada por control de acceso RBAC.'
+      );
+      return { success: false, message: "Acceso denegado: Solo la Coordinación puede modificar la normatividad institucional." };
+    }
+
+    // Sanitización de todos los campos antes de almacenar
+    const sanitizedData = {
+      urlOficial: sanitizeInput(String(newData.urlOficial || '').trim()),
+      descripcionGeneral: sanitizeInput(String(newData.descripcionGeneral || '').trim()),
+      articulos: newData.articulos.map(function(item) {
+        return {
+          titulo: sanitizeInput(String(item.titulo || '').trim()),
+          descripcion: sanitizeInput(String(item.descripcion || '').trim())
+        };
+      })
+    };
+
+    const serialized = JSON.stringify(sanitizedData);
+
+    // Guardar en ScriptProperties e invalidar el caché inmediatamente
+    PropertiesService.getScriptProperties().setProperty(REGLAMENTO_PROP_KEY, serialized);
+    const cache = CacheService.getScriptCache();
+    cache.remove(REGLAMENTO_CACHE_KEY);
+    cache.put(REGLAMENTO_CACHE_KEY, serialized, REGLAMENTO_CACHE_TTL);
+
+    // MANDATO DE AUDITORÍA ESTRICTA
+    logSystemEvent(
+      'INFO',
+      safeUserCode,
+      'Actualización de Reglamento Art. 33-35',
+      `El coordinador actualizó la normatividad con ${sanitizedData.articulos.length} artículos/párrafos.`
+    );
+
+    return {
+      success: true,
+      data: sanitizedData
+    };
+
+  } catch (error) {
+    logSystemEvent('ERROR', rawUserCode || 'COORD', 'Error Actualizar Reglamento Art 33-35', error.toString());
+    return { success: false, message: "Error interno al guardar la normatividad: " + error.message };
+  } finally {
+    if (lockAcquired) {
+      lock.releaseLock();
+    }
+  }
+}
